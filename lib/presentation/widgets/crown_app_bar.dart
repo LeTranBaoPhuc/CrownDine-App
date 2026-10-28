@@ -32,7 +32,7 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     return AppBar(
-      titleSpacing: 16,
+      titleSpacing: 8,
       backgroundColor: isDark ? AppColors.darkCard : Colors.white,
       elevation: 0.5,
       title: title != null
@@ -45,70 +45,77 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
               ),
             )
           : Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(7),
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [AppColors.primary, AppColors.gold],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(8),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 6,
+                        blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
                   ),
                   child: Image.asset(
                     'assets/images/logo.png',
-                    width: 24,
-                    height: 24,
+                    width: 20,
+                    height: 20,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.restaurant, color: Colors.white, size: 20),
+                    errorBuilder: (_, __, ___) => const Icon(Icons.restaurant, color: Colors.white, size: 18),
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Crown',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: isDark ? Colors.white : AppColors.textPrimary,
-                              letterSpacing: 0.5,
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      RichText(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'Crown',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : AppColors.textPrimary,
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                          ),
-                          const TextSpan(
-                            text: 'Dine',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.primary,
-                              letterSpacing: 0.5,
+                            const TextSpan(
+                              text: 'Dine',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                                letterSpacing: 0.5,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Nhà hàng sang trọng',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
+                      Text(
+                        'Nhà hàng sang trọng',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 9,
+                          color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -117,8 +124,8 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
           GestureDetector(
             onTap: () => _showRoleSelectorSheet(context, ref, authState.activeRole),
             child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 14),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              margin: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: authState.isAdmin
                     ? AppColors.primary
@@ -138,80 +145,80 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     authState.isAdmin
                         ? Icons.admin_panel_settings_outlined
                         : (authState.isStaff ? Icons.badge_outlined : Icons.person_outline),
-                    size: 14,
+                    size: 13,
                     color: (authState.isAdmin || authState.isStaff) ? Colors.white : AppColors.primary,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 3),
                   Text(
                     authState.activeRole.displayName,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: (authState.isAdmin || authState.isStaff) ? Colors.white : AppColors.primary,
                     ),
                   ),
-                  const SizedBox(width: 2),
+                  const SizedBox(width: 1),
                   Icon(
                     Icons.arrow_drop_down,
-                    size: 14,
+                    size: 13,
                     color: (authState.isAdmin || authState.isStaff) ? Colors.white70 : AppColors.primary,
                   ),
                 ],
               ),
             ),
           ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
 
         // Server Settings
         Container(
-          margin: const EdgeInsets.symmetric(vertical: 14),
+          margin: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
             ),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ServerConfigScreen()),
               );
             },
             child: const Padding(
-              padding: EdgeInsets.all(7),
-              child: Icon(Icons.settings_ethernet, size: 20),
+              padding: EdgeInsets.all(5),
+              child: Icon(Icons.settings_ethernet, size: 18),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
 
         // Theme Toggle
         Container(
-          margin: const EdgeInsets.symmetric(vertical: 14),
+          margin: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
             color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(
               color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
             ),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
             onTap: () {
               ref.read(themeModeProvider.notifier).toggleTheme();
             },
             child: Padding(
-              padding: const EdgeInsets.all(7),
+              padding: const EdgeInsets.all(5),
               child: Icon(
                 isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
-                size: 20,
+                size: 18,
               ),
             ),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
 
         if (showCart && !authState.isStaff)
           Stack(
