@@ -41,5 +41,12 @@ class ApiEndpoints {
   static const String feedbacks = 'feedbacks';
   static String feedbacksByItem(int itemId) => 'feedbacks/items/$itemId';
   static String feedbacksByCombo(int comboId) => 'feedbacks/combos/$comboId';
+
+  // Favorites
+  static const String favorites = 'favorites';
+  static String favoriteItem(int itemId) => 'favorites/items/$itemId';
+  static String favoriteCombo(int comboId) => 'favorites/combos/$comboId';
+  static String checkFavoriteItem(int itemId) => 'favorites/items/$itemId/check';
+  static String checkFavoriteCombo(int comboId) => 'favorites/combos/$comboId/check';
 }
 
