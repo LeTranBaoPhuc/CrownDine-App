@@ -1,3 +1,5 @@
+import '../../core/utils/image_utils.dart';
+
 class ItemModel {
   final int id;
   final int categoryId;
@@ -41,7 +43,7 @@ class ItemModel {
       categoryId: json['categoryId'] is int ? json['categoryId'] : int.tryParse('${json['categoryId']}') ?? 0,
       name: json['name'] ?? '',
       description: json['description'] ?? '',
-      imageUrl: json['imageUrl'] ?? '',
+      imageUrl: ImageUtils.getSafeImageUrl(json['imageUrl'] ?? json['image']),
       price: (json['price'] is num) ? (json['price'] as num).toDouble() : double.tryParse('${json['price']}') ?? 0.0,
       priceAfterDiscount: json['priceAfterDiscount'] != null
           ? ((json['priceAfterDiscount'] is num)

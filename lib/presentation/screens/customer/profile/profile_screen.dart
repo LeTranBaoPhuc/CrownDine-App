@@ -48,10 +48,18 @@ class ProfileScreen extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    radius: 36,
-                    backgroundImage: NetworkImage(
-                      user?.avatar ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
+                  ClipOval(
+                    child: Image.network(
+                      user?.avatarUrl ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
+                      width: 72,
+                      height: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 72,
+                        height: 72,
+                        color: AppColors.primary.withOpacity(0.15),
+                        child: const Icon(Icons.person, size: 40, color: AppColors.primary),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),

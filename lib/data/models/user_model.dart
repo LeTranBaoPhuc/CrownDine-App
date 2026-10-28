@@ -1,3 +1,5 @@
+import '../../core/utils/image_utils.dart';
+
 enum UserRole {
   customer,
   staff,
@@ -93,7 +95,7 @@ class UserModel {
     return username;
   }
 
-  String? get avatarUrl => avatar;
+  String? get avatarUrl => ImageUtils.getSafeImageUrl(avatar);
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(

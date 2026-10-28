@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/utils/image_utils.dart';
 import '../../../../data/models/item_model.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../providers/feedback_provider.dart';
@@ -379,16 +380,34 @@ class _MenuDetailSheetState extends ConsumerState<MenuDetailSheet> {
                                     children: [
                                       Row(
                                         children: [
-                                          CircleAvatar(
-                                            radius: 18,
-                                            backgroundColor: AppColors.primary.withOpacity(0.15),
-                                            backgroundImage: fb.avatarUrl != null ? NetworkImage(fb.avatarUrl!) : null,
-                                            child: fb.avatarUrl == null
-                                                ? Text(
-                                                    fb.fullName.isNotEmpty ? fb.fullName[0].toUpperCase() : 'K',
-                                                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                                          ClipOval(
+                                            child: (fb.avatarUrl != null && fb.avatarUrl!.isNotEmpty)
+                                                ? Image.network(
+                                                    ImageUtils.getSafeImageUrl(fb.avatarUrl),
+                                                    width: 36,
+                                                    height: 36,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (_, __, ___) => Container(
+                                                      width: 36,
+                                                      height: 36,
+                                                      color: AppColors.primary.withOpacity(0.15),
+                                                      alignment: Alignment.center,
+                                                      child: Text(
+                                                        fb.fullName.isNotEmpty ? fb.fullName[0].toUpperCase() : 'K',
+                                                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                                                      ),
+                                                    ),
                                                   )
-                                                : null,
+                                                : Container(
+                                                    width: 36,
+                                                    height: 36,
+                                                    color: AppColors.primary.withOpacity(0.15),
+                                                    alignment: Alignment.center,
+                                                    child: Text(
+                                                      fb.fullName.isNotEmpty ? fb.fullName[0].toUpperCase() : 'K',
+                                                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                                                    ),
+                                                  ),
                                           ),
                                           const SizedBox(width: 10),
                                           Expanded(
