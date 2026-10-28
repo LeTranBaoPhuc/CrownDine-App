@@ -1,0 +1,45 @@
+class ApiEndpoints {
+  // Auth
+  static const String login = 'auth/login';
+  static const String register = 'auth/register';
+  static const String refreshToken = 'auth/refresh-token';
+  static const String logout = 'auth/logout';
+  static const String googleLogin = 'auth/google-login';
+
+  // Users & Profile
+  static const String profile = 'users/profile';
+  static const String updateProfile = 'users';
+  static const String pointHistory = 'users/profile/point-history';
+
+  // Items & Categories
+  static const String items = 'items';
+  static const String itemsList = 'items/list';
+  static const String categories = 'categories';
+  static const String combos = 'combos';
+
+  // Reservations
+  static const String reservations = 'reservations';
+  static const String reservationHistory = 'reservations/history';
+  static const String reservationAll = 'reservations/all';
+  static const String reservationCreate = 'reservations/create';
+  static const String reservationStaffCreate = 'reservations/staff-create';
+
+  // Tables & Layout
+  static const String layoutFloors = 'layout/floors';
+  static const String layoutTables = 'layout/tables';
+  static const String layoutSummary = 'layout';
+
+  // Orders
+  static const String orders = 'orders';
+  static const String orderDetails = 'order-details';
+
+  // Vouchers
+  static const String vouchers = 'vouchers';
+  static const String userVouchers = 'user-vouchers';
+
+  // Feedbacks
+  static const String feedbacks = 'feedbacks';
+  static String feedbacksByItem(int itemId) => 'feedbacks/items/$itemId';
+  static String feedbacksByCombo(int comboId) => 'feedbacks/combos/$comboId';
+}
+
