@@ -60,12 +60,14 @@ class ProfileScreen extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user?.fullName ?? 'Khách hàng CrownDine',
+                          user?.fullName.isNotEmpty == true
+                              ? user!.fullName
+                              : (user == null ? 'Khách ghé thăm' : 'Khách hàng CrownDine'),
                           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          user?.phone ?? user?.email ?? 'khachhang@crowndine.vn',
+                          user?.phone ?? user?.email ?? (user == null ? 'Vui lòng đăng nhập tài khoản' : 'khachhang@crowndine.vn'),
                           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 8),
@@ -78,7 +80,7 @@ class ProfileScreen extends ConsumerWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            user?.membershipTier ?? 'Gold Member',
+                            user?.membershipTier ?? (user == null ? 'Guest' : 'Member'),
                             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                           ),
                         ),
@@ -115,7 +117,7 @@ class ProfileScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '${user?.points ?? 850} CrownPoints',
+                          '${user?.points ?? 0} CrownPoints',
                           style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -228,27 +230,42 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // LOGOUT BUTTON
+            // LOGOUT / LOGIN BUTTON
             SizedBox(
               width: double.infinity,
               height: 48,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.logout, color: AppColors.error),
-                label: const Text('Đăng xuất tài khoản', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.error, width: 1.5),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () async {
-                  await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen()),
-                    );
-                  }
-                },
-              ),
+              child: user != null
+                  ? OutlinedButton.icon(
+                      icon: const Icon(Icons.logout, color: AppColors.error),
+                      label: const Text('Đăng xuất tài khoản', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () async {
+                        await ref.read(authProvider.notifier).logout();
+                        if (context.mounted) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          );
+                        }
+                      },
+                    )
+                  : ElevatedButton.icon(
+                      icon: const Icon(Icons.login, color: Colors.white),
+                      label: const Text('Đăng nhập / Đăng ký', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        );
+                      },
+                    ),
             ),
             const SizedBox(height: 20),
           ],

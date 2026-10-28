@@ -6,9 +6,13 @@ enum UserRole {
   static UserRole fromString(String? role) {
     switch (role?.toUpperCase()) {
       case 'ADMIN':
+      case 'ROLE_ADMIN':
         return UserRole.admin;
       case 'STAFF':
+      case 'ROLE_STAFF':
         return UserRole.staff;
+      case 'USER':
+      case 'ROLE_USER':
       case 'CUSTOMER':
       default:
         return UserRole.customer;
@@ -101,7 +105,9 @@ class UserModel {
       lastName: json['lastName'],
       avatar: json['avatar'] ?? json['avatarUrl'],
       role: UserRole.fromString(json['role'] ?? json['roles']?[0]),
-      points: json['points'] ?? 0,
+      points: json['rewardPoints'] is int
+          ? json['rewardPoints']
+          : (json['points'] is int ? json['points'] : int.tryParse('${json['rewardPoints'] ?? json['points']}') ?? 0),
       membershipTier: json['membershipTier'] ?? 'Silver',
     );
   }

@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/user_model.dart';
 import '../data/repositories/auth_repository.dart';
-import '../data/mock/mock_data.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository());
 
@@ -40,8 +39,24 @@ class AuthState {
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repo;
 
-  AuthNotifier(this._repo) : super(AuthState(user: MockData.customerUser));
+  AuthNotifier(this._repo) : super(AuthState(user: null)) {
+    checkAuthStatus();
+  }
 
+  /// Kiểm tra trạng thái đăng nhập từ JWT Token đã lưu
+  Future<void> checkAuthStatus() async {
+    try {
+      final user = await _repo.getProfile();
+      if (user != null) {
+        state = state.copyWith(
+          user: user,
+          activeRole: user.role,
+        );
+      }
+    } catch (_) {}
+  }
+
+  /// Đăng nhập qua API
   Future<bool> login(String username, String password) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
@@ -53,14 +68,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       return true;
     } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Đăng nhập không thành công: ${e.toString()}',
+        errorMessage: msg,
       );
       return false;
     }
   }
 
+  /// Đăng ký qua API
   Future<bool> register({
     required String username,
     required String email,
@@ -71,7 +88,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final user = await _repo.register(
+      await _repo.register(
         username: username,
         email: email,
         password: password,
@@ -80,39 +97,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
         lastName: lastName,
       );
       state = state.copyWith(
-        user: user,
         isLoading: false,
-        activeRole: user.role,
+        errorMessage: null,
       );
       return true;
     } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Đăng ký không thành công: ${e.toString()}',
+        errorMessage: msg,
       );
       return false;
     }
   }
 
+  /// Chuyển đổi vai trò người dùng (cho tài khoản có nhiều quyền)
   void switchRole(UserRole role) {
-    if (role == UserRole.admin) {
-      state = state.copyWith(
-        user: MockData.adminUser,
-        activeRole: UserRole.admin,
-      );
-    } else if (role == UserRole.staff) {
-      state = state.copyWith(
-        user: MockData.staffUser,
-        activeRole: UserRole.staff,
-      );
-    } else {
-      state = state.copyWith(
-        user: MockData.customerUser,
-        activeRole: UserRole.customer,
-      );
-    }
+    state = state.copyWith(activeRole: role);
   }
 
+  /// Đăng xuất tài khoản
   Future<void> logout() async {
     await _repo.logout();
     state = AuthState(user: null);

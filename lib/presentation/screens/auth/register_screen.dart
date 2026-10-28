@@ -4,7 +4,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../providers/auth_provider.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_text_field.dart';
-import '../customer/customer_main_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -58,16 +57,29 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng ký tài khoản CrownDine thành công!'),
-          backgroundColor: AppColors.success,
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: AppColors.success),
+              SizedBox(width: 8),
+              Text('Đăng ký thành công'),
+            ],
+          ),
+          content: const Text(
+            'Tài khoản của bạn đã được tạo thành công! Vui lòng kiểm tra email để kích hoạt tài khoản trước khi đăng nhập.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                Navigator.pop(context); // Quay về màn hình Login
+              },
+              child: const Text('Đến trang Đăng nhập'),
+            ),
+          ],
         ),
-      );
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
-        (route) => false,
       );
     }
   }
@@ -153,7 +165,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
-              const SizedBox(height: 28),
+              if (authState.errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  authState.errorMessage!,
+                  style: const TextStyle(color: AppColors.error, fontSize: 13),
+                ),
+              ],
+              const SizedBox(height: 24),
 
               AppButton(
                 text: 'Hoàn tất đăng ký',

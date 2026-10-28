@@ -19,7 +19,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _usernameController = TextEditingController(text: 'khachhang');
+  final _usernameController = TextEditingController(text: 'johncena');
   final _passwordController = TextEditingController(text: '123456');
   bool _obscurePassword = true;
 
@@ -196,7 +196,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               // Quick Demo Fill Buttons
               const Text(
-                'Tài khoản chạy thử nhanh (Demo):',
+                'Tài khoản đăng nhập hệ thống (Mật khẩu: 123456):',
                 style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
@@ -205,18 +205,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   ActionChip(
                     avatar: const Icon(Icons.person, size: 16),
-                    label: const Text('Khách hàng'),
-                    onPressed: () => _fillDemo('khachhang', '123456'),
+                    label: const Text('Khách hàng (johncena)'),
+                    onPressed: () => _fillDemo('johncena', '123456'),
                   ),
                   ActionChip(
                     avatar: const Icon(Icons.badge, size: 16),
-                    label: const Text('Nhân viên (Staff)'),
-                    onPressed: () => _fillDemo('nhanvien', '123456'),
+                    label: const Text('Nhân viên (nguyenkhoa)'),
+                    onPressed: () => _fillDemo('nguyenkhoa', '123456'),
                   ),
                   ActionChip(
                     avatar: const Icon(Icons.admin_panel_settings, size: 16, color: Color(0xFF6366F1)),
-                    label: const Text('Quản trị viên (Admin)'),
-                    onPressed: () => _fillDemo('admin', '123456'),
+                    label: const Text('Quản trị viên (johndoe)'),
+                    onPressed: () => _fillDemo('johndoe', '123456'),
                   ),
                 ],
               ),

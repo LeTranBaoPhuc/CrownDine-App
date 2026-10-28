@@ -192,45 +192,6 @@ class MockData {
     ),
   ];
 
-  static final UserModel customerUser = UserModel(
-    id: 1,
-    username: 'khachhang',
-    email: 'khachhang@crowndine.vn',
-    firstName: 'Nguyễn',
-    lastName: 'Văn An',
-    phone: '0901234567',
-    role: UserRole.customer,
-    points: 850,
-    membershipTier: 'Gold Member',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
-  );
-
-  static final UserModel staffUser = UserModel(
-    id: 2,
-    username: 'nhanvien',
-    email: 'staff01@crowndine.vn',
-    firstName: 'Trần',
-    lastName: 'Quốc Bảo',
-    phone: '0912345678',
-    role: UserRole.staff,
-    points: 0,
-    membershipTier: 'Trưởng ca phục vụ',
-    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400&q=80',
-  );
-
-  static final UserModel adminUser = UserModel(
-    id: 3,
-    username: 'admin',
-    email: 'admin@crowndine.vn',
-    firstName: 'Lê',
-    lastName: 'Hoàng Nam',
-    phone: '0988776655',
-    role: UserRole.admin,
-    points: 0,
-    membershipTier: 'Tổng Quản Lý Hệ Thống',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&q=80',
-  );
-
   static final List<UserModel> staffList = [
     UserModel(
       id: 201,
