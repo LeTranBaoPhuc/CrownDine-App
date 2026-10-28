@@ -13,6 +13,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,7 @@ public class ApiVoucherController {
     private final UserVoucherService userVoucherService;
     private final com.crowndine.service.user.RewardPointService rewardPointService;
 
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping
     public ApiResponse createVoucher(@Valid @RequestBody VoucherRequest request) {
         return ApiResponse.builder()
@@ -60,6 +62,7 @@ public class ApiVoucherController {
                 .build();
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PatchMapping("/{id}")
     public ApiResponse updateVoucher(@Min(1) @PathVariable Long id, @Valid @RequestBody VoucherRequest request) {
         return ApiResponse.builder()
@@ -69,6 +72,7 @@ public class ApiVoucherController {
                 .build();
     }
 
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PostMapping("/{id}/assign-users")
     public ApiResponse assignUsers(@Min(1) @PathVariable Long id,
                                    @Valid @RequestBody VoucherAssignUsersRequest request) {
@@ -79,6 +83,7 @@ public class ApiVoucherController {
                 .build();
     }
 
+    @PreAuthorize("hasAnyAuthority('ADMIN', 'STAFF')")
     @GetMapping("/{id}/assignments")
     public ApiResponse getAssignments(@Min(1) @PathVariable Long id) {
         return ApiResponse.builder()
@@ -88,6 +93,7 @@ public class ApiVoucherController {
                 .build();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/validate")
     public ApiResponse validateVoucher(@Valid @RequestBody VoucherValidateRequest request, Principal principal) {
         return ApiResponse.builder()
@@ -97,6 +103,7 @@ public class ApiVoucherController {
                 .build();
     }
 
+    @PreAuthorize("isAuthenticated()")
     @PostMapping("/{id}/exchange")
     public ApiResponse exchangeVoucher(@Min(1) @PathVariable Long id, Principal principal) {
         rewardPointService.exchangeVoucher(id, principal.getName());

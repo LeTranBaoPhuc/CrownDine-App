@@ -53,6 +53,7 @@ public class ApiComboController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse createCombo(@Valid @RequestBody ComboRequest request) {
         log.info("Create combo request: {}", request.getName());
         ComboResponse combo = comboService.createCombo(request);
@@ -64,6 +65,7 @@ public class ApiComboController {
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse updateCombo(@PathVariable Long id, @Valid @RequestBody ComboRequest request) {
         log.info("Update combo request id: {}", id);
         ComboResponse combo = comboService.updateCombo(id, request);
@@ -75,6 +77,7 @@ public class ApiComboController {
     }
 
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse deleteCombo(@PathVariable Long id) {
         log.info("Delete Combo request id: {}", id);
         comboService.deleteCombo(id);

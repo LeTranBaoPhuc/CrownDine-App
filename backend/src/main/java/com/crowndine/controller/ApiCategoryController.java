@@ -45,6 +45,7 @@ public class ApiCategoryController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse createCategory(@Valid @RequestBody CategoryRequest request) {
         log.info("Create category request: {}", request.getName());
         CategoryResponse category = categoryService.createCategory(request);
@@ -56,6 +57,7 @@ public class ApiCategoryController {
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse updateCategory(@PathVariable Long id, @Valid @RequestBody CategoryRequest request) {
         log.info("Update category request id: {}", id);
         CategoryResponse category = categoryService.updateCategory(id, request);
@@ -67,6 +69,7 @@ public class ApiCategoryController {
     }
 
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse deleteCategory(@PathVariable Long id) {
         log.info("Delete category request id: {}", id);
         categoryService.deleteCategory(id);

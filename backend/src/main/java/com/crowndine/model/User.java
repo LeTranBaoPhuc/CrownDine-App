@@ -87,7 +87,14 @@ public class User extends AbstractEntity<Long> implements UserDetails {
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return roles.stream()
-                .map(role -> new SimpleGrantedAuthority(String.valueOf(role.getName())))
+                .flatMap(role -> {
+                    String roleName = String.valueOf(role.getName());
+                    String withPrefix = roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName;
+                    return java.util.stream.Stream.of(
+                            new SimpleGrantedAuthority(roleName),
+                            new SimpleGrantedAuthority(withPrefix)
+                    );
+                })
                 .toList();
     }
 

@@ -28,7 +28,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+import org.springframework.http.HttpMethod;
 import com.crowndine.security.CustomUserDetailsService;
+import com.crowndine.security.CustomAuthenticationEntryPoint;
+import com.crowndine.security.CustomAccessDeniedHandler;
 
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -40,8 +43,10 @@ import lombok.RequiredArgsConstructor;
 public class AppConfig {
 
     private final PreFilter preFilter;
-
     private final CustomUserDetailsService userDetailsService;
+    private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+    private final CustomAccessDeniedHandler accessDeniedHandler;
+
     @Value("${app.cors.allowed-origin-patterns:${app.cors.allowed-origins:http://localhost:5173}}")
     private String[] allowedOriginPatterns;
 
@@ -49,19 +54,38 @@ public class AppConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(request -> request
+                        // 1. Công khai (Public endpoints)
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/api/categories/**").permitAll()
-                        .requestMatchers("/api/combos/**").permitAll()
-                        .requestMatchers("/api/items/**").permitAll()
-                        .requestMatchers("/api/layout/**").permitAll()
-                        .requestMatchers("/api/feedbacks/**").permitAll()
-                        .requestMatchers("/img/**").permitAll()
-                        .requestMatchers("/ws-restaurant/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/combos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/layout/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/feedbacks/**").permitAll()
                         .requestMatchers("/api/feedbacks/items/**").permitAll()
                         .requestMatchers("/api/payments/payos-ipn").permitAll()
-                        .requestMatchers("/api/dashboard/**").permitAll()
+                        .requestMatchers("/img/**").permitAll()
+                        .requestMatchers("/ws-restaurant/**").permitAll()
                         .requestMatchers("/api/ai/**").permitAll()
+
+                        // 2. Quyền Quản trị viên (ADMIN only)
+                        .requestMatchers("/api/dashboard/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers("/api/staffs/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/categories/**", "/api/items/**", "/api/combos/**", "/api/vouchers/**", "/api/layout/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/categories/**", "/api/items/**", "/api/combos/**", "/api/layout/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/vouchers/**", "/api/layout/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**", "/api/items/**", "/api/combos/**", "/api/layout/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
+
+                        // 3. Quyền Nhân viên & Quản trị viên (STAFF & ADMIN)
+                        .requestMatchers("/api/order-details/**").hasAnyAuthority("STAFF", "ADMIN", "ROLE_STAFF", "ROLE_ADMIN")
+                        .requestMatchers("/api/user-vouchers/**").hasAnyAuthority("STAFF", "ADMIN", "ROLE_STAFF", "ROLE_ADMIN")
+                        .requestMatchers("/api/users/customer/**").hasAnyAuthority("STAFF", "ADMIN", "ROLE_STAFF", "ROLE_ADMIN")
+
+                        // 4. Các tài nguyên còn lại: Bắt buộc xác thực JWT
                         .anyRequest().authenticated())
                 .sessionManagement(manager -> manager.sessionCreationPolicy(STATELESS))
                 .authenticationProvider(authenticationProvider())

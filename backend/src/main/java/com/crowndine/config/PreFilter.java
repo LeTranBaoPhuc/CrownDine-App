@@ -23,6 +23,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -62,38 +63,59 @@ public class PreFilter extends OncePerRequestFilter {
 
         try {
             username = jwtService.extractUsername(token, ETokenType.ACCESS_TOKEN);
-        }
-        // Ném message trong extract ra response
-        catch (JwtAuthenticationException e) {
+        } catch (JwtAuthenticationException e) {
             log.error("JWT Authentication Error, message={}", e.getMessage());
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding("UTF-8");
-
-            ErrorResponse errorResponse = new ErrorResponse();
-            errorResponse.setTimestamp(new Date());
-            errorResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            errorResponse.setPath(request.getRequestURI());
-            errorResponse.setError(e.getErrorCode().name());
-            errorResponse.setMessage(messageService.resolveMessageOrKey(e.getMessage()));
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            String jsonString = objectMapper.writeValueAsString(errorResponse);
-            response.getWriter().write(jsonString);
+            sendErrorResponse(response, request.getRequestURI(), HttpServletResponse.SC_UNAUTHORIZED,
+                    e.getErrorCode() != null ? e.getErrorCode().name() : "TOKEN_INVALID",
+                    messageService.resolveMessageOrKey(e.getMessage()));
+            return;
+        } catch (Exception e) {
+            log.error("Unexpected JWT Error: {}", e.getMessage());
+            sendErrorResponse(response, request.getRequestURI(), HttpServletResponse.SC_UNAUTHORIZED,
+                    "TOKEN_INVALID", "Mã xác thực không hợp lệ hoặc đã hết hạn");
             return;
         }
 
         if (StringUtils.isNotEmpty(username) && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+            try {
+                UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
-            if (jwtService.isTokenValid(token, ETokenType.ACCESS_TOKEN, userDetails)) {
-                UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(userDetails, null,
-                        userDetails.getAuthorities());
-                auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                if (jwtService.isTokenValid(token, ETokenType.ACCESS_TOKEN, userDetails)) {
+                    if (!userDetails.isEnabled()) {
+                        log.warn("User account is disabled/locked: {}", username);
+                        sendErrorResponse(response, request.getRequestURI(), HttpServletResponse.SC_FORBIDDEN,
+                                "ACCOUNT_DISABLED", "Tài khoản của bạn đã bị khóa hoặc chưa được kích hoạt");
+                        return;
+                    }
+                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+                    auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (UsernameNotFoundException e) {
+                log.warn("Username from token not found in database: {}", username);
+                sendErrorResponse(response, request.getRequestURI(), HttpServletResponse.SC_UNAUTHORIZED,
+                        "USER_NOT_FOUND", "Tài khoản người dùng không tồn tại");
+                return;
             }
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private void sendErrorResponse(HttpServletResponse response, String path, int status, String error, String message) throws IOException {
+        response.setStatus(status);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+
+        ErrorResponse errorResponse = new ErrorResponse();
+        errorResponse.setTimestamp(new Date());
+        errorResponse.setStatus(status);
+        errorResponse.setPath(path);
+        errorResponse.setError(error);
+        errorResponse.setMessage(message);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        response.getWriter().write(objectMapper.writeValueAsString(errorResponse));
     }
 }

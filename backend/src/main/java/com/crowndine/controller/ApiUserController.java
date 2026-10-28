@@ -11,6 +11,7 @@ import com.crowndine.service.user.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -28,6 +29,7 @@ public class ApiUserController {
     private final RewardPointService rewardPointService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse getListUsers() {
         return ApiResponse.builder()
                 .status(200)

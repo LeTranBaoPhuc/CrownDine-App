@@ -54,6 +54,7 @@ public class ApiItemController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse createItem(@Valid @RequestBody ItemRequest request) {
         log.info("Create item request: {}", request.getName());
         ItemResponse item = itemService.createItem(request);
@@ -65,6 +66,7 @@ public class ApiItemController {
     }
 
     @PutMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse updateItem(@PathVariable Long id, @Valid @RequestBody ItemRequest request) {
         log.info("Update item request id: {}", id);
         ItemResponse item = itemService.updateItem(id, request);
@@ -76,6 +78,7 @@ public class ApiItemController {
     }
 
     @DeleteMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse deleteItem(@PathVariable Long id) {
         log.info("Delete Item request id: {}", id);
         itemService.deleteItem(id);
