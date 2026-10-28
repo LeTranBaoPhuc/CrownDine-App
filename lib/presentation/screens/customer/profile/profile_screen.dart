@@ -177,38 +177,6 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _buildListTile(
-                    icon: Icons.badge_outlined,
-                    title: 'Chuyển sang Chế độ Nhân viên (Staff Mode)',
-                    subtitle: 'Dành cho nhân viên bàn, thu ngân, bếp KDS',
-                    iconColor: AppColors.gold,
-                    onTap: () {
-                      ref.read(authProvider.notifier).switchRole(UserRole.staff);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã chuyển sang giao diện Nhân viên phục vụ!'),
-                          backgroundColor: AppColors.primary,
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  _buildListTile(
-                    icon: Icons.admin_panel_settings_outlined,
-                    title: 'Quản trị viên (Admin Portal)',
-                    subtitle: 'Dashboard doanh thu, quản lý thực đơn, voucher & nhân sự',
-                    iconColor: const Color(0xFF6366F1),
-                    onTap: () {
-                      ref.read(authProvider.notifier).switchRole(UserRole.admin);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Đã chuyển sang phân hệ Quản trị viên (Admin)!'),
-                          backgroundColor: Color(0xFF6366F1),
-                        ),
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  _buildListTile(
                     icon: Icons.settings_ethernet,
                     title: 'Cài đặt kết nối máy chủ Backend',
                     subtitle: 'Cấu hình URL Spring Boot API',

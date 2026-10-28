@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
-import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -16,7 +15,7 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
   const CrownAppBar({
     super.key,
     this.title,
-    this.showRoleSwitcher = true,
+    this.showRoleSwitcher = false,
     this.showCart = true,
     this.actions,
   });
@@ -120,53 +119,48 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
               ],
             ),
       actions: [
-        if (showRoleSwitcher)
-          GestureDetector(
-            onTap: () => _showRoleSelectorSheet(context, ref, authState.activeRole),
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 16),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: authState.isAdmin
-                    ? AppColors.primary
-                    : (authState.isStaff ? AppColors.secondary : AppColors.primary.withOpacity(0.12)),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: authState.isAdmin
-                      ? AppColors.gold
-                      : (authState.isStaff ? AppColors.gold : AppColors.primary),
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    authState.isAdmin
-                        ? Icons.admin_panel_settings_outlined
-                        : (authState.isStaff ? Icons.badge_outlined : Icons.person_outline),
-                    size: 13,
-                    color: (authState.isAdmin || authState.isStaff) ? Colors.white : AppColors.primary,
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    authState.activeRole.displayName,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: (authState.isAdmin || authState.isStaff) ? Colors.white : AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 1),
-                  Icon(
-                    Icons.arrow_drop_down,
-                    size: 13,
-                    color: (authState.isAdmin || authState.isStaff) ? Colors.white70 : AppColors.primary,
-                  ),
-                ],
+        if (authState.isAdmin || authState.isStaff) ...[
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 18),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: authState.isAdmin ? const Color(0xFF6366F1).withOpacity(0.15) : AppColors.gold.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: authState.isAdmin ? const Color(0xFF6366F1) : AppColors.gold,
+                width: 1,
               ),
             ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  authState.isAdmin ? Icons.admin_panel_settings : Icons.badge,
+                  size: 13,
+                  color: authState.isAdmin ? const Color(0xFF6366F1) : AppColors.gold,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  authState.isAdmin ? 'Admin' : 'Nhân viên',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: authState.isAdmin ? const Color(0xFF6366F1) : AppColors.gold,
+                  ),
+                ),
+              ],
+            ),
           ),
+          IconButton(
+            icon: const Icon(Icons.logout, size: 19, color: AppColors.error),
+            tooltip: 'Đăng xuất',
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+            },
+          ),
+        ],
         const SizedBox(width: 4),
 
         // Server Settings
@@ -262,165 +256,6 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
         if (actions != null) ...actions!,
         const SizedBox(width: 8),
       ],
-    );
-  }
-
-  void _showRoleSelectorSheet(BuildContext context, WidgetRef ref, UserRole currentRole) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) {
-        final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return Material(
-          color: isDark ? AppColors.darkCard : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-            child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.swap_horiz, color: AppColors.primary, size: 22),
-                  ),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Chuyển đổi phân hệ',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'Chọn vai trò để trải nghiệm tính năng tương ứng',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              _buildRoleItem(
-                ctx: ctx,
-                ref: ref,
-                role: UserRole.customer,
-                title: 'Khách hàng (Customer)',
-                description: 'Đặt bàn, duyệt thực đơn, ưu đãi voucher & giỏ hàng',
-                icon: Icons.person_outline,
-                color: AppColors.primary,
-                isSelected: currentRole == UserRole.customer,
-              ),
-              const SizedBox(height: 10),
-              _buildRoleItem(
-                ctx: ctx,
-                ref: ref,
-                role: UserRole.staff,
-                title: 'Nhân viên (Staff / POS)',
-                description: 'Sơ đồ bàn trực quan, mở bàn gọi món & màn hình bếp KDS',
-                icon: Icons.badge_outlined,
-                color: AppColors.gold,
-                isSelected: currentRole == UserRole.staff,
-              ),
-              const SizedBox(height: 10),
-              _buildRoleItem(
-                ctx: ctx,
-                ref: ref,
-                role: UserRole.admin,
-                title: 'Quản trị viên (Admin Portal)',
-                description: 'Dashboard doanh thu, quản lý thực đơn, voucher & nhân sự',
-                icon: Icons.admin_panel_settings_outlined,
-                color: const Color(0xFF6366F1),
-                isSelected: currentRole == UserRole.admin,
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      );
-      },
-    );
-  }
-
-  Widget _buildRoleItem({
-    required BuildContext ctx,
-    required WidgetRef ref,
-    required UserRole role,
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-    required bool isSelected,
-  }) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(ctx);
-        if (!isSelected) {
-          ref.read(authProvider.notifier).switchRole(role);
-          ScaffoldMessenger.of(ctx).showSnackBar(
-            SnackBar(
-              content: Text('Đã chuyển sang phân hệ: ${role.displayName}'),
-              duration: const Duration(seconds: 1),
-              backgroundColor: AppColors.primary,
-            ),
-          );
-        }
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.withOpacity(0.2),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      color: isSelected ? color : null,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    description,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            if (isSelected)
-              Icon(Icons.check_circle, color: color, size: 22),
-          ],
-        ),
-      ),
     );
   }
 

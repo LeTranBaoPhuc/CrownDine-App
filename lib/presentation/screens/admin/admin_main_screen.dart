@@ -30,7 +30,6 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
     return Scaffold(
       appBar: const CrownAppBar(
-        showRoleSwitcher: true,
         showCart: false,
       ),
       body: IndexedStack(
