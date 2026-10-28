@@ -101,6 +101,7 @@ openrouter:
 
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:*,http://127.0.0.1:*,https://*.vercel.app}
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://*.vercel.app,http://10.0.2.2:*}
   websocket:
-    allowed-origin-patterns: ${WS_ALLOWED_ORIGIN_PATTERNS:http://localhost:5173}
+    allowed-origin-patterns: ${WS_ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*,https://*.vercel.app,http://10.0.2.2:*}

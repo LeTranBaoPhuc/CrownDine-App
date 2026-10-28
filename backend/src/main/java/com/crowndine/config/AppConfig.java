@@ -22,6 +22,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
+import java.util.List;
 
 import com.crowndine.security.CustomUserDetailsService;
 
@@ -49,7 +54,7 @@ public class AppConfig {
                         .requestMatchers("/api/categories/**").permitAll()
                         .requestMatchers("/api/combos/**").permitAll()
                         .requestMatchers("/api/items/**").permitAll()
-                        .requestMatchers("/api/combos/**").permitAll()
+                        .requestMatchers("/api/layout/**").permitAll()
                         .requestMatchers("/api/feedbacks/**").permitAll()
                         .requestMatchers("/img/**").permitAll()
                         .requestMatchers("/ws-restaurant/**").permitAll()
@@ -62,6 +67,25 @@ public class AppConfig {
                 .authenticationProvider(authenticationProvider())
                 .addFilterBefore(preFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        if (allowedOriginPatterns != null && allowedOriginPatterns.length > 0) {
+            configuration.setAllowedOriginPatterns(Arrays.asList(allowedOriginPatterns));
+        } else {
+            configuration.setAllowedOriginPatterns(List.of("*"));
+        }
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"));
+        configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Authorization", "X-Refresh-Token", "Content-Disposition", "*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean
@@ -94,10 +118,11 @@ public class AppConfig {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns(allowedOriginPatterns)
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS") // Allowed HTTP methods
-                        .allowedHeaders("*") // Allowed request headers
-                        .allowCredentials(false)
+                        .allowedOriginPatterns(allowedOriginPatterns != null && allowedOriginPatterns.length > 0 ? allowedOriginPatterns : new String[]{"*"})
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD")
+                        .allowedHeaders("*")
+                        .exposedHeaders("Authorization", "X-Refresh-Token", "Content-Disposition")
+                        .allowCredentials(true)
                         .maxAge(3600);
             }
         };
