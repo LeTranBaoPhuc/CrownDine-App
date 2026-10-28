@@ -9,6 +9,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -54,7 +55,7 @@ public class ApiItemController {
     }
 
     @PostMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse createItem(@Valid @RequestBody ItemRequest request) {
         log.info("Create item request: {}", request.getName());
         ItemResponse item = itemService.createItem(request);
@@ -66,7 +67,7 @@ public class ApiItemController {
     }
 
     @PutMapping("/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse updateItem(@PathVariable Long id, @Valid @RequestBody ItemRequest request) {
         log.info("Update item request id: {}", id);
         ItemResponse item = itemService.updateItem(id, request);
@@ -78,7 +79,7 @@ public class ApiItemController {
     }
 
     @DeleteMapping("/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ApiResponse deleteItem(@PathVariable Long id) {
         log.info("Delete Item request id: {}", id);
         itemService.deleteItem(id);
