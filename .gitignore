@@ -46,3 +46,10 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+web/config.json
+CrownDine App/

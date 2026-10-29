@@ -8,6 +8,10 @@ app:
 spring:
   application:
     name: backend-service
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
   messages:
     basename: i18n/messages
     encoding: UTF-8
