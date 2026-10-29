@@ -233,10 +233,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   Row(
                     children: [
                       _genderChoice('Nam', 'MALE'),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 12),
                       _genderChoice('Nữ', 'FEMALE'),
-                      const SizedBox(width: 10),
-                      _genderChoice('Khác', 'OTHER'),
                     ],
                   ),
                   const SizedBox(height: 16),
