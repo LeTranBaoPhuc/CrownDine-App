@@ -167,6 +167,104 @@ class AuthRepository {
     await prefs.remove('username');
   }
 
+  /// Gửi OTP quên mật khẩu
+  Future<String> sendForgotPasswordOtp(String email) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.forgotPasswordSendOtp,
+        data: {'email': email},
+      );
+      return response.data?['message'] ?? 'Mã OTP đã được gửi đến email của bạn';
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// Xác thực mã OTP quên mật khẩu
+  Future<bool> verifyForgotPasswordOtp({required String email, required String otp}) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.forgotPasswordVerifyOtp,
+        data: {
+          'email': email,
+          'otp': otp,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// Đặt lại mật khẩu mới bằng OTP
+  Future<String> resetPasswordWithOtp({
+    required String email,
+    required String otp,
+    required String password,
+    required String confirmPassword,
+  }) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.forgotPasswordResetByOtp,
+        data: {
+          'email': email,
+          'otp': otp,
+          'password': password,
+          'confirmPassword': confirmPassword,
+        },
+      );
+      return response.data?['message'] ?? 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.';
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// Cập nhật thông tin hồ sơ cá nhân
+  Future<bool> updateProfile({
+    required String firstName,
+    required String lastName,
+    String? phone,
+    required String gender,
+    required String dateOfBirth, // format "dd/MM/yyyy"
+  }) async {
+    try {
+      final response = await _client.dio.put(
+        ApiEndpoints.updateProfile,
+        data: {
+          'firstName': firstName,
+          'lastName': lastName,
+          'phone': phone,
+          'gender': gender,
+          'dateOfBirth': dateOfBirth,
+        },
+      );
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// Đổi mật khẩu tài khoản
+  Future<String> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.changePassword,
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+      );
+      return response.data?['message'] ?? 'Đổi mật khẩu thành công';
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
   /// Trích xuất thông báo lỗi từ Backend API
   String _extractErrorMessage(DioException e) {
     if (e.response?.data != null) {

@@ -7,6 +7,8 @@ import '../../../../providers/theme_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import '../../auth/login_screen.dart';
 import '../../settings/server_config_screen.dart';
+import 'change_password_dialog.dart';
+import 'edit_profile_screen.dart';
 import 'reservation_history_screen.dart';
 import 'voucher_wallet_sheet.dart';
 
@@ -161,6 +163,26 @@ class ProfileScreen extends ConsumerWidget {
               clipBehavior: Clip.antiAlias,
               child: Column(
                 children: [
+                  if (user != null) ...[
+                    _buildListTile(
+                      icon: Icons.person_outline,
+                      title: 'Thông tin cá nhân & Hồ sơ',
+                      subtitle: 'Cập nhật họ tên, số điện thoại, ngày sinh',
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
+                      },
+                    ),
+                    const Divider(height: 1),
+                    _buildListTile(
+                      icon: Icons.lock_outline,
+                      title: 'Đổi mật khẩu tài khoản',
+                      subtitle: 'Thay đổi mật khẩu đăng nhập an toàn',
+                      onTap: () {
+                        ChangePasswordDialog.show(context);
+                      },
+                    ),
+                    const Divider(height: 1),
+                  ],
                   _buildListTile(
                     icon: Icons.history,
                     title: 'Lịch sử đặt bàn',

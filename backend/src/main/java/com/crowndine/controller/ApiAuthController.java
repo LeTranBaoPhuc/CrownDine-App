@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.crowndine.dto.request.ForgotPasswordRequest;
+import com.crowndine.dto.request.ForgotPasswordResetRequest;
+import com.crowndine.dto.request.ForgotPasswordSendOtpRequest;
+import com.crowndine.dto.request.ForgotPasswordVerifyOtpRequest;
 import com.crowndine.dto.request.GoogleLoginRequest;
 import com.crowndine.dto.request.LoginRequest;
 import com.crowndine.dto.request.RegisterRequest;
@@ -113,6 +116,36 @@ public class ApiAuthController {
         return ApiResponse.builder()
                 .status(200)
                 .message("Reset password successfully")
+                .build();
+    }
+
+    @PostMapping("forgot-password/otp")
+    public ApiResponse sendForgotPasswordOtp(@Valid @RequestBody ForgotPasswordSendOtpRequest request) {
+        log.info("Send forgot password OTP for email: {}", request.getEmail());
+        authenticationService.sendForgotPasswordOtp(request);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("Mã OTP đặt lại mật khẩu đã được gửi đến email của bạn")
+                .build();
+    }
+
+    @PostMapping("forgot-password/verify-otp")
+    public ApiResponse verifyForgotPasswordOtp(@Valid @RequestBody ForgotPasswordVerifyOtpRequest request) {
+        log.info("Verify forgot password OTP for email: {}", request.getEmail());
+        authenticationService.verifyForgotPasswordOtp(request);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("Xác thực mã OTP thành công")
+                .build();
+    }
+
+    @PostMapping("forgot-password/reset-by-otp")
+    public ApiResponse resetPasswordWithOtp(@Valid @RequestBody ForgotPasswordResetRequest request) {
+        log.info("Reset password with OTP for email: {}", request.getEmail());
+        authenticationService.resetPasswordWithOtp(request);
+        return ApiResponse.builder()
+                .status(HttpStatus.OK.value())
+                .message("Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.")
                 .build();
     }
 }

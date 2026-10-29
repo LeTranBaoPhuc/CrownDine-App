@@ -351,4 +351,64 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         return user;
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void sendForgotPasswordOtp(ForgotPasswordSendOtpRequest request) {
+        log.info("Processing send forgot password OTP for email: {}", request.getEmail());
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Email không tồn tại trong hệ thống"));
+
+        String otp = String.format("%06d", new Random().nextInt(1000000));
+        user.setVerificationCode(otp);
+        user.setVerificationExpiration(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+
+        mailService.sendOtpEmail(user.getEmail(), otp);
+        log.info("Successfully sent forgot password OTP to email: {}", request.getEmail());
+    }
+
+    @Override
+    public void verifyForgotPasswordOtp(ForgotPasswordVerifyOtpRequest request) {
+        log.info("Processing verify forgot password OTP for email: {}", request.getEmail());
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Email không tồn tại trong hệ thống"));
+
+        if (user.getVerificationCode() == null || !user.getVerificationCode().equals(request.getOtp().trim())) {
+            throw new InvalidDataException("Mã OTP không chính xác");
+        }
+
+        if (user.getVerificationExpiration() == null || LocalDateTime.now().isAfter(user.getVerificationExpiration())) {
+            throw new InvalidDataException("Mã OTP đã hết hạn, vui lòng yêu cầu mã mới");
+        }
+
+        log.info("Successfully verified OTP for email: {}", request.getEmail());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPasswordWithOtp(ForgotPasswordResetRequest request) {
+        log.info("Processing reset password with OTP for email: {}", request.getEmail());
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Email không tồn tại trong hệ thống"));
+
+        if (user.getVerificationCode() == null || !user.getVerificationCode().equals(request.getOtp().trim())) {
+            throw new InvalidDataException("Mã OTP không chính xác");
+        }
+
+        if (user.getVerificationExpiration() == null || LocalDateTime.now().isAfter(user.getVerificationExpiration())) {
+            throw new InvalidDataException("Mã OTP đã hết hạn, vui lòng yêu cầu mã mới");
+        }
+
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new InvalidDataException("Mật khẩu xác nhận không khớp");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setVerificationCode(null);
+        user.setVerificationExpiration(null);
+        userRepository.save(user);
+
+        log.info("Successfully reset password with OTP for user: {}", user.getUsername());
+    }
+
 }

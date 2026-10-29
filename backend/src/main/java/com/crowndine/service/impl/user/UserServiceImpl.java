@@ -138,6 +138,9 @@ public class UserServiceImpl implements UserService {
 
         user.setFirstName(request.getFirstName().trim().toUpperCase());
         user.setLastName(request.getLastName().trim().toUpperCase());
+        if (request.getPhone() != null && !request.getPhone().isBlank()) {
+            user.setPhone(request.getPhone().trim());
+        }
         user.setGender(request.getGender());
         user.setDateOfBirth(request.getDateOfBirth());
         userRepository.save(user);

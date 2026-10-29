@@ -110,12 +110,12 @@ public class ApiUserController {
     }
 
     @PutMapping
-    public ApiResponse updateProfile(@RequestBody UpdateProfileRequest request, Principal principal) {
+    public ApiResponse updateProfile(@Valid @RequestBody UpdateProfileRequest request, Principal principal) {
         log.info("Request update profile for user {}", principal.getName());
         userService.updateProfile(request, principal.getName());
         return ApiResponse.builder()
                 .status(200)
-                .message("Update avatar successfully")
+                .message("Cập nhật thông tin hồ sơ thành công")
                 .build();
     }
 }

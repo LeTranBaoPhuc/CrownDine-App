@@ -5,10 +5,17 @@ class ApiEndpoints {
   static const String refreshToken = 'auth/refresh-token';
   static const String logout = 'auth/logout';
   static const String googleLogin = 'auth/google-login';
+  static const String forgotPasswordSendOtp = 'auth/forgot-password/otp';
+  static const String forgotPasswordVerifyOtp = 'auth/forgot-password/verify-otp';
+  static const String forgotPasswordResetByOtp = 'auth/forgot-password/reset-by-otp';
 
   // Users & Profile
   static const String profile = 'users/profile';
   static const String updateProfile = 'users';
+  static const String changePassword = 'users/change-password';
+  static const String uploadAvatar = 'users/upload-avatar';
+  static const String sendEmailOtp = 'users/profile/email-otp/send';
+  static const String verifyEmailOtp = 'users/profile/email-otp/verify';
   static const String pointHistory = 'users/profile/point-history';
 
   // Items & Categories

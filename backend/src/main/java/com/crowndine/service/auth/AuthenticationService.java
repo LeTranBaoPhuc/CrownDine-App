@@ -26,4 +26,10 @@ public interface AuthenticationService {
 
     void resetPassword(String token, ResetPasswordRequest request);
 
+    void sendForgotPasswordOtp(com.crowndine.dto.request.ForgotPasswordSendOtpRequest request);
+
+    void verifyForgotPasswordOtp(com.crowndine.dto.request.ForgotPasswordVerifyOtpRequest request);
+
+    void resetPasswordWithOtp(com.crowndine.dto.request.ForgotPasswordResetRequest request);
+
 }

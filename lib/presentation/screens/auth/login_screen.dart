@@ -9,6 +9,7 @@ import '../admin/admin_main_screen.dart';
 import '../customer/customer_main_screen.dart';
 import '../settings/server_config_screen.dart';
 import '../staff/staff_main_screen.dart';
+import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -409,8 +410,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 ),
                                 TextButton(
                                   onPressed: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng liên hệ hotline hỗ trợ 1900 6868')),
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                                     );
                                   },
                                   style: TextButton.styleFrom(
