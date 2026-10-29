@@ -18,6 +18,8 @@ import com.crowndine.dto.request.GoogleLoginRequest;
 import com.crowndine.dto.request.LoginRequest;
 import com.crowndine.dto.request.RegisterRequest;
 import com.crowndine.dto.request.ResetPasswordRequest;
+import com.crowndine.dto.request.VerifyRegisterOtpRequest;
+import com.crowndine.dto.request.ResendRegisterOtpRequest;
 import com.crowndine.dto.response.ApiResponse;
 import com.crowndine.dto.response.TokenResponse;
 import com.crowndine.service.auth.AuthenticationService;
@@ -84,6 +86,26 @@ public class ApiAuthController {
         return ApiResponse.builder()
                 .status(isSuccess ? 200 : 404)
                 .message(isSuccess ? "Verify successfully" : "Verify register failed")
+                .build();
+    }
+
+    @PostMapping("register/verify-otp")
+    public ApiResponse verifyRegisterOtp(@Valid @RequestBody VerifyRegisterOtpRequest request) {
+        log.info("Verify register OTP for email: {}", request.getEmail());
+        authenticationService.verifyRegisterOtp(request);
+        return ApiResponse.builder()
+                .status(200)
+                .message("Xác thực tài khoản thành công! Bạn có thể đăng nhập ngay.")
+                .build();
+    }
+
+    @PostMapping("register/resend-otp")
+    public ApiResponse resendRegisterOtp(@Valid @RequestBody ResendRegisterOtpRequest request) {
+        log.info("Resend register OTP for email: {}", request.getEmail());
+        authenticationService.resendRegisterOtp(request.getEmail());
+        return ApiResponse.builder()
+                .status(200)
+                .message("Mã OTP mới đã được gửi vào email của bạn.")
                 .build();
     }
 

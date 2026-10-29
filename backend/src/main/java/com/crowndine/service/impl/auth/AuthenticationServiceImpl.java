@@ -171,24 +171,23 @@ public class AuthenticationServiceImpl implements AuthenticationService {
             throw new InvalidDataException("auth.phone_exists");
         }
 
-        String randomCode = UUID.randomUUID().toString();
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
 
         // save to db
         User user = new User();
         user.setUsername(request.getUsername());
-        user.setEmail(request.getEmail());
+        user.setEmail(request.getEmail().trim().toLowerCase());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setGender(request.getGender());
         user.setDateOfBirth(request.getBirthday());
         user.setPhone(request.getPhone());
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setVerificationCode(randomCode);
+        user.setVerificationCode(otp);
         user.setVerificationExpiration(LocalDateTime.now().plusMinutes(5));
         user.setStatus(EUserStatus.INACTIVE);
 
-        mailService.sendConfirmLink(request.getEmail(), "email-confirmation-register.html", endPointConfirmUser,
-                randomCode);
+        mailService.sendOtpEmail(request.getEmail().trim().toLowerCase(), otp);
 
         userRepository.save(user);
 
@@ -409,6 +408,61 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         userRepository.save(user);
 
         log.info("Successfully reset password with OTP for user: {}", user.getUsername());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void verifyRegisterOtp(com.crowndine.dto.request.VerifyRegisterOtpRequest request) {
+        log.info("Processing verify register OTP for email: {}", request.getEmail());
+
+        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("auth.user_not_found"));
+
+        if (user.getStatus() == EUserStatus.ACTIVE) {
+            log.info("User {} already active", user.getUsername());
+            return;
+        }
+
+        if (user.getVerificationExpiration() == null || LocalDateTime.now().isAfter(user.getVerificationExpiration())) {
+            throw new InvalidDataException("Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.");
+        }
+
+        if (user.getVerificationCode() == null || !user.getVerificationCode().trim().equals(request.getOtp().trim())) {
+            throw new InvalidDataException("Mã OTP không chính xác. Vui lòng kiểm tra lại.");
+        }
+
+        user.setStatus(EUserStatus.ACTIVE);
+        user.setVerificationCode(null);
+        user.setVerificationExpiration(null);
+
+        Role role = roleRepository.findByName(ERole.USER);
+        if (role != null) {
+            user.setRoles(new HashSet<>(List.of(role)));
+        }
+
+        userRepository.save(user);
+        log.info("User {} has been activated with ERole.USER successfully", user.getUsername());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resendRegisterOtp(String email) {
+        log.info("Processing resend register OTP for email: {}", email);
+
+        User user = userRepository.findByEmail(email.trim().toLowerCase())
+                .orElseThrow(() -> new ResourceNotFoundException("auth.user_not_found"));
+
+        if (user.getStatus() == EUserStatus.ACTIVE) {
+            throw new InvalidDataException("Tài khoản này đã được kích hoạt, không cần gửi lại OTP.");
+        }
+
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
+        user.setVerificationCode(otp);
+        user.setVerificationExpiration(LocalDateTime.now().plusMinutes(5));
+        userRepository.save(user);
+
+        mailService.sendOtpEmail(email.trim().toLowerCase(), otp);
+        log.info("Resent register OTP to email {}", email);
     }
 
 }

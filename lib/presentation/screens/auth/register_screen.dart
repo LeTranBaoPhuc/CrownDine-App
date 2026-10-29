@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -97,49 +98,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
 
     if (success && mounted) {
-      showDialog(
+      final isVerified = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.check_circle, color: AppColors.success, size: 28),
-              SizedBox(width: 10),
-              Text('Đăng ký thành công', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Chào mừng $firstName $lastName gia nhập CrownDine Club!',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Tài khoản của bạn đã được khởi tạo thành công. Vui lòng kiểm tra hộp thư email để kích hoạt hoặc đăng nhập để bắt đầu trải nghiệm ẩm thực thượng hạng.',
-                style: TextStyle(fontSize: 13, height: 1.4),
-              ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.pop(context); // Trở về LoginScreen
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: const Text('Đến trang Đăng nhập', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
+        builder: (ctx) => _RegisterOtpDialog(
+          email: email,
+          username: username,
+          fullName: '$firstName $lastName',
         ),
       );
+
+      if (isVerified == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Xác thực tài khoản thành công! Vui lòng đăng nhập.'),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        Navigator.pop(context); // Trở về LoginScreen
+      }
     }
   }
 
@@ -725,3 +703,305 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 }
+
+class _RegisterOtpDialog extends ConsumerStatefulWidget {
+  final String email;
+  final String username;
+  final String fullName;
+
+  const _RegisterOtpDialog({
+    required this.email,
+    required this.username,
+    required this.fullName,
+  });
+
+  @override
+  ConsumerState<_RegisterOtpDialog> createState() => _RegisterOtpDialogState();
+}
+
+class _RegisterOtpDialogState extends ConsumerState<_RegisterOtpDialog> {
+  final _otpController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
+  int _countdown = 60;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startTimer();
+  }
+
+  void _startTimer() {
+    setState(() => _countdown = 60);
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_countdown > 0) {
+        if (mounted) setState(() => _countdown--);
+      } else {
+        timer.cancel();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleVerify() async {
+    final otp = _otpController.text.trim();
+    if (otp.length != 6) {
+      setState(() => _errorMessage = 'Vui lòng nhập đủ 6 chữ số OTP');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.verifyRegisterOtp(email: widget.email, otp: otp);
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  Future<void> _handleResend() async {
+    if (_countdown > 0) return;
+    setState(() => _errorMessage = null);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.resendRegisterOtp(email: widget.email);
+      _startTimer();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Mã OTP mới đã được gửi vào email!'),
+            backgroundColor: AppColors.primary,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = ref.watch(themeModeProvider) == ThemeMode.dark;
+
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      backgroundColor: isDark ? const Color(0xFF1E1A17) : Colors.white,
+      contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Shield Icon
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.gold],
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.mark_email_read_outlined, color: Colors.white, size: 28),
+            ),
+            const SizedBox(height: 16),
+
+            Text(
+              'Xác thực mã OTP',
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                  height: 1.45,
+                ),
+                children: [
+                  const TextSpan(text: 'Mã xác thực 6 số đã được gửi đến email\n'),
+                  TextSpan(
+                    text: widget.email,
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // OTP Input
+            TextField(
+              controller: _otpController,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              style: const TextStyle(
+                fontSize: 24,
+                letterSpacing: 10,
+                fontWeight: FontWeight.bold,
+              ),
+              decoration: InputDecoration(
+                counterText: '',
+                hintText: '••••••',
+                hintStyle: TextStyle(
+                  fontSize: 24,
+                  letterSpacing: 10,
+                  color: Colors.grey.withValues(alpha: 0.4),
+                ),
+                filled: true,
+                fillColor: isDark ? const Color(0xFF28231F) : const Color(0xFFF9F7F5),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Error Message
+            if (_errorMessage != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline, size: 16, color: AppColors.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: AppColors.error, fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Resend timer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Chưa nhận được mã? ',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                  ),
+                ),
+                _countdown > 0
+                    ? Text(
+                        'Gửi lại sau (${_countdown}s)',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      )
+                    : TextButton(
+                        onPressed: _handleResend,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: const Text(
+                          'Gửi lại ngay',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      actions: [
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Hủy bỏ', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleVerify,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text(
+                        'Kích hoạt tài khoản',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+

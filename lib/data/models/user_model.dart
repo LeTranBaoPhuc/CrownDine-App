@@ -45,6 +45,8 @@ class UserModel {
   final int points;
   final String? membershipTier;
   final bool isActive;
+  final String? gender;
+  final String? dateOfBirth;
 
   UserModel({
     required this.id,
@@ -58,6 +60,8 @@ class UserModel {
     this.points = 0,
     this.membershipTier = 'Silver',
     this.isActive = true,
+    this.gender,
+    this.dateOfBirth,
   });
 
   UserModel copyWith({
@@ -72,6 +76,8 @@ class UserModel {
     int? points,
     String? membershipTier,
     bool? isActive,
+    String? gender,
+    String? dateOfBirth,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -85,6 +91,8 @@ class UserModel {
       points: points ?? this.points,
       membershipTier: membershipTier ?? this.membershipTier,
       isActive: isActive ?? this.isActive,
+      gender: gender ?? this.gender,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
     );
   }
 
@@ -98,6 +106,11 @@ class UserModel {
   String? get avatarUrl => ImageUtils.getSafeImageUrl(avatar);
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final statusStr = json['status']?.toString().toUpperCase();
+    final bool active = statusStr == null
+        ? (json['isActive'] is bool ? json['isActive'] : true)
+        : (statusStr == 'ACTIVE');
+
     return UserModel(
       id: json['id'] is int ? json['id'] : int.tryParse('${json['id']}') ?? 0,
       username: json['username'] ?? '',
@@ -110,7 +123,10 @@ class UserModel {
       points: json['rewardPoints'] is int
           ? json['rewardPoints']
           : (json['points'] is int ? json['points'] : int.tryParse('${json['rewardPoints'] ?? json['points']}') ?? 0),
-      membershipTier: json['membershipTier'] ?? 'Silver',
+      membershipTier: json['membershipTier'] ?? (json['role'] == 'STAFF' ? 'Nhân viên' : 'Silver'),
+      isActive: active,
+      gender: json['gender']?.toString(),
+      dateOfBirth: json['dateOfBirth']?.toString(),
     );
   }
 

@@ -32,4 +32,7 @@ public interface AuthenticationService {
 
     void resetPasswordWithOtp(com.crowndine.dto.request.ForgotPasswordResetRequest request);
 
+    void verifyRegisterOtp(com.crowndine.dto.request.VerifyRegisterOtpRequest request);
+
+    void resendRegisterOtp(String email);
 }

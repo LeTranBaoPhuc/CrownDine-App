@@ -76,11 +76,47 @@ class AuthRepository {
 
       if (response.statusCode == 200) {
         final message = response.data?['message'] ??
-            'Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.';
+            'Đăng ký thành công! Vui lòng nhập mã OTP được gửi về email.';
         return message;
       }
 
       throw Exception(response.data?['message'] ?? 'Đăng ký thất bại');
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// Xác thực OTP khi đăng ký
+  Future<String> verifyRegisterOtp({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.registerVerifyOtp,
+        data: {
+          'email': email,
+          'otp': otp,
+        },
+      );
+      return response.data?['message'] ?? 'Xác thực tài khoản thành công! Bạn có thể đăng nhập ngay.';
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    }
+  }
+
+  /// Gửi lại OTP khi đăng ký
+  Future<String> resendRegisterOtp({
+    required String email,
+  }) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.registerResendOtp,
+        data: {
+          'email': email,
+        },
+      );
+      return response.data?['message'] ?? 'Mã OTP mới đã được gửi vào email của bạn.';
     } on DioException catch (e) {
       throw Exception(_extractErrorMessage(e));
     }
@@ -254,8 +290,10 @@ class AuthRepository {
       final response = await _client.dio.post(
         ApiEndpoints.changePassword,
         data: {
+          'oldPassword': currentPassword,
           'currentPassword': currentPassword,
           'newPassword': newPassword,
+          'confirmNewPassword': confirmPassword,
           'confirmPassword': confirmPassword,
         },
       );

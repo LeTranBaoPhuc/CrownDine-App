@@ -2,6 +2,8 @@ class ApiEndpoints {
   // Auth
   static const String login = 'auth/login';
   static const String register = 'auth/register';
+  static const String registerVerifyOtp = 'auth/register/verify-otp';
+  static const String registerResendOtp = 'auth/register/resend-otp';
   static const String refreshToken = 'auth/refresh-token';
   static const String logout = 'auth/logout';
   static const String googleLogin = 'auth/google-login';
@@ -17,6 +19,13 @@ class ApiEndpoints {
   static const String sendEmailOtp = 'users/profile/email-otp/send';
   static const String verifyEmailOtp = 'users/profile/email-otp/verify';
   static const String pointHistory = 'users/profile/point-history';
+
+  // Admin Staff Management
+  static const String adminStaff = 'admin/staff';
+  static const String adminStaffAll = 'admin/staff/all';
+  static const String adminStaffSearch = 'admin/staff/search';
+  static String adminStaffById(int id) => 'admin/staff/$id';
+  static String adminStaffStatus(int id) => 'admin/staff/$id/status';
 
   // Items & Categories
   static const String items = 'items';
