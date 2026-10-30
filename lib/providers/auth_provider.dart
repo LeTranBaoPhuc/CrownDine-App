@@ -77,6 +77,27 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Đăng nhập bằng Google
+  Future<bool> loginWithGoogle() async {
+    state = state.copyWith(isLoading: true, errorMessage: null);
+    try {
+      final user = await _repo.loginWithGoogle();
+      state = state.copyWith(
+        user: user,
+        isLoading: false,
+        activeRole: user.role,
+      );
+      return true;
+    } catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '');
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: msg,
+      );
+      return false;
+    }
+  }
+
   /// Đăng ký qua API
   Future<bool> register({
     required String username,

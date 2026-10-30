@@ -1,11 +1,91 @@
 import 'package:dio/dio.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/config/api_config.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../models/user_model.dart';
 
 class AuthRepository {
   final ApiClient _client = ApiClient.instance;
+
+  /// Đăng nhập bằng Google
+  Future<UserModel> loginWithGoogle() async {
+    try {
+      final clientId = await ApiConfig.getGoogleClientId();
+      if (clientId.isEmpty) {
+        throw Exception(
+          'Chưa cấu hình Google Client ID. Vui lòng cấu hình qua --dart-define hoặc trong Cài đặt máy chủ.',
+        );
+      }
+
+      final googleSignIn = GoogleSignIn(
+        clientId: clientId,
+        scopes: ['email', 'openid'],
+      );
+
+      // 1. Mở popup đăng nhập tài khoản Google
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) {
+        throw Exception('Đã hủy đăng nhập Google.');
+      }
+
+      // 2. Lấy mã xác thực (Ưu tiên ID Token OIDC, nếu không có thì dùng Access Token)
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final token = (auth.idToken != null && auth.idToken!.isNotEmpty)
+          ? auth.idToken
+          : auth.accessToken;
+
+      if (token == null || token.isEmpty) {
+        throw Exception('Không nhận được mã xác thực từ Google.');
+      }
+
+      // 3. Gửi token lên backend /api/auth/google-login
+      final response = await _client.dio.post(
+        ApiEndpoints.googleLogin,
+        data: {
+          'token': token,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final data = response.data['data'] ?? response.data;
+        final accessToken = data['accessToken'] ?? '';
+        final refreshToken = data['refreshToken'] ?? '';
+        final respUsername = data['username'] ?? account.email;
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('access_token', accessToken);
+        await prefs.setString('refresh_token', refreshToken);
+        await prefs.setString('username', respUsername);
+
+        // Fetch user profile from Backend
+        try {
+          final profileRes = await _client.dio.get(ApiEndpoints.profile);
+          if (profileRes.statusCode == 200 && profileRes.data != null) {
+            final profileData = profileRes.data['data'] ?? profileRes.data;
+            return UserModel.fromJson(profileData);
+          }
+        } catch (_) {}
+
+        return UserModel(
+          id: 0,
+          username: respUsername,
+          email: account.email,
+          avatar: account.photoUrl,
+          firstName: account.displayName,
+          role: UserRole.customer,
+        );
+      }
+
+      throw Exception('Đăng nhập Google thất bại');
+    } on DioException catch (e) {
+      throw Exception(_extractErrorMessage(e));
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception(e.toString());
+    }
+  }
 
   /// Đăng nhập tài khoản
   Future<UserModel> login({required String username, required String password}) async {
@@ -186,6 +266,12 @@ class AuthRepository {
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     final refreshToken = prefs.getString('refresh_token');
+
+    try {
+      final clientId = await ApiConfig.getGoogleClientId();
+      final googleSignIn = GoogleSignIn(clientId: clientId.isNotEmpty ? clientId : null);
+      await googleSignIn.signOut();
+    } catch (_) {}
 
     try {
       if (refreshToken != null && refreshToken.isNotEmpty) {

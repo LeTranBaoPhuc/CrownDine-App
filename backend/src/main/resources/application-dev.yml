@@ -93,7 +93,7 @@ payos:
 
 #Google
 google:
-  client-id: ${GOOGLE_CLIENT_ID:test-google-client-id}
+  client-id: ${GOOGLE_CLIENT_ID:}
 
 openrouter:
   api:

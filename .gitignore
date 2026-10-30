@@ -48,3 +48,11 @@ app.*.map.json
 .widget_preview/
 
 frontend/
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+web/config.json
+CrownDine App/
+devtools_options.yaml

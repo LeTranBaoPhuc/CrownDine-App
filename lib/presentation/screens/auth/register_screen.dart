@@ -3,9 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/theme_provider.dart';
+import '../admin/admin_main_screen.dart';
 import '../customer/customer_main_screen.dart';
+import '../staff/staff_main_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -116,7 +119,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             behavior: SnackBarBehavior.floating,
           ),
         );
-        Navigator.pop(context); // Trở về LoginScreen
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  Future<void> _submitGoogleLogin() async {
+    final success = await ref.read(authProvider.notifier).loginWithGoogle();
+    if (success && mounted) {
+      final user = ref.read(authProvider).user;
+      if (user?.role == UserRole.admin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const AdminMainScreen()),
+        );
+      } else if (user?.role == UserRole.staff) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const StaffMainScreen()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
+        );
       }
     }
   }
@@ -585,6 +611,73 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       ),
                               ),
                             ),
+                            const SizedBox(height: 18),
+
+                            // Divider Hoặc tiếp tục với
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: Text(
+                                    'HOẶC TIẾP TỤC VỚI',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                      color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4))),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Google Sign-In Luxury Button
+                            Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E1915) : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF3D322A) : const Color(0xFFE0D7CE),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: authState.isLoading ? null : _submitGoogleLogin,
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        _buildGoogleLogo(),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Đăng ký nhanh bằng Google',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white : const Color(0xFF2D241E),
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                             const SizedBox(height: 20),
 
                             // Already have account
@@ -640,6 +733,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleLogo() {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Center(
+        child: Text(
+          'G',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'sans-serif',
+            foreground: Paint()
+              ..shader = const LinearGradient(
+                colors: [
+                  Color(0xFF4285F4),
+                  Color(0xFFEA4335),
+                  Color(0xFFFBBC05),
+                  Color(0xFF34A853),
+                ],
+                stops: [0.25, 0.5, 0.75, 1.0],
+              ).createShader(const Rect.fromLTWH(0, 0, 20, 20)),
+          ),
+        ),
       ),
     );
   }

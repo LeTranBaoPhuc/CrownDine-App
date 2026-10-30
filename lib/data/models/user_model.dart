@@ -119,7 +119,14 @@ class UserModel {
       firstName: json['firstName'],
       lastName: json['lastName'],
       avatar: json['avatar'] ?? json['avatarUrl'],
-      role: UserRole.fromString(json['role'] ?? json['roles']?[0]),
+      role: UserRole.fromString(
+        (json['role'] ??
+            (json['roles'] is List && (json['roles'] as List).isNotEmpty
+                ? ((json['roles'] as List).first is Map
+                    ? ((json['roles'] as List).first['name'] ?? (json['roles'] as List).first['role'])
+                    : (json['roles'] as List).first)
+                : null))?.toString(),
+      ),
       points: json['rewardPoints'] is int
           ? json['rewardPoints']
           : (json['points'] is int ? json['points'] : int.tryParse('${json['rewardPoints'] ?? json['points']}') ?? 0),

@@ -13,6 +13,7 @@ class ServerConfigScreen extends StatefulWidget {
 
 class _ServerConfigScreenState extends State<ServerConfigScreen> {
   final _urlController = TextEditingController();
+  final _googleClientIdController = TextEditingController();
   bool _mockFallback = true;
   bool _isTesting = false;
   String? _testMessage;
@@ -24,12 +25,21 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
     _loadConfig();
   }
 
+  @override
+  void dispose() {
+    _urlController.dispose();
+    _googleClientIdController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadConfig() async {
     final url = await ApiConfig.getBaseUrl();
     final fallback = await ApiConfig.isMockFallbackEnabled();
+    final googleClientId = await ApiConfig.getGoogleClientId();
     setState(() {
       _urlController.text = url;
       _mockFallback = fallback;
+      _googleClientIdController.text = googleClientId;
     });
   }
 
@@ -38,6 +48,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
     if (url.isNotEmpty) {
       await ApiClient.instance.updateBaseUrl(url);
       await ApiConfig.setMockFallbackEnabled(_mockFallback);
+      await ApiConfig.setGoogleClientId(_googleClientIdController.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -166,7 +177,29 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
                 },
               ),
             ),
+            const SizedBox(height: 20),
 
+            const Text(
+              'Google OAuth Client ID',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Lưu trữ bảo mật cục bộ trên máy, hoàn toàn không đẩy lên Git.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _googleClientIdController,
+              decoration: InputDecoration(
+                hintText: 'xxx.apps.googleusercontent.com',
+                prefixIcon: const Icon(Icons.security),
+                suffixIcon: IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () => _googleClientIdController.clear(),
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
 
             // Ping test button

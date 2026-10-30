@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/user_model.dart';
 import '../../../providers/auth_provider.dart';
@@ -48,23 +49,107 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     final success = await ref.read(authProvider.notifier).login(username, password);
     if (success && mounted) {
-      final user = ref.read(authProvider).user;
-      if (user?.role == UserRole.admin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminMainScreen()),
-        );
-      } else if (user?.role == UserRole.staff) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const StaffMainScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
-        );
-      }
+      _navigateAfterLogin();
+    }
+  }
+
+  void _navigateAfterLogin() {
+    final user = ref.read(authProvider).user;
+    if (user?.role == UserRole.admin) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminMainScreen()),
+      );
+    } else if (user?.role == UserRole.staff) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const StaffMainScreen()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
+      );
+    }
+  }
+
+  Future<void> _submitGoogleLogin() async {
+    final clientId = await ApiConfig.getGoogleClientId();
+    if (clientId.isEmpty && mounted) {
+      final configured = await _showGoogleClientIdDialog();
+      if (!configured) return;
+    }
+
+    final success = await ref.read(authProvider.notifier).loginWithGoogle();
+    if (success && mounted) {
+      _navigateAfterLogin();
+    }
+  }
+
+  Future<bool> _showGoogleClientIdDialog() async {
+    final controller = TextEditingController();
+    try {
+      final result = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.security, color: AppColors.primary),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Cấu hình Google Client ID',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Để bảo mật và không bị lộ ID lên Git, ID được lưu cục bộ trên thiết bị của bạn hoặc nạp qua file .env:',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: InputDecoration(
+                  hintText: 'Nhập Google Client ID...',
+                  prefixIcon: const Icon(Icons.key, size: 20),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                final text = controller.text.trim();
+                if (text.isNotEmpty) {
+                  await ApiConfig.setGoogleClientId(text);
+                  if (ctx.mounted) Navigator.pop(ctx, true);
+                }
+              },
+              child: const Text('Lưu & Đăng nhập', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+      return result ?? false;
+    } finally {
+      controller.dispose();
     }
   }
 
@@ -507,7 +592,74 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       ),
                               ),
                             ),
-                            const SizedBox(height: 28),
+                            const SizedBox(height: 18),
+
+                            // Divider Hoặc tiếp tục với
+                            Row(
+                              children: [
+                                Expanded(child: Divider(color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  child: Text(
+                                    'HOẶC TIẾP TỤC VỚI',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                      color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(child: Divider(color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4))),
+                              ],
+                            ),
+                            const SizedBox(height: 18),
+
+                            // Google Sign-In Luxury Button
+                            Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF1E1915) : Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF3D322A) : const Color(0xFFE0D7CE),
+                                  width: 1.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: authState.isLoading ? null : _submitGoogleLogin,
+                                  child: Center(
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        _buildGoogleLogo(),
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          'Đăng nhập bằng Google',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.bold,
+                                            color: isDark ? Colors.white : const Color(0xFF2D241E),
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 26),
 
                             // VIP Quick Demo Accounts Section
                             Container(
@@ -702,6 +854,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleLogo() {
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Center(
+        child: Text(
+          'G',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            fontFamily: 'sans-serif',
+            foreground: Paint()
+              ..shader = const LinearGradient(
+                colors: [
+                  Color(0xFF4285F4),
+                  Color(0xFFEA4335),
+                  Color(0xFFFBBC05),
+                  Color(0xFF34A853),
+                ],
+                stops: [0.25, 0.5, 0.75, 1.0],
+              ).createShader(const Rect.fromLTWH(0, 0, 20, 20)),
+          ),
         ),
       ),
     );
