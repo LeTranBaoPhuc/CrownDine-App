@@ -81,4 +81,7 @@ class ApiEndpoints {
   static const String attendancesRecord = 'attendances/record';
   static String attendancesHistory(int userId) => 'attendances/history/$userId';
   static String attendancesEmployeeInfo(int userId) => 'attendances/employee/$userId/info';
+
+  // Dashboard & Revenue Analytics
+  static const String dashboardSales = 'dashboard/sales-results';
 }

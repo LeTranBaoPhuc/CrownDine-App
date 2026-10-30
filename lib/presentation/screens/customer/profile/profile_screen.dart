@@ -6,6 +6,7 @@ import '../../../../providers/theme_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import '../../auth/login_screen.dart';
 import '../../settings/server_config_screen.dart';
+import '../customer_main_screen.dart';
 import 'change_password_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'reservation_history_screen.dart';
@@ -242,9 +243,9 @@ class ProfileScreen extends ConsumerWidget {
                       onPressed: () async {
                         await ref.read(authProvider.notifier).logout();
                         if (context.mounted) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const CustomerMainScreen(initialIndex: 0)),
+                            (route) => false,
                           );
                         }
                       },
