@@ -53,3 +53,4 @@ app.*.map.json
 !.env.example
 web/config.json
 CrownDine App/
+devtools_options.yaml

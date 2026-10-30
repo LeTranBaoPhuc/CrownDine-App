@@ -21,7 +21,7 @@ class AuthRepository {
 
       final googleSignIn = GoogleSignIn(
         clientId: clientId,
-        scopes: ['email', 'profile', 'openid'],
+        scopes: ['email', 'openid'],
       );
 
       // 1. Mở popup đăng nhập tài khoản Google
@@ -30,19 +30,21 @@ class AuthRepository {
         throw Exception('Đã hủy đăng nhập Google.');
       }
 
-      // 2. Lấy Google ID Token (OIDC Token)
+      // 2. Lấy mã xác thực (Ưu tiên ID Token OIDC, nếu không có thì dùng Access Token)
       final GoogleSignInAuthentication auth = await account.authentication;
-      final idToken = auth.idToken;
+      final token = (auth.idToken != null && auth.idToken!.isNotEmpty)
+          ? auth.idToken
+          : auth.accessToken;
 
-      if (idToken == null || idToken.isEmpty) {
-        throw Exception('Không nhận được mã xác thực ID Token từ Google.');
+      if (token == null || token.isEmpty) {
+        throw Exception('Không nhận được mã xác thực từ Google.');
       }
 
-      // 3. Gửi idToken lên backend /api/auth/google-login
+      // 3. Gửi token lên backend /api/auth/google-login
       final response = await _client.dio.post(
         ApiEndpoints.googleLogin,
         data: {
-          'token': idToken,
+          'token': token,
         },
       );
 

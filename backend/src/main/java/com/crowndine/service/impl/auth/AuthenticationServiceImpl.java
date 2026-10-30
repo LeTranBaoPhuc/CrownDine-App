@@ -262,29 +262,80 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TokenResponse googleLogin(GoogleLoginRequest request, HttpServletRequest httpServletRequest) {
-        log.info("Verifying Google OIDC ID Token using Spring Security OAuth2");
+        log.info("Verifying Google Auth Token");
 
         try {
-            // Using Spring Security's NimbusJwtDecoder to verify Google ID Token (OIDC)
-            NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withIssuerLocation("https://accounts.google.com").build();
+            String email = null;
+            String googleId = null;
+            String firstName = null;
+            String lastName = null;
+            String pictureUrl = null;
 
-            Jwt jwt = jwtDecoder.decode(request.getToken());
+            String token = request.getToken();
+            boolean decodedAsJwt = false;
 
-            // Validate Audience (your Client ID)
-            if (!jwt.getAudience().contains(googleClientId)) {
-                log.error("Invalid Audience in ID Token");
-                throw new InvalidDataException("Token belongs to a different client");
+            // 1. Kiểm tra nếu là JWT ID Token OIDC (bắt đầu bằng eyJ và có đúng 3 phần header.payload.signature)
+            if (token != null && token.startsWith("eyJ") && token.split("\\.").length == 3) {
+                try {
+                    log.info("Verifying as Google OIDC ID Token (JWT)");
+                    NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withIssuerLocation("https://accounts.google.com").build();
+                    Jwt jwt = jwtDecoder.decode(token);
+
+                    if (StringUtils.hasText(googleClientId) && !jwt.getAudience().contains(googleClientId)) {
+                        log.error("Invalid Audience in ID Token");
+                        throw new InvalidDataException("Token belongs to a different client");
+                    }
+
+                    email = jwt.getClaim("email");
+                    googleId = jwt.getSubject();
+                    firstName = jwt.getClaim("given_name");
+                    lastName = jwt.getClaim("family_name");
+                    pictureUrl = jwt.getClaim("picture");
+                    decodedAsJwt = true;
+                } catch (Exception e) {
+                    log.warn("Failed to decode token as JWT ({}), attempting fallback to Google userinfo endpoint", e.getMessage());
+                }
             }
 
-            String email = jwt.getClaim("email");
-            String googleId = jwt.getSubject();
-            String firstName = jwt.getClaim("given_name");
-            String lastName = jwt.getClaim("family_name");
-            String pictureUrl = jwt.getClaim("picture");
+            // 2. Nếu không phải JWT hoặc giải mã JWT thất bại (ví dụ Google trả về access token dạng ya29.xxx)
+            if (!decodedAsJwt) {
+                log.info("Verifying as Google OAuth2 Access Token via Google userinfo API");
+                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+                headers.setBearerAuth(token);
+                org.springframework.http.HttpEntity<?> entity = new org.springframework.http.HttpEntity<>(headers);
 
-            // Logic to find or create user remains the same
+                try {
+                    org.springframework.http.ResponseEntity<Map> response = restTemplate.exchange(
+                            "https://www.googleapis.com/oauth2/v3/userinfo",
+                            org.springframework.http.HttpMethod.GET,
+                            entity,
+                            Map.class
+                    );
+
+                    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                        throw new InvalidDataException("Không thể xác thực mã truy cập từ Google");
+                    }
+
+                    Map<String, Object> body = response.getBody();
+                    email = (String) body.get("email");
+                    googleId = (String) body.get("sub");
+                    firstName = (String) body.get("given_name");
+                    lastName = (String) body.get("family_name");
+                    pictureUrl = (String) body.get("picture");
+                } catch (Exception ex) {
+                    log.error("Error verifying access token from Google: {}", ex.getMessage());
+                    throw new InvalidDataException("Xác thực tài khoản Google thất bại: " + ex.getMessage());
+                }
+            }
+
+            if (!StringUtils.hasText(email) || !StringUtils.hasText(googleId)) {
+                throw new InvalidDataException("Không thể lấy thông tin định danh từ tài khoản Google");
+            }
+
+            // Logic to find or create user
             Optional<User> userOptional = userRepository.findByGoogleId(googleId);
-            User user;
+            User user = null;
 
             if (userOptional.isPresent()) {
                 user = userOptional.get();
@@ -301,7 +352,18 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 } else {
                     user = new User();
                     user.setEmail(email);
-                    user.setUsername(email);
+
+                    String baseUsername = email.contains("@") ? email.split("@")[0] : email;
+                    if (baseUsername.length() > 35) {
+                        baseUsername = baseUsername.substring(0, 35);
+                    }
+                    String generatedUsername = baseUsername;
+                    int suffix = 1;
+                    while (userRepository.existsByUsername(generatedUsername)) {
+                        generatedUsername = baseUsername + suffix++;
+                    }
+                    user.setUsername(generatedUsername);
+
                     user.setFirstName(firstName != null ? firstName : "User");
                     user.setLastName(lastName != null ? lastName : "Google");
                     user.setGoogleId(googleId);
