@@ -3,6 +3,8 @@ import '../../../../core/theme/app_colors.dart';
 import 'floor_plan/floor_plan_screen.dart';
 import 'kitchen/kitchen_display_screen.dart';
 import 'orders/order_management_screen.dart';
+import 'reservations/staff_reservation_screen.dart';
+import 'work_schedule/work_schedule_screen.dart';
 
 class StaffMainScreen extends StatefulWidget {
   final int initialIndex;
@@ -26,8 +28,10 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
   Widget build(BuildContext context) {
     final screens = const [
       FloorPlanScreen(),
+      StaffReservationScreen(),
       OrderManagementScreen(),
       KitchenDisplayScreen(),
+      WorkScheduleScreen(),
     ];
 
     final theme = Theme.of(context);
@@ -43,7 +47,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
           color: isDark ? AppColors.darkCard : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -67,6 +71,11 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
               label: 'Sơ đồ bàn',
             ),
             BottomNavigationBarItem(
+              icon: Icon(Icons.event_seat_outlined),
+              activeIcon: Icon(Icons.event_seat),
+              label: 'Đặt bàn',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(Icons.receipt_long_outlined),
               activeIcon: Icon(Icons.receipt_long),
               label: 'Đơn gọi món',
@@ -75,6 +84,11 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
               icon: Icon(Icons.soup_kitchen_outlined),
               activeIcon: Icon(Icons.soup_kitchen),
               label: 'Bếp KDS',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month_outlined),
+              activeIcon: Icon(Icons.calendar_month),
+              label: 'Lịch trực',
             ),
           ],
         ),

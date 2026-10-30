@@ -39,6 +39,10 @@ class ApiEndpoints {
   static const String reservationAll = 'reservations/all';
   static const String reservationCreate = 'reservations/create';
   static const String reservationStaffCreate = 'reservations/staff-create';
+  static String reservationCheckIn(int id, {int? staffId}) =>
+      'reservations/$id/check-in${staffId != null ? '?staffId=$staffId' : ''}';
+  static String reservationCancelByStaff(int id) => 'reservations/$id/cancel';
+  static String reservationUpdateTable(int id) => 'reservations/$id/update-table';
 
   // Tables & Layout
   static const String layoutFloors = 'layout/floors';
@@ -64,5 +68,10 @@ class ApiEndpoints {
   static String favoriteCombo(int comboId) => 'favorites/combos/$comboId';
   static String checkFavoriteItem(int itemId) => 'favorites/items/$itemId/check';
   static String checkFavoriteCombo(int comboId) => 'favorites/combos/$comboId/check';
-}
 
+  // Work Schedules & Shifts
+  static const String workSchedules = 'work-schedules';
+  static const String workSchedulesCreate = 'work-schedules/create';
+  static String workScheduleById(dynamic id) => 'work-schedules/$id';
+  static const String shifts = 'shifts';
+}

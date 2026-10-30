@@ -19,6 +19,10 @@ class ReservationHistoryScreen extends ConsumerWidget {
         return AppColors.warning;
       case ReservationStatus.completed:
         return AppColors.info;
+      case ReservationStatus.checkedIn:
+        return AppColors.primary;
+      case ReservationStatus.noShow:
+        return Colors.grey;
       case ReservationStatus.cancelled:
         return AppColors.error;
     }
@@ -218,3 +222,4 @@ class ReservationHistoryScreen extends ConsumerWidget {
     );
   }
 }
+

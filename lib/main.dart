@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/screens/admin/admin_main_screen.dart';
+import 'presentation/screens/auth/login_screen.dart';
+import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/customer/customer_main_screen.dart';
 import 'presentation/screens/staff/staff_main_screen.dart';
 import 'providers/auth_provider.dart';
@@ -30,9 +32,36 @@ class CrownDineApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      home: authState.isAdmin
-          ? const AdminMainScreen()
-          : (authState.isStaff ? const StaffMainScreen() : const CustomerMainScreen()),
+      onGenerateRoute: (settings) {
+        final raw = settings.name ?? '/';
+        final normalized = raw.replaceFirst('/#', '').replaceFirst('#', '');
+        final path = Uri.tryParse(normalized)?.path ?? normalized;
+
+        if (path == '/admin' || path == '/admin/dashboard' || path.endsWith('/admin/dashboard')) {
+          return MaterialPageRoute(builder: (_) => const AdminMainScreen());
+        }
+        if (path == '/staff/reservation-list' || path.endsWith('/staff/reservation-list')) {
+          return MaterialPageRoute(builder: (_) => const StaffMainScreen(initialIndex: 1));
+        }
+        if (path == '/staff/work-schedule' || path.endsWith('/staff/work-schedule')) {
+          return MaterialPageRoute(builder: (_) => const StaffMainScreen(initialIndex: 4));
+        }
+        if (path.startsWith('/staff')) {
+          return MaterialPageRoute(builder: (_) => const StaffMainScreen());
+        }
+        if (path == '/login') {
+          return MaterialPageRoute(builder: (_) => const LoginScreen());
+        }
+        if (path == '/register') {
+          return MaterialPageRoute(builder: (_) => const RegisterScreen());
+        }
+
+        return MaterialPageRoute(
+          builder: (_) => authState.isAdmin
+              ? const AdminMainScreen()
+              : (authState.isStaff ? const StaffMainScreen() : const CustomerMainScreen()),
+        );
+      },
     );
   }
 }
