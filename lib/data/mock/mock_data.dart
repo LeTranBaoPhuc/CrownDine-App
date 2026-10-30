@@ -7,6 +7,7 @@ import '../models/reservation_model.dart';
 import '../models/user_model.dart';
 import '../models/voucher_model.dart';
 import '../models/work_schedule_model.dart';
+import '../models/attendance_model.dart';
 
 class MockData {
   static final List<CategoryModel> categories = [
@@ -932,5 +933,248 @@ class MockData {
       }
       return true;
     }).toList();
+  }
+
+  static final Map<int, List<AttendanceHistoryItem>> sampleAttendanceHistories = {
+    201: [
+      const AttendanceHistoryItem(id: 1, time: '2026-10-30 07:55:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Sáng'),
+      const AttendanceHistoryItem(id: 2, time: '2026-10-29 16:02:00', status: AttendanceStatus.onTime, content: 'Chấm công ra ca Sáng'),
+      const AttendanceHistoryItem(id: 3, time: '2026-10-29 07:58:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Sáng'),
+      const AttendanceHistoryItem(id: 4, time: '2026-10-28 22:05:00', status: AttendanceStatus.onTime, content: 'Chấm công ra ca Chiều'),
+    ],
+    202: [
+      const AttendanceHistoryItem(id: 5, time: '2026-10-30 08:15:00', status: AttendanceStatus.lateEarly, content: 'Đi muộn 15 phút (kẹt xe)'),
+      const AttendanceHistoryItem(id: 6, time: '2026-10-29 08:00:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Sáng'),
+      const AttendanceHistoryItem(id: 7, time: '2026-10-28 16:05:00', status: AttendanceStatus.onTime, content: 'Chấm công ra ca Sáng'),
+    ],
+    203: [
+      const AttendanceHistoryItem(id: 8, time: '2026-10-30 14:00:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Chiều'),
+      const AttendanceHistoryItem(id: 9, time: '2026-10-29 22:10:00', status: AttendanceStatus.onTime, content: 'Chấm công ra ca Chiều'),
+      const AttendanceHistoryItem(id: 10, time: '2026-10-29 13:58:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Chiều'),
+      const AttendanceHistoryItem(id: 11, time: '2026-10-28 08:02:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Sáng'),
+    ],
+    204: [
+      const AttendanceHistoryItem(id: 12, time: '2026-10-30 17:05:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Tối'),
+      const AttendanceHistoryItem(id: 13, time: '2026-10-29 14:00:00', status: AttendanceStatus.missingPunch, content: 'Quên chấm công ra ca Chiều'),
+    ],
+    205: [
+      const AttendanceHistoryItem(id: 14, time: '2026-10-30 00:00:00', status: AttendanceStatus.absentOff, content: 'Nghỉ làm có phép'),
+      const AttendanceHistoryItem(id: 15, time: '2026-10-29 17:00:00', status: AttendanceStatus.onTime, content: 'Chấm công vào ca Tối'),
+    ],
+  };
+
+  static AttendanceStatus getEmployeeAttendanceStatus(int userId) {
+    switch (userId) {
+      case 201:
+        return AttendanceStatus.onTime;
+      case 202:
+        return AttendanceStatus.lateEarly;
+      case 203:
+        return AttendanceStatus.onTime;
+      case 204:
+        return AttendanceStatus.missingPunch;
+      case 205:
+        return AttendanceStatus.absentOff;
+      default:
+        return AttendanceStatus.notPunched;
+    }
+  }
+
+  static List<AttendanceHistoryItem> getAttendanceHistory(int userId) {
+    return sampleAttendanceHistories[userId] ?? [
+      AttendanceHistoryItem(
+        id: 99,
+        time: DateTime.now().toIso8601String().substring(0, 19).replaceAll('T', ' '),
+        status: AttendanceStatus.onTime,
+        content: 'Chấm công tự động',
+      ),
+    ];
+  }
+
+  /// Sinh phản hồi dữ liệu chấm công theo ca trong tuần
+  static AttendanceScheduleResponse getAttendanceSchedule({
+    String? date,
+    String? search,
+  }) {
+    DateTime baseDate = date != null ? (DateTime.tryParse(date) ?? DateTime.now()) : DateTime.now();
+    final monday = DateTime(baseDate.year, baseDate.month, baseDate.day).subtract(Duration(days: baseDate.weekday - 1));
+    final sunday = monday.add(const Duration(days: 6));
+
+    final dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+    final weekStartStr = '${monday.year}-${monday.month.toString().padLeft(2, '0')}-${monday.day.toString().padLeft(2, '0')}';
+    final weekEndStr = '${sunday.year}-${sunday.month.toString().padLeft(2, '0')}-${sunday.day.toString().padLeft(2, '0')}';
+
+    final cells = <AttendanceScheduleCell>[];
+
+    final staffStatusPattern = {
+      201: [AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime],
+      202: [AttendanceStatus.onTime, AttendanceStatus.lateEarly, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.lateEarly, AttendanceStatus.onTime, AttendanceStatus.onTime],
+      203: [AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.notPunched, AttendanceStatus.onTime, AttendanceStatus.onTime],
+      204: [AttendanceStatus.missingPunch, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime],
+      205: [AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.absentOff, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.onTime, AttendanceStatus.absentOff],
+    };
+
+    final weekSchedules = getWorkSchedules(fromDate: weekStartStr, toDate: weekEndStr);
+
+    for (final shift in sampleShifts) {
+      for (int dayOffset = 0; dayOffset < 7; dayOffset++) {
+        final d = monday.add(Duration(days: dayOffset));
+        final dStr = '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+        final dShort = '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+
+        final matching = weekSchedules.where((s) => s.shift.id == shift.id && s.workDate == dStr);
+        final employees = <AttendanceScheduleEmployee>[];
+
+        for (final m in matching) {
+          final query = search?.trim().toLowerCase() ?? '';
+          if (query.isNotEmpty) {
+            final matchName = m.user.fullName.toLowerCase().contains(query);
+            final matchCode = m.employeeCode.toLowerCase().contains(query);
+            if (!matchName && !matchCode) continue;
+          }
+
+          final pattern = staffStatusPattern[m.user.id] ?? [AttendanceStatus.onTime];
+          final status = pattern[dayOffset % pattern.length];
+
+          employees.add(
+            AttendanceScheduleEmployee(
+              userId: m.user.id,
+              staffCode: m.employeeCode,
+              fullName: m.user.fullName,
+              status: status,
+              avatarUrl: m.user.avatarUrl,
+            ),
+          );
+        }
+
+        cells.add(
+          AttendanceScheduleCell(
+            shiftId: shift.id,
+            workDate: dStr,
+            dayOfWeek: dayNames[dayOffset],
+            dateShort: dShort,
+            employees: employees,
+          ),
+        );
+      }
+    }
+
+    return AttendanceScheduleResponse(
+      weekStart: weekStartStr,
+      weekEnd: weekEndStr,
+      weekNumber: ((monday.difference(DateTime(monday.year, 1, 1)).inDays) / 7).floor() + 1,
+      year: monday.year,
+      shifts: sampleShifts,
+      cells: cells,
+    );
+  }
+
+  /// Sinh dữ liệu tổng hợp chấm công theo nhân viên
+  static AttendanceSummaryResponse getAttendanceSummary({
+    String? date,
+    String? search,
+  }) {
+    DateTime baseDate = date != null ? (DateTime.tryParse(date) ?? DateTime.now()) : DateTime.now();
+    final monday = DateTime(baseDate.year, baseDate.month, baseDate.day).subtract(Duration(days: baseDate.weekday - 1));
+    final weekNumber = ((monday.difference(DateTime(monday.year, 1, 1)).inDays) / 7).floor() + 1;
+    final periodLabel = 'Tuần $weekNumber - Th. ${monday.month.toString().padLeft(2, '0')} ${monday.year}';
+
+    final employees = [
+      const EmployeeAttendanceSummary(
+        userId: 201,
+        staffCode: 'NV000201',
+        fullName: 'Trần Quốc Bảo',
+        workShiftCount: 6,
+        workHoursTotal: '48h 0m',
+        leaveShiftCount: 0,
+        lateCount: 0,
+        lateDuration: '0m',
+        earlyLeaveCount: 0,
+        earlyLeaveDuration: '0m',
+        overtime: '2h 0m',
+      ),
+      const EmployeeAttendanceSummary(
+        userId: 202,
+        staffCode: 'NV000202',
+        fullName: 'Mai Thu Hương',
+        workShiftCount: 5,
+        workHoursTotal: '39h 30m',
+        leaveShiftCount: 1,
+        lateCount: 2,
+        lateDuration: '25m',
+        earlyLeaveCount: 0,
+        earlyLeaveDuration: '0m',
+        overtime: '0m',
+      ),
+      const EmployeeAttendanceSummary(
+        userId: 203,
+        staffCode: 'NV000203',
+        fullName: 'Nguyễn Đăng Khoa',
+        workShiftCount: 6,
+        workHoursTotal: '47h 15m',
+        leaveShiftCount: 0,
+        lateCount: 0,
+        lateDuration: '0m',
+        earlyLeaveCount: 1,
+        earlyLeaveDuration: '15m',
+        overtime: '3h 30m',
+      ),
+      const EmployeeAttendanceSummary(
+        userId: 204,
+        staffCode: 'NV000204',
+        fullName: 'Phạm Thúy Hằng',
+        workShiftCount: 5,
+        workHoursTotal: '38h 0m',
+        leaveShiftCount: 0,
+        lateCount: 1,
+        lateDuration: '10m',
+        earlyLeaveCount: 0,
+        earlyLeaveDuration: '0m',
+        overtime: '1h 0m',
+      ),
+      const EmployeeAttendanceSummary(
+        userId: 205,
+        staffCode: 'NV000205',
+        fullName: 'Lê Minh Quân',
+        workShiftCount: 4,
+        workHoursTotal: '32h 0m',
+        leaveShiftCount: 2,
+        lateCount: 0,
+        lateDuration: '0m',
+        earlyLeaveCount: 0,
+        earlyLeaveDuration: '0m',
+        overtime: '0m',
+      ),
+    ];
+
+    final filtered = employees.where((e) {
+      final query = search?.trim().toLowerCase() ?? '';
+      if (query.isEmpty) return true;
+      return e.fullName.toLowerCase().contains(query) || e.staffCode.toLowerCase().contains(query);
+    }).toList();
+
+    return AttendanceSummaryResponse(
+      periodLabel: periodLabel,
+      employees: filtered,
+    );
+  }
+
+  /// Ghi nhận chấm công trong bộ nhớ mock
+  static void recordAttendanceMock(AttendanceRecordRequest request) {
+    final list = sampleAttendanceHistories[request.userId] ?? [];
+    final status = request.attendanceType == AttendanceType.working
+        ? AttendanceStatus.onTime
+        : AttendanceStatus.absentOff;
+
+    list.insert(
+      0,
+      AttendanceHistoryItem(
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
+        time: '${request.workDate} ${request.checkInAt ?? "08:00"}:00',
+        status: status,
+        content: request.note ?? (request.attendanceType == AttendanceType.working ? 'Chấm công thủ công' : 'Đăng ký nghỉ phép'),
+      ),
+    );
+    sampleAttendanceHistories[request.userId] = list;
   }
 }
