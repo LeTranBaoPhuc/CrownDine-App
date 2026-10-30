@@ -74,4 +74,11 @@ class ApiEndpoints {
   static const String workSchedulesCreate = 'work-schedules/create';
   static String workScheduleById(dynamic id) => 'work-schedules/$id';
   static const String shifts = 'shifts';
+
+  // Attendance & Timekeeping
+  static const String attendancesSchedule = 'attendances/schedule';
+  static const String attendancesSummary = 'attendances/summary';
+  static const String attendancesRecord = 'attendances/record';
+  static String attendancesHistory(int userId) => 'attendances/history/$userId';
+  static String attendancesEmployeeInfo(int userId) => 'attendances/employee/$userId/info';
 }

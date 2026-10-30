@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/crown_app_bar.dart';
+import 'attendance/attendance_screen.dart';
 import 'dashboard/admin_dashboard_screen.dart';
 import 'menu/admin_menu_management_screen.dart';
 import 'voucher/admin_voucher_screen.dart';
 import 'staff/admin_staff_screen.dart';
 
 class AdminMainScreen extends StatefulWidget {
-  const AdminMainScreen({super.key});
+  final int initialIndex;
+
+  const AdminMainScreen({super.key, this.initialIndex = 0});
 
   @override
   State<AdminMainScreen> createState() => _AdminMainScreenState();
 }
 
 class _AdminMainScreenState extends State<AdminMainScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
 
   final List<Widget> _screens = const [
     AdminDashboardScreen(),
     AdminMenuManagementScreen(),
     AdminVoucherScreen(),
     AdminStaffScreen(),
+    AttendanceScreen(),
   ];
 
   @override
@@ -41,7 +51,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           color: isDark ? AppColors.darkCard : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -78,6 +88,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
               icon: Icon(Icons.people_outline),
               activeIcon: Icon(Icons.people),
               label: 'Nhân sự',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.how_to_reg_outlined),
+              activeIcon: Icon(Icons.how_to_reg),
+              label: 'Chấm công',
             ),
           ],
         ),

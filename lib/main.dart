@@ -40,6 +40,9 @@ class CrownDineApp extends ConsumerWidget {
         if (path == '/admin' || path == '/admin/dashboard' || path.endsWith('/admin/dashboard')) {
           return MaterialPageRoute(builder: (_) => const AdminMainScreen());
         }
+        if (path == '/admin/attendance' || path.endsWith('/admin/attendance')) {
+          return MaterialPageRoute(builder: (_) => const AdminMainScreen(initialIndex: 4));
+        }
         if (path == '/staff/reservation-list' || path.endsWith('/staff/reservation-list')) {
           return MaterialPageRoute(builder: (_) => const StaffMainScreen(initialIndex: 1));
         }
