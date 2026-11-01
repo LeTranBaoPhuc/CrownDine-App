@@ -150,15 +150,15 @@ class FoodCard extends StatelessWidget {
                             color: isDark ? AppColors.textLight : AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           item.description,
-                          maxLines: 2,
+                          maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11,
                             color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                            height: 1.25,
+                            height: 1.2,
                           ),
                         ),
                       ],
