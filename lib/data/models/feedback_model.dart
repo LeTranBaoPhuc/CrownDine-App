@@ -7,8 +7,11 @@ class FeedbackModel {
   final String fullName;
   final String? avatarUrl;
   final String? guestName;
+  final String? reply;
   final int? itemId;
+  final String? itemName;
   final int? comboId;
+  final String? comboName;
   final int? orderId;
   final int? orderDetailId;
   final int? userId;
@@ -21,17 +24,20 @@ class FeedbackModel {
     required this.id,
     required this.rating,
     required this.comment,
-    required this.fullName,
+    this.fullName = 'Thực khách CrownDine',
     this.avatarUrl,
     this.guestName,
+    this.reply,
     this.itemId,
+    this.itemName,
     this.comboId,
+    this.comboName,
     this.orderId,
     this.orderDetailId,
     this.userId,
     this.isFeatured = false,
     this.status,
-    required this.createdAt,
+    this.createdAt = 'Vừa xong',
     this.updatedAt,
   });
 
@@ -65,8 +71,11 @@ class FeedbackModel {
       fullName: json['fullName']?.toString() ?? json['guestName']?.toString() ?? 'Thực khách CrownDine',
       avatarUrl: json['avatarUrl']?.toString(),
       guestName: json['guestName']?.toString(),
+      reply: json['reply']?.toString(),
       itemId: json['itemId'] != null ? int.tryParse('${json['itemId']}') : null,
+      itemName: json['itemName']?.toString() ?? json['item']?['name']?.toString(),
       comboId: json['comboId'] != null ? int.tryParse('${json['comboId']}') : null,
+      comboName: json['comboName']?.toString() ?? json['combo']?['name']?.toString(),
       orderId: json['orderId'] != null ? int.tryParse('${json['orderId']}') : null,
       orderDetailId: json['orderDetailId'] != null ? int.tryParse('${json['orderDetailId']}') : null,
       userId: json['userId'] != null ? int.tryParse('${json['userId']}') : null,
@@ -84,8 +93,11 @@ class FeedbackModel {
         'fullName': fullName,
         'avatarUrl': avatarUrl,
         'guestName': guestName,
+        'reply': reply,
         'itemId': itemId,
+        'itemName': itemName,
         'comboId': comboId,
+        'comboName': comboName,
         'orderId': orderId,
         'orderDetailId': orderDetailId,
         'userId': userId,

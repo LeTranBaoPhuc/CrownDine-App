@@ -17,6 +17,8 @@ analyzer:
     - web/**
     - macos/**
     - linux/**
+    - "CrownDine/**"
+    - "CrownDine App/**"
 
 linter:
   # The lint rules applied to this project can be customized in the

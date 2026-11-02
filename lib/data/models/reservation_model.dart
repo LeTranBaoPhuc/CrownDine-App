@@ -83,6 +83,8 @@ class ReservationOrderDetailModel {
   final double unitPrice;
   final double totalPrice;
   final String? note;
+  final String type;
+  final String? imageUrl;
   final bool hasFeedback;
   final FeedbackModel? feedback;
   final bool? canEditFeedback;
