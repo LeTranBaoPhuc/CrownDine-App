@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../../../core/utils/date_formatter.dart';
 import '../../../../data/models/reservation_model.dart';
 import '../../../../providers/reservation_provider.dart';
 import '../../../widgets/status_badge.dart';
@@ -161,25 +160,73 @@ class ReservationHistoryScreen extends ConsumerWidget {
                             ),
                             child: const Text('Hủy đặt bàn', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           ),
-                        if (r.status == ReservationStatus.completed)
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.star_rounded, size: 16, color: Colors.white),
-                            label: const Text('Đánh giá trải nghiệm', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                            onPressed: () {
-                              final firstItem = r.items.isNotEmpty ? r.items.first.item.name : 'Bữa tiệc tại ${r.tableName ?? r.code}';
-                              WriteFeedbackSheet.show(
-                                context,
-                                itemName: firstItem,
-                                orderId: r.id,
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.goldDark,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        if (r.status == ReservationStatus.completed) ...[
+                          if (r.hasGeneralFeedback && r.generalFeedback != null)
+                            Container(
+                              margin: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF26201B) : const Color(0xFFFFFBEB),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                children: [
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: List.generate(
+                                      r.generalFeedback!.rating,
+                                      (_) => const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '"${r.generalFeedback!.comment}"',
+                                      style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (r.canEditGeneralFeedback == true)
+                                    TextButton(
+                                      onPressed: () {
+                                        WriteFeedbackSheet.show(
+                                          context,
+                                          feedbackId: r.generalFeedback!.id,
+                                          initialRating: r.generalFeedback!.rating,
+                                          initialComment: r.generalFeedback!.comment,
+                                          itemName: 'Bữa tiệc tại ${r.tableName ?? r.code}',
+                                          orderId: r.orderId,
+                                          onSuccess: () => ref.invalidate(reservationHistoryProvider),
+                                        );
+                                      },
+                                      child: const Text('Sửa', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                                    ),
+                                ],
+                              ),
+                            )
+                          else
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.star_rounded, size: 16, color: Colors.white),
+                              label: const Text('Đánh giá trải nghiệm', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              onPressed: () {
+                                final firstItem = r.items.isNotEmpty ? r.items.first.item.name : 'Bữa tiệc tại ${r.tableName ?? r.code}';
+                                WriteFeedbackSheet.show(
+                                  context,
+                                  itemName: firstItem,
+                                  orderId: r.orderId ?? r.id,
+                                  onSuccess: () => ref.invalidate(reservationHistoryProvider),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.goldDark,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
                             ),
-                          ),
+                        ],
                       ],
                     ),
                   ],

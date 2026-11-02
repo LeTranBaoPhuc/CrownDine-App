@@ -11,6 +11,7 @@ import 'change_password_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'reservation_history_screen.dart';
 import 'voucher_wallet_sheet.dart';
+import '../feedback/customer_reviews_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -189,6 +190,15 @@ class ProfileScreen extends ConsumerWidget {
                     subtitle: 'Xem lại các lần đặt bàn trước đây',
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const ReservationHistoryScreen()));
+                    },
+                  ),
+                  const Divider(height: 1),
+                  _buildListTile(
+                    icon: Icons.star_rate_rounded,
+                    title: 'Đánh giá & Trải nghiệm thực khách',
+                    subtitle: 'Xem cảm nhận và đánh giá về món ăn & dịch vụ',
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const CustomerReviewsScreen()));
                     },
                   ),
                   const Divider(height: 1),

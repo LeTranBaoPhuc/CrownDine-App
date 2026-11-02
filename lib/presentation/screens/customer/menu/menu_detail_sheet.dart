@@ -240,9 +240,16 @@ class _MenuDetailSheetState extends ConsumerState<MenuDetailSheet> {
                         onPressed: () {
                           WriteFeedbackSheet.show(
                             context,
-                            itemId: item.id,
+                            itemId: item.isCombo ? null : item.id,
+                            comboId: item.isCombo ? item.id : null,
                             itemName: item.name,
-                            onSuccess: () => ref.invalidate(itemFeedbacksProvider(item.id)),
+                            onSuccess: () {
+                              if (item.isCombo) {
+                                ref.invalidate(comboFeedbacksProvider(item.id));
+                              } else {
+                                ref.invalidate(itemFeedbacksProvider(item.id));
+                              }
+                            },
                           );
                         },
                         style: OutlinedButton.styleFrom(
@@ -257,7 +264,10 @@ class _MenuDetailSheetState extends ConsumerState<MenuDetailSheet> {
                   const SizedBox(height: 16),
 
                   // Feedbacks List
-                  ref.watch(itemFeedbacksProvider(item.id)).when(
+                  (item.isCombo
+                          ? ref.watch(comboFeedbacksProvider(item.id))
+                          : ref.watch(itemFeedbacksProvider(item.id)))
+                      .when(
                         loading: () => const Center(
                           child: Padding(
                             padding: EdgeInsets.symmetric(vertical: 20),

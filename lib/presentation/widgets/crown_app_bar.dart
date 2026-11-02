@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
+import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../screens/admin/feedback/admin_feedback_screen.dart';
 import '../screens/customer/customer_main_screen.dart';
+import '../screens/customer/feedback/customer_reviews_screen.dart';
 import '../screens/settings/server_config_screen.dart';
 
 class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -267,9 +270,36 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ServerConfigScreen()),
               );
+            } else if (val == 'feedback') {
+              final isStaffOrAdmin =
+                  authState.user?.role == UserRole.admin || authState.user?.role == UserRole.staff;
+              if (isStaffOrAdmin) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AdminFeedbackScreen()),
+                );
+              } else {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CustomerReviewsScreen()),
+                );
+              }
             }
           },
           itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'feedback',
+              child: Row(
+                children: [
+                  const Icon(Icons.star_rate_rounded, size: 18, color: AppColors.gold),
+                  const SizedBox(width: 10),
+                  Text(
+                    (authState.user?.role == UserRole.admin || authState.user?.role == UserRole.staff)
+                        ? 'Quản lý Đánh giá & Phản hồi'
+                        : 'Xem Đánh giá & Cảm nhận',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
             const PopupMenuItem(
               value: 'server',
               child: Row(
