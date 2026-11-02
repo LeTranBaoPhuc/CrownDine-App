@@ -9,6 +9,7 @@ import '../../../widgets/crown_app_bar.dart';
 import '../../../widgets/food_card.dart';
 import '../feedback/customer_reviews_screen.dart';
 import '../menu/menu_detail_sheet.dart';
+import 'widgets/auto_scroll_reviews_banner.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateTab;
@@ -412,95 +413,10 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   error: (_, __) => const SizedBox.shrink(),
-                  data: (feedbacks) {
-                    if (feedbacks.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'Chưa có đánh giá nào',
-                          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                        ),
-                      );
-                    }
-                    return ListView.separated(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      scrollDirection: Axis.horizontal,
-                      itemCount: feedbacks.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 14),
-                      itemBuilder: (context, index) {
-                        final fb = feedbacks[index];
-                        return Container(
-                          width: 280,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkCard : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundImage: fb.avatarUrl != null && fb.avatarUrl!.isNotEmpty
-                                        ? NetworkImage(fb.avatarUrl!)
-                                        : null,
-                                    child: fb.avatarUrl == null || fb.avatarUrl!.isEmpty
-                                        ? Text(
-                                            fb.fullName.isNotEmpty ? fb.fullName[0].toUpperCase() : 'K',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          fb.fullName,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          fb.shortDate,
-                                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Row(
-                                    children: List.generate(
-                                      fb.rating,
-                                      (_) => const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Expanded(
-                                child: Text(
-                                  '"${fb.comment}"',
-                                  maxLines: 4,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    height: 1.4,
-                                    fontStyle: FontStyle.italic,
-                                    color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    );
-                  },
+                  data: (feedbacks) => AutoScrollReviewsBanner(
+                    feedbacks: feedbacks,
+                    isDark: isDark,
+                  ),
                 ),
               ),
               const SizedBox(height: 30),

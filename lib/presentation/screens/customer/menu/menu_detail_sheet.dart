@@ -6,6 +6,7 @@ import '../../../../core/utils/image_utils.dart';
 import '../../../../data/models/item_model.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../providers/feedback_provider.dart';
+import '../../../widgets/user_avatar.dart';
 import '../../../widgets/write_feedback_sheet.dart';
 
 class MenuDetailSheet extends ConsumerStatefulWidget {

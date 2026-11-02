@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/feedback_model.dart';
 import '../../../../providers/feedback_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
+import '../../../widgets/user_avatar.dart';
 
 class AdminFeedbackScreen extends ConsumerStatefulWidget {
   const AdminFeedbackScreen({super.key});
@@ -364,18 +365,10 @@ class _AdminFeedbackScreenState extends ConsumerState<AdminFeedbackScreen> {
           // Top Row: User Avatar, Name, Rating Stars, Date
           Row(
             children: [
-              CircleAvatar(
+              UserAvatar(
+                avatarUrl: item.avatarUrl,
+                name: item.fullName,
                 radius: 18,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                backgroundImage: item.avatarUrl != null && item.avatarUrl!.isNotEmpty
-                    ? NetworkImage(item.avatarUrl!)
-                    : null,
-                child: item.avatarUrl == null || item.avatarUrl!.isEmpty
-                    ? Text(
-                        item.fullName.isNotEmpty ? item.fullName[0].toUpperCase() : 'K',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                      )
-                    : null,
               ),
               const SizedBox(width: 10),
               Expanded(
