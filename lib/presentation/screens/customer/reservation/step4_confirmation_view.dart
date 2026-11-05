@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/date_formatter.dart';
-import '../../../../data/mock/mock_data.dart';
+import '../../../../providers/reservation_checkout_provider.dart';
+import 'reservation_payment_panel.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../providers/reservation_provider.dart';
 import '../../../widgets/app_text_field.dart';
@@ -12,15 +13,14 @@ class Step4ConfirmationView extends ConsumerStatefulWidget {
   const Step4ConfirmationView({super.key});
 
   @override
-  ConsumerState<Step4ConfirmationView> createState() => _Step4ConfirmationViewState();
+  ConsumerState<Step4ConfirmationView> createState() =>
+      _Step4ConfirmationViewState();
 }
 
 class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
   late TextEditingController _noteController;
-  final _voucherController = TextEditingController();
-  int _paymentMethod = 1; // 1: PayOS QR, 2: Tiền mặt/Thẻ
 
   @override
   void initState() {
@@ -29,10 +29,14 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
     final resState = ref.read(reservationProvider);
 
     _nameController = TextEditingController(
-      text: resState.guestName.isNotEmpty ? resState.guestName : (user?.fullName ?? ''),
+      text: resState.guestName.isNotEmpty
+          ? resState.guestName
+          : (user?.fullName ?? ''),
     );
     _phoneController = TextEditingController(
-      text: resState.guestPhone.isNotEmpty ? resState.guestPhone : (user?.phone ?? ''),
+      text: resState.guestPhone.isNotEmpty
+          ? resState.guestPhone
+          : (user?.phone ?? ''),
     );
     _noteController = TextEditingController(text: resState.note);
   }
@@ -42,7 +46,6 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
     _nameController.dispose();
     _phoneController.dispose();
     _noteController.dispose();
-    _voucherController.dispose();
     super.dispose();
   }
 
@@ -57,7 +60,7 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
   @override
   Widget build(BuildContext context) {
     final resState = ref.watch(reservationProvider);
-    final notifier = ref.read(reservationProvider.notifier);
+    final checkoutId = ref.watch(checkoutReservationIdProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -121,7 +124,8 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
           const SizedBox(height: 24),
 
           // Contact Information Form
-          const Text('Thông tin người đặt', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+          const Text('Thông tin người đặt',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           AppTextField(
             label: 'Họ và tên khách hàng *',
@@ -152,7 +156,8 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
 
           // Pre-ordered food list (if any)
           if (resState.preOrderItems.isNotEmpty) ...[
-            const Text('Món ăn đặt trước', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+            const Text('Món ăn đặt trước',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
             Container(
               padding: const EdgeInsets.all(14),
@@ -172,11 +177,13 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
                       children: [
                         Text(
                           '${item.quantity}x ${item.item.name}',
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500),
                         ),
                         Text(
                           CurrencyFormatter.format(item.totalPrice),
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
@@ -187,180 +194,34 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
             const SizedBox(height: 24),
           ],
 
-          // Voucher Box
-          const Text('Mã ưu đãi / Voucher', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _voucherController,
-                  decoration: InputDecoration(
-                    hintText: 'Nhập mã: CROWNDINE50, VIPGOLD10...',
-                    prefixIcon: const Icon(Icons.confirmation_number_outlined, color: AppColors.primary),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: () {
-                  final code = _voucherController.text.trim().toUpperCase();
-                  final found = MockData.vouchers.where((v) => v.code.toUpperCase() == code).firstOrNull;
-                  if (found != null) {
-                    notifier.applyVoucher(found);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Đã áp dụng voucher: ${found.name}'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Mã voucher không hợp lệ!'),
-                        backgroundColor: AppColors.error,
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                child: const Text('Áp dụng', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ],
-          ),
-          if (resState.appliedVoucher != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.successContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: AppColors.success, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${resState.appliedVoucher!.name} (-${CurrencyFormatter.format(resState.discountAmount)})',
-                      style: const TextStyle(fontSize: 13, color: AppColors.success, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 16, color: AppColors.error),
-                    onPressed: () => notifier.removeVoucher(),
-                  ),
-                ],
+          if (resState.currentStep == 4 && checkoutId != null)
+            ReservationPaymentPanel(
+                key: ValueKey(checkoutId), reservationId: checkoutId)
+          else if (checkoutId == null)
+            const Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Text('Thông tin đặt bàn chưa sẵn sàng để thanh toán. '
+                    'Vui lòng hoàn tất đặt bàn và đồng bộ món ăn trước khi tiếp tục.'),
               ),
             ),
-          ],
-          const SizedBox(height: 24),
-
-          // Payment Method Selection
-          const Text('Phương thức thanh toán cọc', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
-          Material(
-            color: isDark ? AppColors.darkCard : Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: Column(
-              children: [
-                RadioListTile<int>(
-                  value: 1,
-                  groupValue: _paymentMethod,
-                  title: const Row(
-                    children: [
-                      Icon(Icons.qr_code_scanner, color: AppColors.primary),
-                      SizedBox(width: 10),
-                      Text('Thanh toán PayOS (QR Code / Ngân hàng)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    ],
-                  ),
-                  subtitle: const Text('Tạo mã QR VietQR thanh toán tức thì và tự động kích hoạt bàn.'),
-                  activeColor: AppColors.primary,
-                  onChanged: (val) => setState(() => _paymentMethod = val!),
-                ),
-                const Divider(height: 1),
-                RadioListTile<int>(
-                  value: 2,
-                  groupValue: _paymentMethod,
-                  title: const Row(
-                    children: [
-                      Icon(Icons.payments_outlined, color: AppColors.gold),
-                      SizedBox(width: 10),
-                      Text('Đặt cọc tại quầy nhà hàng', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                    ],
-                  ),
-                  subtitle: const Text('Xác nhận đặt bàn và thanh toán trực tiếp khi tới nhà hàng.'),
-                  activeColor: AppColors.primary,
-                  onChanged: (val) => setState(() => _paymentMethod = val!),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Cost Breakdown Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightSurface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              ),
-            ),
-            child: Column(
-              children: [
-                _buildPriceRow('Tiền cọc giữ bàn:', CurrencyFormatter.format(resState.tableDeposit)),
-                if (resState.foodSubtotal > 0) ...[
-                  const SizedBox(height: 8),
-                  _buildPriceRow('Tiền món ăn đặt trước:', CurrencyFormatter.format(resState.foodSubtotal)),
-                ],
-                if (resState.appliedVoucher != null) ...[
-                  const SizedBox(height: 8),
-                  _buildPriceRow('Giảm giá ưu đãi:', '-${CurrencyFormatter.format(resState.discountAmount)}', isDiscount: true),
-                ],
-                const Divider(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Tổng cọc cần trả:',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                    Text(
-                      CurrencyFormatter.format(resState.finalAmount),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
           const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryRow(IconData icon, String label, String value, {bool isHighlight = false}) {
+  Widget _buildSummaryRow(IconData icon, String label, String value,
+      {bool isHighlight = false}) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: isHighlight ? AppColors.primary : AppColors.textSecondary),
+        Icon(icon,
+            size: 20,
+            color: isHighlight ? AppColors.primary : AppColors.textSecondary),
         const SizedBox(width: 10),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
         const Spacer(),
         Text(
           value,
@@ -368,23 +229,6 @@ class _Step4ConfirmationViewState extends ConsumerState<Step4ConfirmationView> {
             fontSize: 13,
             fontWeight: FontWeight.bold,
             color: isHighlight ? AppColors.primary : null,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPriceRow(String label, String value, {bool isDiscount = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDiscount ? AppColors.success : null,
           ),
         ),
       ],
