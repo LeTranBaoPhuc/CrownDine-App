@@ -195,7 +195,7 @@ class ProfileScreen extends ConsumerWidget {
                   _buildListTile(
                     icon: Icons.confirmation_number_outlined,
                     title: 'Ví Voucher & Ưu đãi',
-                    subtitle: '3 mã giảm giá sẵn có',
+                    subtitle: 'Xem voucher và sao chép mã ưu đãi',
                     onTap: () {
                       showModalBottomSheet(
                         context: context,
