@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../models/admin_voucher_model.dart';
+import '../models/voucher_assignment_model.dart';
 
 class AdminVoucherRepository {
   final Dio _dio;
@@ -79,4 +80,62 @@ class AdminVoucherRepository {
   Future<void> delete(int id) async {
     _data(await _dio.delete('${ApiEndpoints.vouchers}/$id'));
   }
+
+  Future<List<VoucherCustomerModel>> customers() async {
+    final raw = _data(await _dio.get('users'));
+    if (raw is! List) {
+      throw const FormatException('Danh sách khách hàng không hợp lệ.');
+    }
+    return raw.map((item) {
+      if (item is! Map<String, dynamic>) {
+        throw const FormatException('Dữ liệu khách hàng không hợp lệ.');
+      }
+      return VoucherCustomerModel.fromJson(item);
+    }).toList();
+  }
+
+  Future<List<VoucherAssignmentModel>> assignments(int voucherId) async {
+    final raw = _data(
+        await _dio.get('${ApiEndpoints.vouchers}/$voucherId/assignments'));
+    if (raw is! List) {
+      throw const FormatException('Danh sách đã cấp không hợp lệ.');
+    }
+    return _parseAssignments(raw);
+  }
+
+  Future<List<VoucherAssignmentModel>> assign(int voucherId,
+      {required List<int> userIds,
+      required int usageLimit,
+      DateTime? expiredAt}) async {
+    if (userIds.isEmpty ||
+        userIds.any((id) => id <= 0) ||
+        usageLimit <= 0 ||
+        (expiredAt != null && !expiredAt.isAfter(DateTime.now()))) {
+      throw ArgumentError('Thông tin cấp voucher không hợp lệ.');
+    }
+    final raw = _data(await _dio.post(
+      '${ApiEndpoints.vouchers}/$voucherId/assign-users',
+      data: {
+        'userIds': userIds.toSet().toList(),
+        'usageLimit': usageLimit,
+        if (expiredAt != null)
+          'expiredAt': '${expiredAt.year.toString().padLeft(4, '0')}-'
+              '${expiredAt.month.toString().padLeft(2, '0')}-'
+              '${expiredAt.day.toString().padLeft(2, '0')}T'
+              '${expiredAt.hour.toString().padLeft(2, '0')}:'
+              '${expiredAt.minute.toString().padLeft(2, '0')}:00',
+      },
+    ));
+    if (raw is! List) {
+      throw const FormatException('Kết quả cấp voucher không hợp lệ.');
+    }
+    return _parseAssignments(raw);
+  }
+
+  List<VoucherAssignmentModel> _parseAssignments(List raw) => raw.map((item) {
+        if (item is! Map<String, dynamic>) {
+          throw const FormatException('Dữ liệu cấp voucher không hợp lệ.');
+        }
+        return VoucherAssignmentModel.fromJson(item);
+      }).toList();
 }

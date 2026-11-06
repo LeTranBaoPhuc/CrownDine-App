@@ -82,4 +82,50 @@ void main() {
     expect(() => AdminVoucherModel.fromJson({...voucher(), 'type': 'UNKNOWN'}),
         throwsA(isA<FormatException>()));
   });
+
+  test('admin can list customers, assign voucher and read usage', () async {
+    final calls = <RequestOptions>[];
+    final assignment = {
+      'assignmentId': 9,
+      'customerId': 7,
+      'username': 'customer7',
+      'fullName': 'Khách Bảy',
+      'usageCount': 1,
+      'usageLimit': 3,
+    };
+    final dio = Dio()
+      ..interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+        calls.add(options);
+        final data = options.path == 'users'
+            ? [
+                {
+                  'id': 7,
+                  'username': 'customer7',
+                  'firstName': 'Khách',
+                  'lastName': 'Bảy',
+                  'phone': '0900000000'
+                }
+              ]
+            : [assignment];
+        handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {'status': 200, 'data': data}));
+      }));
+    final repo = AdminVoucherRepository(dio: dio);
+    expect((await repo.customers()).single.name, 'Khách Bảy');
+    expect((await repo.assignments(4)).single.remaining, 2);
+    await repo.assign(4,
+        userIds: [7, 7],
+        usageLimit: 2,
+        expiredAt: DateTime(2099, 12, 31, 23, 59));
+    expect(calls.map((e) => '${e.method} ${e.path}'), [
+      'GET users',
+      'GET vouchers/4/assignments',
+      'POST vouchers/4/assign-users'
+    ]);
+    expect(calls.last.data['userIds'], [7]);
+    expect(calls.last.data['usageLimit'], 2);
+    expect(calls.last.data['expiredAt'], '2099-12-31T23:59:00');
+  });
 }
