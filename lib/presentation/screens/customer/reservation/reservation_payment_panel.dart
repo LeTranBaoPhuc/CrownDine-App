@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +10,9 @@ import '../profile/voucher_wallet_sheet.dart';
 
 class ReservationPaymentPanel extends ConsumerStatefulWidget {
   final int reservationId;
-  const ReservationPaymentPanel({super.key, required this.reservationId});
+  final VoidCallback? onFinished;
+  const ReservationPaymentPanel(
+      {super.key, required this.reservationId, this.onFinished});
 
   @override
   ConsumerState<ReservationPaymentPanel> createState() =>
@@ -20,11 +23,15 @@ class _ReservationPaymentPanelState
     extends ConsumerState<ReservationPaymentPanel> {
   final _voucher = TextEditingController();
   bool _verifying = false;
+  Timer? _clock;
   String? _notice;
 
   @override
   void initState() {
     super.initState();
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
     Future.microtask(() {
       if (mounted) {
         ref
@@ -36,6 +43,7 @@ class _ReservationPaymentPanelState
 
   @override
   void dispose() {
+    _clock?.cancel();
     _voucher.dispose();
     super.dispose();
   }
@@ -96,6 +104,12 @@ class _ReservationPaymentPanelState
     if (!mounted) return;
     if (callback != null) {
       await _verify(callback.paymentCode);
+      if (mounted &&
+          callback.cancelled &&
+          !ref.read(reservationCheckoutProvider(widget.reservationId)).paid) {
+        setState(() => _notice =
+            'Bạn đã hủy trên PayOS. Nếu đã chuyển khoản, hãy kiểm tra lại kết quả hoặc liên hệ nhà hàng; không thanh toán thêm.');
+      }
     } else {
       setState(() => _notice =
           'Bạn đã đóng trang PayOS. Giao dịch chưa được xác nhận; có thể mở lại cùng liên kết thanh toán.');
@@ -130,7 +144,7 @@ class _ReservationPaymentPanelState
             child: Text('Thanh toán cọc',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18))),
         IconButton(
-            onPressed: busy || state.paymentStarted ? null : notifier.refresh,
+            onPressed: busy ? null : notifier.refresh,
             icon: const Icon(Icons.refresh),
             tooltip: 'Cập nhật số tiền'),
       ]),
@@ -147,6 +161,10 @@ class _ReservationPaymentPanelState
             child: const Text('Tải lại thông tin thanh toán')),
       if (checkout != null) ...[
         Text('Mã đặt bàn: ${checkout.reservationCode}'),
+        if (checkout.expiresAt != null && checkout.status == 'PENDING')
+          Text(checkout.isExpired
+              ? 'Đã hết thời gian giữ chỗ'
+              : 'Thời gian giữ chỗ còn ${checkout.expiresAt!.difference(DateTime.now()).inMinutes} phút'),
         const SizedBox(height: 16),
         OutlinedButton.icon(
           onPressed: busy || state.paymentStarted || !checkout.canApplyVoucher
@@ -218,7 +236,7 @@ class _ReservationPaymentPanelState
             title: Text('PayOS · QR / Chuyển khoản'),
             subtitle:
                 Text('Cọc gồm tiền giữ bàn và 20% tiền món sau giảm giá.')),
-        if (!checkout.canPay && !state.paymentStarted)
+        if (!checkout.canPay && !state.paid)
           Text(checkout.isExpired
               ? 'Đã hết thời gian giữ bàn. Vui lòng kiểm tra lại đặt bàn.'
               : 'Đặt bàn không còn ở trạng thái chờ thanh toán.'),
@@ -233,18 +251,20 @@ class _ReservationPaymentPanelState
           _price('Đã thanh toán', state.payment!.amount, emphasis: true),
           FilledButton(
               onPressed: () {
+                if (widget.onFinished != null) {
+                  widget.onFinished!();
+                  return;
+                }
                 ref.read(reservationProvider.notifier).reset();
                 ref.read(checkoutReservationIdProvider.notifier).state = null;
               },
               child: const Text('Hoàn tất')),
         ] else ...[
           FilledButton.icon(
-            onPressed: busy ||
-                    state.paymentUncertain ||
-                    !supported ||
-                    (!checkout.canPay && !state.paymentStarted)
-                ? null
-                : _pay,
+            onPressed:
+                busy || state.paymentUncertain || !supported || !checkout.canPay
+                    ? null
+                    : _pay,
             icon: const Icon(Icons.payment),
             label: Text(state.paymentStarted
                 ? 'Mở lại PayOS'
