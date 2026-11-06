@@ -1,31 +1,16 @@
-# Step 4 payment integration
+# Reservation and payment flow
 
-Step 4 uses real API responses only. It does not create reservations or synchronize
-items; these remain the responsibility of steps 1–3. The old mock QR/success dialog
-has been removed. Until the upstream integration publishes a real ID, step 4 shows
-a waiting message and cannot collect payment.
+Steps 1–3 now create a real reservation and synchronize preordered items before
+step 4 receives its backend reservation ID. The selected table is checked against
+the live table list; the reservation API decides slot availability. Cart sync reads
+the server first, uses absolute quantities for updates, and verifies the final cart.
+A partial failure keeps the reservation ID so retry does not create another hold.
+If creation times out without an ID, the screen stops retries and asks the customer
+to check their history or contact the restaurant.
 
-## Handoff from reservation/food implementation
-
-Import `providers/reservation_checkout_provider.dart`. Keep the checkout binding
-null while creating/updating a reservation or synchronizing any cart changes:
-
-```dart
-ref.read(checkoutReservationIdProvider.notifier).state = null;
-// Create/resume the real backend reservation, then await ALL add/update/remove
-// item requests. Do not publish an ID from the mock fallback repository.
-ref.read(checkoutReservationIdProvider.notifier).state = reservationId;
-ref.read(reservationProvider.notifier).setStep(4);
-```
-
-The reservation screen watches this auto-disposed binding throughout all steps.
-Invalidate it before editing upstream data, on logout, and before a new booking.
-Step 4 gets `orderId`, reservation code, status, expiry and all monetary values
-from `GET reservations/{id}/checkout`; callers must not calculate these locally.
-No-food bookings can pay the table deposit but cannot apply vouchers.
-
-Once a payment link exists, do not change the reservation/cart or voucher while
-that link remains payable. The screen disables previous-step navigation then.
+Step 4 reads all amounts and status from `GET reservations/{id}/checkout`.
+No-food bookings can pay the table deposit but cannot apply vouchers. The history
+screen can reopen checkout for a pending reservation.
 
 ## API flow
 
@@ -41,7 +26,7 @@ that link remains payable. The screen disables previous-step navigation then.
 
 Backend currently rejects CASH for reservation deposits. UI offers PAYOS only.
 The backend quote is refreshed before link creation; changes require review and
-another tap. Reopening PayOS within the current screen reuses the same link.
+another tap. Reopening PayOS reuses the saved link, including after app restart on the same device.
 Status checks are sequential and bounded (10 attempts, 2 seconds apart), with a
 manual retry for webhook delays. No real payment is sent by tests.
 
@@ -60,20 +45,18 @@ not launched automatically.
 
 ## Backend gaps / acceptance checks
 
-Before production, fix the ownership/admin authorization and concurrent voucher
-usage issues identified in the backend review. Checkout doesn't return voucher
-code, so a pre-existing discount can be shown/removed without displaying its code.
-The API returns only a link, without payment code at creation or an endpoint to
-resume a pending payment by reservation. The current link is retained while this
-screen is mounted, not across process death. Backend idempotent create/resume plus
-persisted recovery is needed before guaranteeing safe retries after app restart
-or an ambiguous create-payment timeout. The current session blocks another create
-after an ambiguous timeout; do not infer failed payment from a timeout.
+The backend should provide an idempotent create/resume payment API and a lookup by
+reservation. The mobile app stores the payment intent before requesting a link and
+blocks another create after an ambiguous timeout. The customer must contact the
+restaurant if the request succeeded but the response was lost. This local hint is
+scoped to the account and API URL; it is never evidence of successful payment.
+Before production, review backend ownership/admin authorization and concurrent
+voucher usage. Checkout does not return the applied voucher code, so a pre-existing
+discount can be shown or removed without displaying its code.
 
-Acceptance with the upstream integration and configured PayOS webhook:
-1. Real no-food reservation: checkout shows table deposit and voucher is disabled.
-2. Real reservation with items: apply/remove code and totals agree with checkout.
-3. Redirect says PAID but backend says PENDING: show awaiting confirmation.
-4. Closing PayOS: no success; reopening uses the same link.
-5. Backend confirms SUCCESS for this reservation: show paid amount and finish.
-6. Foreign payment code, expired booking, network failure: no false success.
+1. A no-food reservation shows the table deposit and disables vouchers.
+2. A reservation with items shows backend totals after apply/remove voucher.
+3. A PayOS redirect alone does not mark the booking paid; backend `SUCCESS` does.
+4. Closing and reopening PayOS reuses the saved link.
+5. Foreign payment code, expired booking, and network failure show no false success.
+6. Partial cart sync can retry without adding quantities twice.
