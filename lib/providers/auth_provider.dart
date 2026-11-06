@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/user_model.dart';
 import '../data/repositories/auth_repository.dart';
 
-final authRepositoryProvider = Provider<AuthRepository>((ref) => AuthRepository());
+final authRepositoryProvider =
+    Provider<AuthRepository>((ref) => AuthRepository());
 
 class AuthState {
   final UserModel? user;
@@ -54,6 +55,17 @@ class AuthNotifier extends StateNotifier<AuthState> {
         );
       }
     } catch (_) {}
+  }
+
+  /// Reload the point balance after a successful voucher exchange.
+  Future<void> refreshProfile() async {
+    final currentUserId = state.user?.id;
+    if (currentUserId == null) return;
+    final user = await _repo.getProfile();
+    if (user == null) throw StateError('Không tải được số điểm hiện tại.');
+    if (state.user?.id == currentUserId && user.id == currentUserId) {
+      state = state.copyWith(user: user);
+    }
   }
 
   /// Đăng nhập qua API
