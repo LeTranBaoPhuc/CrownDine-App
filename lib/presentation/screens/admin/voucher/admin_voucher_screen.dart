@@ -284,6 +284,8 @@ class _AdminVoucherScreenState extends State<AdminVoucherScreen> {
                           if (voucher.minValue != null)
                             Text(
                                 'Đơn tối thiểu: ${CurrencyFormatter.format(voucher.minValue)}'),
+                          if (voucher.pointsRequired != null)
+                            Text('Đổi bằng ${voucher.pointsRequired} CrownPoints'),
                         ],
                       )),
                 )),
@@ -330,12 +332,14 @@ class _VoucherFormState extends State<_VoucherForm> {
       TextEditingController(text: widget.initial?.minValue?.toString() ?? '');
   late final _description =
       TextEditingController(text: widget.initial?.description ?? '');
+  late final _points = TextEditingController(
+      text: widget.initial?.pointsRequired?.toString() ?? '');
   late AdminVoucherType _type =
       widget.initial?.type ?? AdminVoucherType.percentage;
 
   @override
   void dispose() {
-    for (final controller in [_code, _name, _value, _max, _min, _description]) {
+    for (final controller in [_code, _name, _value, _max, _min, _description, _points]) {
       controller.dispose();
     }
     super.dispose();
@@ -442,6 +446,20 @@ class _VoucherFormState extends State<_VoucherForm> {
                         maxLines: 2,
                         decoration: const InputDecoration(
                             labelText: 'Mô tả', border: OutlineInputBorder())),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                        controller: _points,
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) return null;
+                          final points = int.tryParse(value.trim());
+                          return points == null || points <= 0
+                              ? 'Nhập số điểm nguyên lớn hơn 0'
+                              : null;
+                        },
+                        decoration: const InputDecoration(
+                            labelText: 'Điểm cần đổi (tùy chọn)',
+                            border: OutlineInputBorder())),
                     const SizedBox(height: 20),
                     FilledButton(
                         onPressed: () {
@@ -460,6 +478,9 @@ class _VoucherFormState extends State<_VoucherForm> {
                                     ? null
                                     : double.parse(_min.text.trim()),
                                 description: _description.text,
+                                pointsRequired: _points.text.trim().isEmpty
+                                    ? null
+                                    : int.parse(_points.text.trim()),
                               ));
                         },
                         child: Text(widget.initial == null

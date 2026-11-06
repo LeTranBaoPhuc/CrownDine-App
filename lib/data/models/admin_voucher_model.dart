@@ -84,6 +84,7 @@ class AdminVoucherDraft {
   final double? maxDiscountValue;
   final double? minValue;
   final String description;
+  final int? pointsRequired;
 
   const AdminVoucherDraft(
       {required this.code,
@@ -92,7 +93,8 @@ class AdminVoucherDraft {
       required this.discountValue,
       this.maxDiscountValue,
       this.minValue,
-      required this.description});
+      required this.description,
+      this.pointsRequired});
 
   Map<String, dynamic> toJson() => {
         'code': code.trim().toUpperCase(),
@@ -103,5 +105,6 @@ class AdminVoucherDraft {
         'maxDiscountValue': maxDiscountValue,
         'minValue': minValue,
         'description': description.trim(),
+        'pointsRequired': pointsRequired,
       };
 }
