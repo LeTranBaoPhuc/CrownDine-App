@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/reservation_provider.dart';
 import '../../../../providers/reservation_checkout_provider.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import 'step1_datetime_view.dart';
 import 'step2_table_map_view.dart';
@@ -20,8 +21,9 @@ class ReservationScreen extends ConsumerWidget {
     final checkoutState = checkoutId == null
         ? null
         : ref.watch(reservationCheckoutProvider(checkoutId));
-    final checkoutLocked =
-        checkoutState?.paymentStarted == true || checkoutState?.busy == true;
+    final checkoutLocked = checkoutState?.paymentStarted == true ||
+        checkoutState?.busy == true ||
+        resState.isSubmitting;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -114,17 +116,25 @@ class ReservationScreen extends ConsumerWidget {
 
           const Divider(height: 1),
 
+          if (resState.errorMessage != null)
+            Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(resState.errorMessage!,
+                    style:
+                        TextStyle(color: Theme.of(context).colorScheme.error))),
           // Current Step View
           Expanded(
-            child: IndexedStack(
-              index: resState.currentStep - 1,
-              children: const [
-                Step1DateTimeView(),
-                Step2TableMapView(),
-                Step3FoodPreorderView(),
-                Step4ConfirmationView(),
-              ],
-            ),
+            child: AbsorbPointer(
+                absorbing: resState.isSubmitting,
+                child: IndexedStack(
+                  index: resState.currentStep - 1,
+                  children: const [
+                    Step1DateTimeView(),
+                    Step2TableMapView(),
+                    Step3FoodPreorderView(),
+                    Step4ConfirmationView(),
+                  ],
+                )),
           ),
 
           // Bottom Navigation Buttons (Quay lại / Tiếp tục / Hoàn tất)
@@ -146,8 +156,43 @@ class ReservationScreen extends ConsumerWidget {
                   Expanded(
                     flex: 1,
                     child: OutlinedButton(
-                      onPressed:
-                          checkoutLocked ? null : () => notifier.prevStep(),
+                      onPressed: checkoutLocked
+                          ? null
+                          : () async {
+                              if (resState.currentStep == 3 &&
+                                  resState.backendReservationId != null) {
+                                final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (dialogContext) => AlertDialog(
+                                          title: const Text(
+                                              'Đổi thông tin đặt bàn?'),
+                                          content: const Text(
+                                              'Đặt bàn đang giữ sẽ được hủy trước khi bạn chọn lại ngày, giờ hoặc bàn.'),
+                                          actions: [
+                                            TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                    dialogContext, false),
+                                                child:
+                                                    const Text('Giữ nguyên')),
+                                            TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                    dialogContext, true),
+                                                child: const Text(
+                                                    'Hủy giữ chỗ và sửa')),
+                                          ],
+                                        ));
+                                if (confirmed != true || !context.mounted) {
+                                  return;
+                                }
+                                if (!await notifier.releaseHeldReservation()) {
+                                  return;
+                                }
+                              }
+                              ref
+                                  .read(checkoutReservationIdProvider.notifier)
+                                  .state = null;
+                              notifier.prevStep();
+                            },
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
@@ -163,7 +208,8 @@ class ReservationScreen extends ConsumerWidget {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: resState.isSubmitting
+                      onPressed: resState.isSubmitting ||
+                              resState.creationUncertain
                           ? null
                           : () async {
                               if (resState.currentStep == 2 &&
@@ -178,7 +224,32 @@ class ReservationScreen extends ConsumerWidget {
                                 return;
                               }
 
-                              notifier.nextStep();
+                              if (resState.currentStep == 3) {
+                                if (!ref.read(authProvider).isAuthenticated) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Vui lòng đăng nhập trước khi đặt bàn.')));
+                                  return;
+                                }
+                                ref
+                                    .read(
+                                        checkoutReservationIdProvider.notifier)
+                                    .state = null;
+                                final ready = await notifier.prepareCheckout();
+                                if (ready && context.mounted) {
+                                  ref.invalidate(reservationHistoryProvider);
+                                  ref
+                                          .read(checkoutReservationIdProvider
+                                              .notifier)
+                                          .state =
+                                      ref
+                                          .read(reservationProvider)
+                                          .backendReservationId;
+                                }
+                              } else {
+                                notifier.nextStep();
+                              }
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,

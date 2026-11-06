@@ -34,14 +34,18 @@ class Step3FoodPreorderView extends ConsumerWidget {
                   ),
                   if (resState.preOrderItems.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: AppColors.primary,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '${resState.preOrderItems.length} món',
-                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
                 ],
@@ -57,6 +61,24 @@ class Step3FoodPreorderView extends ConsumerWidget {
 
         const Divider(height: 1),
 
+        if (menuState.isLoading) const LinearProgressIndicator(),
+        if (menuState.errorMessage != null)
+          Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(menuState.errorMessage!)),
+        Padding(
+            padding: const EdgeInsets.all(12),
+            child: TextFormField(
+              initialValue: resState.note,
+              enabled: resState.backendReservationId == null,
+              maxLength: 255,
+              decoration: const InputDecoration(
+                  labelText: 'Ghi chú đặt bàn (không bắt buộc)'),
+              onChanged: (value) => resNotifier.setCustomerInfo(
+                  name: resState.guestName,
+                  phone: resState.guestPhone,
+                  note: value),
+            )),
         // Food List
         Expanded(
           child: ListView.separated(
@@ -65,7 +87,10 @@ class Step3FoodPreorderView extends ConsumerWidget {
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final item = menuState.allItems[index];
-              final cartItem = resState.preOrderItems.where((i) => i.item.id == item.id).firstOrNull;
+              final cartItem = resState.preOrderItems
+                  .where((i) =>
+                      i.item.id == item.id && i.item.isCombo == item.isCombo)
+                  .firstOrNull;
               final quantity = cartItem?.quantity ?? 0;
 
               return Container(
@@ -74,7 +99,9 @@ class Step3FoodPreorderView extends ConsumerWidget {
                   color: isDark ? AppColors.darkCard : Colors.white,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: quantity > 0 ? AppColors.primary : AppColors.lightBorder,
+                    color: quantity > 0
+                        ? AppColors.primary
+                        : AppColors.lightBorder,
                     width: quantity > 0 ? 1.5 : 1,
                   ),
                 ),
@@ -91,7 +118,8 @@ class Step3FoodPreorderView extends ConsumerWidget {
                           width: 70,
                           height: 70,
                           color: AppColors.lightSurface,
-                          child: const Icon(Icons.restaurant, color: AppColors.primary),
+                          child: const Icon(Icons.restaurant,
+                              color: AppColors.primary),
                         ),
                       ),
                     ),
@@ -102,12 +130,16 @@ class Step3FoodPreorderView extends ConsumerWidget {
                         children: [
                           Text(
                             item.name,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.bold, fontSize: 14),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             item.categoryName ?? 'Món chính',
-                            style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -125,25 +157,43 @@ class Step3FoodPreorderView extends ConsumerWidget {
                     // Quantity actions
                     if (quantity == 0)
                       ElevatedButton(
-                        onPressed: () => resNotifier.addPreOrderItem(item),
+                        onPressed: item.isAvailable
+                            ? () => resNotifier.addPreOrderItem(item)
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
-                        child: const Text('Thêm', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                        child: const Text('Thêm',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold)),
                       )
                     else
                       Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.remove_circle_outline, size: 22, color: AppColors.textSecondary),
-                            onPressed: () => resNotifier.updatePreOrderItemQuantity(item.id, quantity - 1),
+                            icon: const Icon(Icons.remove_circle_outline,
+                                size: 22, color: AppColors.textSecondary),
+                            onPressed: () =>
+                                resNotifier.updatePreOrderItemQuantity(
+                                    item.id, quantity - 1,
+                                    isCombo: item.isCombo),
                           ),
-                          Text('$quantity', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          Text('$quantity',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 15)),
                           IconButton(
-                            icon: const Icon(Icons.add_circle, size: 22, color: AppColors.primary),
-                            onPressed: () => resNotifier.updatePreOrderItemQuantity(item.id, quantity + 1),
+                            icon: const Icon(Icons.add_circle,
+                                size: 22, color: AppColors.primary),
+                            onPressed: () =>
+                                resNotifier.updatePreOrderItemQuantity(
+                                    item.id, quantity + 1,
+                                    isCombo: item.isCombo),
                           ),
                         ],
                       ),
@@ -161,7 +211,7 @@ class Step3FoodPreorderView extends ConsumerWidget {
             color: isDark ? AppColors.darkCard : Colors.white,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 6,
                 offset: const Offset(0, -2),
               ),
@@ -174,16 +224,24 @@ class Step3FoodPreorderView extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Tiền món đặt trước:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const Text('Tiền món đặt trước:',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary)),
                   Text(
                     CurrencyFormatter.format(resState.foodSubtotal),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary),
                   ),
                 ],
               ),
               Text(
-                resState.preOrderItems.isEmpty ? '(Có thể bỏ qua)' : 'Đã chọn ${resState.preOrderItems.length} món',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                resState.preOrderItems.isEmpty
+                    ? '(Có thể bỏ qua)'
+                    : 'Đã chọn ${resState.preOrderItems.length} món',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary),
               ),
             ],
           ),
