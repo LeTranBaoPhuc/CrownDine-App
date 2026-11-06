@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import '../data/storage/payment_attempt_store.dart';
+import 'auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/reservation_checkout_model.dart';
 import '../data/repositories/reservation_checkout_repository.dart';
@@ -6,16 +8,20 @@ import '../data/repositories/reservation_checkout_repository.dart';
 /// Step 3 publishes a REAL reservation ID here only after all item API calls
 /// succeed. Set null before changing the reservation/cart or starting a new one.
 /// Intentionally independent from the legacy mock-capable reservation provider.
-final checkoutReservationIdProvider =
-    StateProvider.autoDispose<int?>((ref) => null);
+final checkoutReservationIdProvider = StateProvider.autoDispose<int?>((ref) {
+  ref.watch(authProvider.select((state) => state.user?.id));
+  return null;
+});
 
 final reservationCheckoutRepositoryProvider =
     Provider((ref) => ReservationCheckoutRepository());
 final reservationCheckoutProvider = StateNotifierProvider.autoDispose
     .family<ReservationCheckoutNotifier, ReservationCheckoutState, int>(
         (ref, id) {
+  final userId = ref.watch(authProvider.select((state) => state.user?.id));
   return ReservationCheckoutNotifier(
-      ref.watch(reservationCheckoutRepositoryProvider), id);
+      ref.watch(reservationCheckoutRepositoryProvider), id,
+      store: userId == null ? null : PaymentAttemptStore(userId));
 });
 
 class ReservationCheckoutState {
@@ -69,16 +75,48 @@ class ReservationCheckoutNotifier
     extends StateNotifier<ReservationCheckoutState> {
   final ReservationCheckoutRepository _repo;
   final int reservationId;
+  final PaymentAttemptStore? _store;
 
-  ReservationCheckoutNotifier(this._repo, this.reservationId)
-      : super(const ReservationCheckoutState());
+  ReservationCheckoutNotifier(this._repo, this.reservationId,
+      {PaymentAttemptStore? store})
+      : _store = store,
+        super(const ReservationCheckoutState());
 
   Future<void> refresh() async {
     if (state.busy) return;
     state = state.copyWith(busy: true);
     try {
       final checkout = await _repo.getCheckout(reservationId);
-      if (mounted) state = state.copyWith(checkout: checkout, busy: false);
+      final saved = await _store?.read(reservationId);
+      if (!mounted) return;
+      if (saved != null) {
+        if (saved['reservationCode'] != checkout.reservationCode) {
+          throw StateError(
+              'Thông tin giao dịch đã lưu không khớp đặt bàn. Vui lòng liên hệ nhà hàng.');
+        }
+        if (saved['depositAmount'] != null &&
+            saved['depositAmount'] != checkout.depositAmount) {
+          throw StateError(
+              'Số tiền cọc đã thay đổi. Vui lòng liên hệ nhà hàng để kiểm tra giao dịch trước đó.');
+        }
+        final url =
+            saved['url'] == null ? null : Uri.tryParse(saved['url'] as String);
+        if (url != null && (url.scheme != 'https' || url.host.isEmpty)) {
+          throw const FormatException('Liên kết đã lưu không hợp lệ.');
+        }
+        state = state.copyWith(
+            checkout: checkout,
+            paymentUrl: url,
+            paymentCode: saved['code'] as String?,
+            paymentUncertain: saved['uncertain'] == true,
+            error: saved['uncertain'] == true
+                ? 'Giao dịch trước chưa rõ kết quả. Vui lòng kiểm tra với nhà hàng trước khi thanh toán lại.'
+                : null,
+            busy: false);
+        if (state.paymentCode != null) await verifyPayment(state.paymentCode!);
+      } else {
+        state = state.copyWith(checkout: checkout, busy: false);
+      }
     } catch (error) {
       if (mounted) {
         state = state.copyWith(
@@ -126,7 +164,15 @@ class ReservationCheckoutNotifier
   Future<Uri?> startPayment() async {
     if (state.busy || state.paid || state.paymentUncertain) return null;
     // Reopen the same link after closing the WebView; do not create a second charge.
-    if (state.paymentUrl != null) return state.paymentUrl;
+    if (state.paymentUrl != null) {
+      if (state.checkout?.canPay != true) {
+        state = state.copyWith(
+            error:
+                'Đặt bàn không còn chờ thanh toán hoặc đã hết hạn. Vui lòng kiểm tra lại trạng thái.');
+        return null;
+      }
+      return state.paymentUrl;
+    }
     var creatingLink = false;
     final previous = state.checkout;
     if (previous == null) return null;
@@ -146,14 +192,34 @@ class ReservationCheckoutNotifier
         throw StateError(
             'Thông tin thanh toán đã thay đổi. Vui lòng kiểm tra lại số tiền và bấm thanh toán.');
       }
+      // Persist intent before the request: process death/timeouts must not allow
+      // a second create-payment request on the same device after reopening.
+      await _store?.save(reservationId, {
+        'reservationCode': current.reservationCode,
+        'depositAmount': current.depositAmount,
+        'uncertain': true
+      });
       creatingLink = true;
       final url = await _repo.createPayment(current.reservationCode);
+      await _store?.save(reservationId, {
+        'reservationCode': current.reservationCode,
+        'depositAmount': current.depositAmount,
+        'url': url.toString(),
+        'uncertain': false
+      });
       if (!mounted) return null;
       state = state.copyWith(paymentUrl: url, busy: false);
       return url;
     } catch (error) {
       final status = error is DioException ? error.response?.statusCode : null;
       final uncertain = creatingLink && (status == null || status >= 500);
+      if (creatingLink && !uncertain) {
+        try {
+          await _store?.remove(reservationId);
+        } catch (_) {
+          // Keep the persisted intent if local cleanup fails.
+        }
+      }
       if (mounted) {
         state = state.copyWith(
             busy: false,
@@ -179,7 +245,16 @@ class ReservationCheckoutNotifier
           result.target != 'RESERVATION') {
         throw StateError('Giao dịch không khớp với đặt bàn này.');
       }
+      await _store?.save(reservationId, {
+        'reservationCode': result.reservationCode,
+        'depositAmount': state.checkout?.depositAmount,
+        'url': state.paymentUrl?.toString(),
+        'code': code,
+        'uncertain': false,
+      });
+      if (!mounted) return;
       state = state.copyWith(
+          paymentCode: code,
           payment: result,
           busy: false,
           error: result.status == 'FAILED'

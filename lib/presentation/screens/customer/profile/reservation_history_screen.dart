@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/reservation_model.dart';
+import '../../../../data/storage/payment_attempt_store.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../../providers/reservation_provider.dart';
 import '../../../widgets/status_badge.dart';
+import '../reservation/reservation_payment_panel.dart';
 import '../../../widgets/write_feedback_sheet.dart';
 
 class ReservationHistoryScreen extends ConsumerWidget {
@@ -46,9 +48,11 @@ class ReservationHistoryScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.calendar_today_outlined, size: 60, color: AppColors.textMuted),
+                  Icon(Icons.calendar_today_outlined,
+                      size: 60, color: AppColors.textMuted),
                   SizedBox(height: 12),
-                  Text('Bạn chưa có lịch đặt bàn nào', style: TextStyle(color: AppColors.textSecondary)),
+                  Text('Bạn chưa có lịch đặt bàn nào',
+                      style: TextStyle(color: AppColors.textSecondary)),
                 ],
               ),
             );
@@ -68,11 +72,13 @@ class ReservationHistoryScreen extends ConsumerWidget {
                   color: isDark ? AppColors.darkCard : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color:
+                        isDark ? AppColors.darkBorder : AppColors.lightBorder,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -101,24 +107,31 @@ class ReservationHistoryScreen extends ConsumerWidget {
                     const Divider(height: 18),
                     Row(
                       children: [
-                        const Icon(Icons.table_restaurant, size: 16, color: AppColors.textSecondary),
+                        const Icon(Icons.table_restaurant,
+                            size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
                         Text(
                           r.tableName ?? 'Chưa xác định bàn',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 14),
                         ),
                         const Spacer(),
-                        const Icon(Icons.people_outline, size: 16, color: AppColors.textSecondary),
+                        const Icon(Icons.people_outline,
+                            size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
-                        Text('${r.guestNumber} khách', style: const TextStyle(fontSize: 13)),
+                        Text('${r.guestNumber} khách',
+                            style: const TextStyle(fontSize: 13)),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        const Icon(Icons.access_time, size: 16, color: AppColors.textSecondary),
+                        const Icon(Icons.access_time,
+                            size: 16, color: AppColors.textSecondary),
                         const SizedBox(width: 8),
-                        Text('${r.date} lúc ${r.startTime}', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        Text('${r.date} lúc ${r.startTime}',
+                            style: const TextStyle(
+                                fontSize: 13, color: AppColors.textSecondary)),
                       ],
                     ),
                     if (r.items.isNotEmpty) ...[
@@ -126,109 +139,129 @@ class ReservationHistoryScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkBackground : AppColors.lightSurface,
+                          color: isDark
+                              ? AppColors.darkBackground
+                              : AppColors.lightSurface,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           'Món đặt trước: ${r.items.map((i) => '${i.quantity}x ${i.item.name}').join(', ')}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
                         ),
                       ),
                     ],
+                    if (r.status == ReservationStatus.pending) ...[
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
+                        icon: const Icon(Icons.payment),
+                        label: const Text('Thanh toán / Kiểm tra tiền cọc'),
+                        onPressed: () async {
+                          await Navigator.of(context).push(MaterialPageRoute(
+                              builder: (paymentContext) => Scaffold(
+                                    appBar: AppBar(
+                                        title: Text('Thanh toán ${r.code}')),
+                                    body: SingleChildScrollView(
+                                        padding: const EdgeInsets.all(20),
+                                        child: ReservationPaymentPanel(
+                                          reservationId: r.id,
+                                          onFinished: () =>
+                                              Navigator.pop(paymentContext),
+                                        )),
+                                  )));
+                          ref.invalidate(reservationHistoryProvider);
+                        },
+                      ),
+                    ],
                     const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Tổng tiền thanh toán:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                            Text(
-                              CurrencyFormatter.format(r.finalAmount),
-                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppColors.primary),
-                            ),
-                          ],
-                        ),
-                        if (r.status == ReservationStatus.pending || r.status == ReservationStatus.confirmed)
-                          OutlinedButton(
-                            onPressed: () => _confirmCancel(context, ref, r),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.error,
-                              side: const BorderSide(color: AppColors.error),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Hủy đặt bàn', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    if (r.status == ReservationStatus.pending ||
+                        r.status == ReservationStatus.confirmed)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton(
+                          onPressed: () => _confirmCancel(context, ref, r),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            side: const BorderSide(color: AppColors.error),
                           ),
-                        if (r.status == ReservationStatus.completed) ...[
-                          if (r.hasGeneralFeedback && r.generalFeedback != null)
-                            Container(
-                              margin: const EdgeInsets.only(top: 8),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF26201B) : const Color(0xFFFFFBEB),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
-                              ),
-                              child: Row(
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: List.generate(
-                                      r.generalFeedback!.rating,
-                                      (_) => const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      '"${r.generalFeedback!.comment}"',
-                                      style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  if (r.canEditGeneralFeedback == true)
-                                    TextButton(
-                                      onPressed: () {
-                                        WriteFeedbackSheet.show(
-                                          context,
-                                          feedbackId: r.generalFeedback!.id,
-                                          initialRating: r.generalFeedback!.rating,
-                                          initialComment: r.generalFeedback!.comment,
-                                          itemName: 'Bữa tiệc tại ${r.tableName ?? r.code}',
-                                          orderId: r.orderId,
-                                          onSuccess: () => ref.invalidate(reservationHistoryProvider),
-                                        );
-                                      },
-                                      child: const Text('Sửa', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary)),
-                                    ),
-                                ],
-                              ),
-                            )
-                          else
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.star_rounded, size: 16, color: Colors.white),
-                              label: const Text('Đánh giá trải nghiệm', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              onPressed: () {
-                                final firstItem = r.items.isNotEmpty ? r.items.first.item.name : 'Bữa tiệc tại ${r.tableName ?? r.code}';
-                                WriteFeedbackSheet.show(
-                                  context,
-                                  itemName: firstItem,
-                                  orderId: r.orderId ?? r.id,
-                                  onSuccess: () => ref.invalidate(reservationHistoryProvider),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.goldDark,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          child: const Text('Hủy đặt bàn'),
+                        ),
+                      ),
+                    if (r.status == ReservationStatus.completed)
+                      if (r.hasGeneralFeedback && r.generalFeedback != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF26201B)
+                                : const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: AppColors.gold.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(
+                                r.generalFeedback!.rating,
+                                (_) => const Icon(Icons.star_rounded,
+                                    size: 14, color: AppColors.gold),
                               ),
                             ),
-                        ],
-                      ],
-                    ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '"${r.generalFeedback!.comment}"',
+                                style: const TextStyle(
+                                    fontSize: 12, fontStyle: FontStyle.italic),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (r.canEditGeneralFeedback == true)
+                              TextButton(
+                                onPressed: () => WriteFeedbackSheet.show(
+                                  context,
+                                  feedbackId: r.generalFeedback!.id,
+                                  initialRating: r.generalFeedback!.rating,
+                                  initialComment: r.generalFeedback!.comment,
+                                  itemName:
+                                      'Bữa tiệc tại ${r.tableName ?? r.code}',
+                                  orderId: r.orderId,
+                                  onSuccess: () => ref
+                                      .invalidate(reservationHistoryProvider),
+                                ),
+                                child: const Text('Sửa'),
+                              ),
+                          ]),
+                        )
+                      else
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.star_rounded,
+                                size: 16, color: Colors.white),
+                            label: const Text('Đánh giá trải nghiệm'),
+                            onPressed: () {
+                              final firstItem = r.items.isNotEmpty
+                                  ? r.items.first.item.name
+                                  : 'Bữa tiệc tại ${r.tableName ?? r.code}';
+                              WriteFeedbackSheet.show(
+                                context,
+                                itemName: firstItem,
+                                orderId: r.orderId ?? r.id,
+                                onSuccess: () =>
+                                    ref.invalidate(reservationHistoryProvider),
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.goldDark,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
                   ],
                 ),
               );
@@ -244,7 +277,8 @@ class ReservationHistoryScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hủy đặt bàn?'),
-        content: Text('Bạn có chắc chắn muốn hủy đặt bàn mã ${r.code}? Bàn ${r.tableName} sẽ được trả lại cho khách khác.'),
+        content: Text(
+            'Bạn có chắc chắn muốn hủy đặt bàn mã ${r.code}? Bàn ${r.tableName} sẽ được trả lại cho khách khác.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -253,20 +287,37 @@ class ReservationHistoryScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              await ref.read(reservationRepositoryProvider).cancelReservation(r.id);
-              ref.invalidate(reservationHistoryProvider);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Đã hủy đặt bàn ${r.code}'), backgroundColor: AppColors.error),
-                );
+              try {
+                final userId = ref.read(authProvider).user?.id;
+                if (userId != null &&
+                    await PaymentAttemptStore(userId).read(r.id) != null) {
+                  throw StateError(
+                      'Đặt bàn có giao dịch đang xử lý. Vui lòng kiểm tra thanh toán trước khi hủy.');
+                }
+                await ref
+                    .read(reservationRepositoryProvider)
+                    .cancelReservation(r.id);
+                ref.invalidate(reservationHistoryProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Đã hủy đặt bàn ${r.code}'),
+                      backgroundColor: AppColors.error));
+                }
+              } catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(error is StateError
+                          ? error.message
+                          : 'Không thể hủy đặt bàn. Vui lòng thử lại.')));
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Xác nhận hủy', style: TextStyle(color: Colors.white)),
+            child: const Text('Xác nhận hủy',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
     );
   }
 }
-
