@@ -5,6 +5,7 @@ import '../../../../core/utils/currency_formatter.dart';
 import '../../../../providers/reservation_checkout_provider.dart';
 import '../../../../providers/reservation_provider.dart';
 import 'payos_payment_screen.dart';
+import '../profile/voucher_wallet_sheet.dart';
 
 class ReservationPaymentPanel extends ConsumerStatefulWidget {
   final int reservationId;
@@ -70,6 +71,20 @@ class _ReservationPaymentPanelState
     });
   }
 
+  Future<void> _chooseVoucher() async {
+    final code = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const VoucherWalletSheet(selectForCheckout: true),
+    );
+    if (!mounted || code == null) return;
+    _voucher.text = code;
+    await ref
+        .read(reservationCheckoutProvider(widget.reservationId).notifier)
+        .changeVoucher(code);
+  }
+
   Future<void> _pay() async {
     final url = await ref
         .read(reservationCheckoutProvider(widget.reservationId).notifier)
@@ -133,6 +148,14 @@ class _ReservationPaymentPanelState
       if (checkout != null) ...[
         Text('Mã đặt bàn: ${checkout.reservationCode}'),
         const SizedBox(height: 16),
+        OutlinedButton.icon(
+          onPressed: busy || state.paymentStarted || !checkout.canApplyVoucher
+              ? null
+              : _chooseVoucher,
+          icon: const Icon(Icons.confirmation_number_outlined),
+          label: const Text('Chọn từ ví voucher'),
+        ),
+        const SizedBox(height: 8),
         TextField(
             controller: _voucher,
             enabled: !busy && !state.paymentStarted && checkout.canApplyVoucher,
