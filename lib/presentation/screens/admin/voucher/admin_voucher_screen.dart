@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/admin_voucher_model.dart';
 import '../../../../data/repositories/admin_voucher_repository.dart';
+import 'admin_voucher_assign_screen.dart';
 
 class AdminVoucherScreen extends StatefulWidget {
   final AdminVoucherRepository? repository;
@@ -257,6 +258,18 @@ class _AdminVoucherScreenState extends State<AdminVoucherScreen> {
                                     _saving ? null : () => _edit(voucher),
                                 icon: const Icon(Icons.edit_outlined),
                                 tooltip: 'Sửa voucher'),
+                            IconButton(
+                                onPressed: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) =>
+                                            AdminVoucherAssignScreen(
+                                          voucher: voucher,
+                                          repository: _repo,
+                                        ),
+                                      ),
+                                    ),
+                                icon: const Icon(Icons.card_giftcard_outlined),
+                                tooltip: 'Cấp voucher cho khách'),
                             IconButton(
                                 onPressed:
                                     _saving ? null : () => _delete(voucher),
