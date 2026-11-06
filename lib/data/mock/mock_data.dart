@@ -1,4 +1,3 @@
-import '../models/feedback_model.dart';
 import '../models/category_model.dart';
 import '../models/item_model.dart';
 import '../models/table_model.dart';
@@ -519,44 +518,6 @@ class MockData {
     ),
   ];
 
-  static final List<FeedbackModel> feedbacks = [
-    FeedbackModel(
-      id: 1,
-      rating: 5,
-      comment: 'Thịt bò Wagyu áp chảo mềm tan trong miệng, sốt nấm Truffle thơm lừng. Rất xứng đáng với trải nghiệm ẩm thực cao cấp!',
-      fullName: 'Hoàng Nam',
-      avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
-      createdAt: '2 ngày trước',
-      itemId: 101,
-    ),
-    FeedbackModel(
-      id: 2,
-      rating: 5,
-      comment: 'Tôm hùm Nha Trang tươi ngon, sốt bơ tỏi thơm nức mũi. Nhân viên phục vụ nhiệt tình và rất chu đáo.',
-      fullName: 'Thu Hằng',
-      avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80',
-      createdAt: '3 ngày trước',
-      itemId: 102,
-    ),
-    FeedbackModel(
-      id: 3,
-      rating: 5,
-      comment: 'Không gian nhà hàng sang trọng, rượu vang Margaux ướp đúng nhiệt độ. Một bữa tối hoàn hảo cho lễ kỷ niệm!',
-      fullName: 'Minh Quân',
-      avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&q=80',
-      createdAt: '1 tuần trước',
-      itemId: 106,
-    ),
-    FeedbackModel(
-      id: 4,
-      rating: 4,
-      comment: 'Salad cá hồi tươi giòn, sốt chua ngọt thanh mát. Trình bày món ăn rất đẹp mắt và nghệ thuật.',
-      fullName: 'Bích Phương',
-      avatarUrl: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&q=80',
-      createdAt: '1 tuần trước',
-      itemId: 103,
-    ),
-  ];
 
   static final List<ShiftModel> sampleShifts = [
     const ShiftModel(

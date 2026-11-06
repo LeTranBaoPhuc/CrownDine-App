@@ -4,24 +4,39 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/feedback_provider.dart';
 
 class WriteFeedbackSheet extends ConsumerStatefulWidget {
+  final int? feedbackId;
   final int? itemId;
+  final int? comboId;
   final String itemName;
   final int? orderId;
+  final int? orderDetailId;
+  final int? initialRating;
+  final String? initialComment;
   final VoidCallback? onSuccess;
 
   const WriteFeedbackSheet({
     super.key,
+    this.feedbackId,
     this.itemId,
+    this.comboId,
     required this.itemName,
     this.orderId,
+    this.orderDetailId,
+    this.initialRating,
+    this.initialComment,
     this.onSuccess,
   });
 
   static Future<void> show(
     BuildContext context, {
+    int? feedbackId,
     int? itemId,
+    int? comboId,
     required String itemName,
     int? orderId,
+    int? orderDetailId,
+    int? initialRating,
+    String? initialComment,
     VoidCallback? onSuccess,
   }) {
     return showModalBottomSheet(
@@ -29,9 +44,14 @@ class WriteFeedbackSheet extends ConsumerStatefulWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => WriteFeedbackSheet(
+        feedbackId: feedbackId,
         itemId: itemId,
+        comboId: comboId,
         itemName: itemName,
         orderId: orderId,
+        orderDetailId: orderDetailId,
+        initialRating: initialRating,
+        initialComment: initialComment,
         onSuccess: onSuccess,
       ),
     );
@@ -42,8 +62,8 @@ class WriteFeedbackSheet extends ConsumerStatefulWidget {
 }
 
 class _WriteFeedbackSheetState extends ConsumerState<WriteFeedbackSheet> {
-  int _selectedRating = 5;
-  final _commentController = TextEditingController();
+  late int _selectedRating;
+  late final TextEditingController _commentController;
   bool _isSubmitting = false;
 
   final Map<int, String> _ratingLabels = {
@@ -53,6 +73,13 @@ class _WriteFeedbackSheetState extends ConsumerState<WriteFeedbackSheet> {
     4: 'Ngon miệng & Hài lòng',
     5: 'Tuyệt hảo! Đỉnh cao ẩm thực',
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedRating = widget.initialRating ?? 5;
+    _commentController = TextEditingController(text: widget.initialComment ?? '');
+  }
 
   @override
   void dispose() {
@@ -74,29 +101,49 @@ class _WriteFeedbackSheetState extends ConsumerState<WriteFeedbackSheet> {
 
     setState(() => _isSubmitting = true);
 
-    final result = await ref.read(feedbackControllerProvider.notifier).submitFeedback(
-          rating: _selectedRating,
-          comment: comment,
-          itemId: widget.itemId,
-          orderId: widget.orderId,
-        );
+    try {
+      if (widget.feedbackId != null) {
+        // Edit existing feedback
+        await ref.read(feedbackControllerProvider.notifier).editFeedback(
+              id: widget.feedbackId!,
+              rating: _selectedRating,
+              comment: comment,
+              itemId: widget.itemId,
+              comboId: widget.comboId,
+            );
+      } else {
+        // Create new feedback
+        await ref.read(feedbackControllerProvider.notifier).submitFeedback(
+              rating: _selectedRating,
+              comment: comment,
+              itemId: widget.itemId,
+              comboId: widget.comboId,
+              orderId: widget.orderId,
+              orderDetailId: widget.orderDetailId,
+            );
+      }
 
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
 
-    if (result != null) {
       Navigator.pop(context);
       widget.onSuccess?.call();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cảm ơn bạn đã gửi đánh giá cho CrownDine!'),
+        SnackBar(
+          content: Text(widget.feedbackId != null
+              ? 'Đã cập nhật đánh giá thành công!'
+              : 'Cảm ơn bạn đã gửi đánh giá cho CrownDine!'),
           backgroundColor: AppColors.success,
         ),
       );
-    } else {
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+
+      final msg = e.toString().replaceFirst('Exception: ', '');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể gửi đánh giá, vui lòng thử lại!'),
+        SnackBar(
+          content: Text(msg.isNotEmpty ? msg : 'Không thể gửi đánh giá, vui lòng thử lại!'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -154,9 +201,9 @@ class _WriteFeedbackSheetState extends ConsumerState<WriteFeedbackSheet> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Đánh giá món ăn',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      Text(
+                        widget.feedbackId != null ? 'Chỉnh sửa đánh giá' : 'Đánh giá & Phản hồi',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       Text(
                         widget.itemName,
@@ -270,9 +317,9 @@ class _WriteFeedbackSheetState extends ConsumerState<WriteFeedbackSheet> {
                       width: 20,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text(
-                      'Gửi đánh giá',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  : Text(
+                      widget.feedbackId != null ? 'Cập nhật đánh giá' : 'Gửi đánh giá',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
             ),
           ],

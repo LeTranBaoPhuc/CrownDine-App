@@ -174,32 +174,76 @@ class ReservationHistoryScreen extends ConsumerWidget {
                       ),
                     ],
                     const Divider(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (r.status == ReservationStatus.pending ||
-                            r.status == ReservationStatus.confirmed)
-                          OutlinedButton(
-                            onPressed: () => _confirmCancel(context, ref, r),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.error,
-                              side: const BorderSide(color: AppColors.error),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
-                            ),
-                            child: const Text('Hủy đặt bàn',
-                                style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.bold)),
+                    if (r.status == ReservationStatus.pending ||
+                        r.status == ReservationStatus.confirmed)
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton(
+                          onPressed: () => _confirmCancel(context, ref, r),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                            side: const BorderSide(color: AppColors.error),
                           ),
-                        if (r.status == ReservationStatus.completed)
-                          ElevatedButton.icon(
+                          child: const Text('Hủy đặt bàn'),
+                        ),
+                      ),
+                    if (r.status == ReservationStatus.completed)
+                      if (r.hasGeneralFeedback && r.generalFeedback != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF26201B)
+                                : const Color(0xFFFFFBEB),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color: AppColors.gold.withValues(alpha: 0.4)),
+                          ),
+                          child: Row(children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(
+                                r.generalFeedback!.rating,
+                                (_) => const Icon(Icons.star_rounded,
+                                    size: 14, color: AppColors.gold),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '"${r.generalFeedback!.comment}"',
+                                style: const TextStyle(
+                                    fontSize: 12, fontStyle: FontStyle.italic),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (r.canEditGeneralFeedback == true)
+                              TextButton(
+                                onPressed: () => WriteFeedbackSheet.show(
+                                  context,
+                                  feedbackId: r.generalFeedback!.id,
+                                  initialRating: r.generalFeedback!.rating,
+                                  initialComment: r.generalFeedback!.comment,
+                                  itemName:
+                                      'Bữa tiệc tại ${r.tableName ?? r.code}',
+                                  orderId: r.orderId,
+                                  onSuccess: () => ref
+                                      .invalidate(reservationHistoryProvider),
+                                ),
+                                child: const Text('Sửa'),
+                              ),
+                          ]),
+                        )
+                      else
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: ElevatedButton.icon(
                             icon: const Icon(Icons.star_rounded,
                                 size: 16, color: Colors.white),
-                            label: const Text('Đánh giá trải nghiệm',
-                                style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.bold)),
+                            label: const Text('Đánh giá trải nghiệm'),
                             onPressed: () {
                               final firstItem = r.items.isNotEmpty
                                   ? r.items.first.item.name
@@ -207,20 +251,17 @@ class ReservationHistoryScreen extends ConsumerWidget {
                               WriteFeedbackSheet.show(
                                 context,
                                 itemName: firstItem,
-                                orderId: r.id,
+                                orderId: r.orderId ?? r.id,
+                                onSuccess: () =>
+                                    ref.invalidate(reservationHistoryProvider),
                               );
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.goldDark,
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
                   ],
                 ),
               );

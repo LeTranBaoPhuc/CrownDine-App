@@ -18,9 +18,9 @@ class ImageUtils {
     }
 
     // Trên nền tảng Web, các host như pinimg.com chặn XMLHttpRequest do thiếu Access-Control-Allow-Origin header
-    // Proxy thông qua weserv.nl (miễn phí, open-source trên Cloudflare) giúp bổ sung CORS và nén ảnh mượt mà
-    if (kIsWeb && trimmed.contains('pinimg.com')) {
-      return 'https://images.weserv.nl/?url=${Uri.encodeComponent(trimmed)}';
+    // Proxy thông qua wsrv.nl (Cloudflare CDN) giúp bổ sung CORS và nén ảnh
+    if (kIsWeb && (trimmed.contains('pinimg.com') || trimmed.contains('pinterest.com'))) {
+      return 'https://wsrv.nl/?url=${Uri.encodeComponent(trimmed)}';
     }
 
     return trimmed;

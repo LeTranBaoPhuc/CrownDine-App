@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/mock/mock_data.dart';
 import '../../../../providers/cart_provider.dart';
+import '../../../../providers/feedback_provider.dart';
 import '../../../../providers/menu_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import '../../../widgets/food_card.dart';
+import '../feedback/customer_reviews_screen.dart';
 import '../menu/menu_detail_sheet.dart';
+import 'widgets/auto_scroll_reviews_banner.dart';
 
 class HomeScreen extends ConsumerWidget {
   final void Function(int tabIndex)? onNavigateTab;
@@ -17,6 +19,7 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final menuState = ref.watch(menuProvider);
+    final feedbacksAsync = ref.watch(allFeedbacksProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -25,7 +28,10 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       appBar: const CrownAppBar(),
       body: RefreshIndicator(
-        onRefresh: () => ref.read(menuProvider.notifier).loadMenu(),
+        onRefresh: () async {
+          await ref.read(menuProvider.notifier).loadMenu();
+          ref.invalidate(allFeedbacksProvider);
+        },
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -364,84 +370,53 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    const Icon(Icons.format_quote_rounded, color: AppColors.gold, size: 28),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const CustomerReviewsScreen()),
+                        );
+                      },
+                      icon: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                      label: const Text(
+                        'Xem tất cả',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                    ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               SizedBox(
                 height: 165,
-                child: ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  scrollDirection: Axis.horizontal,
-                  itemCount: MockData.feedbacks.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (context, index) {
-                    final fb = MockData.feedbacks[index];
-                    return Container(
+                child: feedbacksAsync.when(
+                  loading: () => ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    scrollDirection: Axis.horizontal,
+                    itemCount: 3,
+                    separatorBuilder: (_, __) => const SizedBox(width: 14),
+                    itemBuilder: (_, __) => Container(
                       width: 280,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
                         color: isDark ? AppColors.darkCard : Colors.white,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      ),
+                      child: const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 16,
-                                backgroundImage: fb.avatarUrl != null ? NetworkImage(fb.avatarUrl!) : null,
-                                child: fb.avatarUrl == null ? Text(fb.fullName.isNotEmpty ? fb.fullName[0] : 'K') : null,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      fb.fullName,
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      fb.createdAt,
-                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Row(
-                                children: List.generate(
-                                  fb.rating,
-                                  (_) => const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Expanded(
-                            child: Text(
-                              '"${fb.comment}"',
-                              maxLines: 4,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 12,
-                                height: 1.4,
-                                fontStyle: FontStyle.italic,
-                                color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                    ),
+                  ),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (feedbacks) => AutoScrollReviewsBanner(
+                    feedbacks: feedbacks,
+                    isDark: isDark,
+                  ),
                 ),
               ),
               const SizedBox(height: 30),

@@ -1,3 +1,4 @@
+import 'feedback_model.dart';
 import 'item_model.dart';
 
 enum ReservationStatus {
@@ -82,8 +83,12 @@ class ReservationOrderDetailModel {
   final double unitPrice;
   final double totalPrice;
   final String? note;
-  final String type; // 'ITEM' | 'COMBO'
+  final String type;
   final String? imageUrl;
+  final bool hasFeedback;
+  final FeedbackModel? feedback;
+  final bool? canEditFeedback;
+  final int? productId;
 
   ReservationOrderDetailModel({
     required this.id,
@@ -94,6 +99,10 @@ class ReservationOrderDetailModel {
     this.note,
     this.type = 'ITEM',
     this.imageUrl,
+    this.hasFeedback = false,
+    this.feedback,
+    this.canEditFeedback,
+    this.productId,
   }) : totalPrice = totalPrice ?? (unitPrice * quantity);
 
   factory ReservationOrderDetailModel.fromJson(Map<String, dynamic> json) {
@@ -121,6 +130,12 @@ class ReservationOrderDetailModel {
       note: json['note'],
       type: json['type'] ?? (combo != null ? 'COMBO' : 'ITEM'),
       imageUrl: item?['imageUrl'] ?? combo?['imageUrl'],
+      hasFeedback: json['hasFeedback'] == true,
+      feedback: json['feedback'] != null && json['feedback'] is Map
+          ? FeedbackModel.fromJson(Map<String, dynamic>.from(json['feedback']))
+          : null,
+      canEditFeedback: json['canEditFeedback'] == true,
+      productId: json['productId'] != null ? int.tryParse('${json['productId']}') : null,
     );
   }
 }
@@ -146,6 +161,9 @@ class ReservationModel {
   final String? guestPhone;
   final String? email;
   final int? orderId;
+  final bool hasGeneralFeedback;
+  final FeedbackModel? generalFeedback;
+  final bool? canEditGeneralFeedback;
   final List<CartItemModel> items;
   final List<ReservationOrderDetailModel> orderDetails;
   final DateTime? createdAt;
@@ -171,6 +189,9 @@ class ReservationModel {
     this.guestPhone,
     this.email,
     this.orderId,
+    this.hasGeneralFeedback = false,
+    this.generalFeedback,
+    this.canEditGeneralFeedback,
     this.items = const [],
     this.orderDetails = const [],
     this.createdAt,
@@ -285,6 +306,11 @@ class ReservationModel {
       guestPhone: json['phone'] ?? json['guestPhone'],
       email: json['email'],
       orderId: json['orderId'],
+      hasGeneralFeedback: json['hasGeneralFeedback'] == true,
+      generalFeedback: json['generalFeedback'] != null && json['generalFeedback'] is Map
+          ? FeedbackModel.fromJson(Map<String, dynamic>.from(json['generalFeedback']))
+          : null,
+      canEditGeneralFeedback: json['canEditGeneralFeedback'] == true,
       orderDetails: parsedDetails,
     );
   }

@@ -1,93 +1,125 @@
-import '../../core/config/api_config.dart';
+import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
-import '../mock/mock_data.dart';
 import '../models/feedback_model.dart';
 
 class FeedbackRepository {
   final ApiClient _client = ApiClient.instance;
 
-  Future<List<FeedbackModel>> getFeedbacksByItem(int itemId) async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-
-    try {
-      final response = await _client.dio.get(ApiEndpoints.feedbacksByItem(itemId));
-      if (response.statusCode == 200 && response.data != null) {
-        final list = (response.data['data'] as List?) ?? (response.data as List?);
-        if (list != null && list.isNotEmpty) {
-          return list.map((e) => FeedbackModel.fromJson(e)).toList();
-        }
-      }
-    } catch (e) {
-      if (!useMock) rethrow;
-    }
-
-    // Filter from MockData.feedbacks
-    final itemFeedbacks = MockData.feedbacks.where((f) => f.itemId == itemId).toList();
-    if (itemFeedbacks.isNotEmpty) {
-      return itemFeedbacks;
-    }
-    // Return sample feedbacks so the customer always sees reviews
-    return MockData.feedbacks;
-  }
-
+  /// Lấy danh sách tất cả đánh giá & phản hồi (sắp xếp mới nhất)
   Future<List<FeedbackModel>> getAllFeedbacks() async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-
     try {
       final response = await _client.dio.get(ApiEndpoints.feedbacks);
       if (response.statusCode == 200 && response.data != null) {
         final list = (response.data['data'] as List?) ?? (response.data as List?);
-        if (list != null && list.isNotEmpty) {
-          return list.map((e) => FeedbackModel.fromJson(e)).toList();
+        if (list != null) {
+          return list.map((e) => FeedbackModel.fromJson(Map<String, dynamic>.from(e))).toList();
         }
       }
     } catch (e) {
-      if (!useMock) rethrow;
+      rethrow;
     }
-
-    return List<FeedbackModel>.from(MockData.feedbacks);
+    return [];
   }
 
+  /// Lấy danh sách đánh giá của món ăn theo itemId
+  Future<List<FeedbackModel>> getFeedbacksByItem(int itemId) async {
+    try {
+      final response = await _client.dio.get(ApiEndpoints.feedbacksByItem(itemId));
+      if (response.statusCode == 200 && response.data != null) {
+        final list = (response.data['data'] as List?) ?? (response.data as List?);
+        if (list != null) {
+          return list.map((e) => FeedbackModel.fromJson(Map<String, dynamic>.from(e))).toList();
+        }
+      }
+    } catch (e) {
+      rethrow;
+    }
+    return [];
+  }
+
+  /// Lấy danh sách đánh giá của combo theo comboId
+  Future<List<FeedbackModel>> getFeedbacksByCombo(int comboId) async {
+    try {
+      final response = await _client.dio.get(ApiEndpoints.feedbacksByCombo(comboId));
+      if (response.statusCode == 200 && response.data != null) {
+        final list = (response.data['data'] as List?) ?? (response.data as List?);
+        if (list != null) {
+          return list.map((e) => FeedbackModel.fromJson(Map<String, dynamic>.from(e))).toList();
+        }
+      }
+    } catch (e) {
+      rethrow;
+    }
+    return [];
+  }
+
+  /// Gửi đánh giá mới (POST /api/feedbacks)
   Future<FeedbackModel> createFeedback({
     required int rating,
     required String comment,
     int? itemId,
     int? comboId,
     int? orderId,
-    String? authorName,
-    String? authorAvatar,
+    int? orderDetailId,
   }) async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-    final body = {
+    final body = <String, dynamic>{
       'rating': rating,
       'comment': comment,
       if (itemId != null) 'itemId': itemId,
       if (comboId != null) 'comboId': comboId,
       if (orderId != null) 'orderId': orderId,
+      if (orderDetailId != null) 'orderDetailId': orderDetailId,
     };
 
     try {
       final response = await _client.dio.post(ApiEndpoints.feedbacks, data: body);
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data['data'] ?? response.data;
-        return FeedbackModel.fromJson(data);
+        if (data is Map) {
+          return FeedbackModel.fromJson(Map<String, dynamic>.from(data));
+        }
       }
+      throw Exception('Không nhận được phản hồi hợp lệ từ máy chủ');
+    } on DioException catch (dioErr) {
+      final serverMessage = dioErr.response?.data?['message']?.toString();
+      if (serverMessage != null && serverMessage.isNotEmpty) {
+        throw Exception(serverMessage);
+      }
+      rethrow;
     } catch (e) {
-      if (!useMock) rethrow;
+      rethrow;
     }
+  }
 
-    // Mock fallback creation
-    final newFeedback = FeedbackModel(
-      id: DateTime.now().millisecondsSinceEpoch,
-      rating: rating,
-      comment: comment,
-      fullName: authorName ?? 'Thực khách CrownDine',
-      avatarUrl: authorAvatar ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
-      createdAt: 'Vừa xong',
-      itemId: itemId,
-    );
-    MockData.feedbacks.insert(0, newFeedback);
-    return newFeedback;
+  /// Cập nhật đánh giá trong vòng 24 giờ (PUT /api/feedbacks/{id})
+  Future<FeedbackModel> updateFeedback({
+    required int id,
+    required int rating,
+    required String comment,
+  }) async {
+    final body = {
+      'rating': rating,
+      'comment': comment,
+    };
+
+    try {
+      final response = await _client.dio.put('${ApiEndpoints.feedbacks}/$id', data: body);
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        if (data is Map) {
+          return FeedbackModel.fromJson(Map<String, dynamic>.from(data));
+        }
+      }
+      throw Exception('Không nhận được phản hồi hợp lệ từ máy chủ');
+    } on DioException catch (dioErr) {
+      final serverMessage = dioErr.response?.data?['message']?.toString();
+      if (serverMessage != null && serverMessage.isNotEmpty) {
+        throw Exception(serverMessage);
+      }
+      rethrow;
+    } catch (e) {
+      rethrow;
+    }
   }
 }
