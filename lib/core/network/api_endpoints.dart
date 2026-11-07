@@ -57,6 +57,10 @@ class ApiEndpoints {
   static const String vouchers = 'vouchers';
   static const String userVouchers = 'user-vouchers';
 
+  // Admin payments
+  static const String payments = 'payments';
+  static String paymentById(int id) => 'payments/$id';
+
   // Feedbacks
   static const String feedbacks = 'feedbacks';
   static String feedbacksByItem(int itemId) => 'feedbacks/items/$itemId';
