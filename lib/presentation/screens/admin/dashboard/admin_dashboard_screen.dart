@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/models/dashboard_model.dart';
 import '../../../../providers/dashboard_provider.dart';
+import '../payment/admin_payment_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -38,6 +39,14 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             children: [
               // Top Brand Header & Controls
               _buildTopHeader(isDark, dashboardState, notifier),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const AdminPaymentScreen(),
+                )),
+                icon: const Icon(Icons.receipt_long_outlined),
+                label: const Text('Quản lý giao dịch'),
+              ),
               const SizedBox(height: 16),
 
               if (dashboardState.isLoading && data == null)
