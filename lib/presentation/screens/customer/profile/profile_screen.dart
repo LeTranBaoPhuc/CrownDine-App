@@ -10,6 +10,7 @@ import '../customer_main_screen.dart';
 import 'change_password_dialog.dart';
 import 'edit_profile_screen.dart';
 import 'reservation_history_screen.dart';
+import 'reward_points_screen.dart';
 import 'voucher_wallet_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -42,7 +43,7 @@ class ProfileScreen extends ConsumerWidget {
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.04),
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -59,7 +60,7 @@ class ProfileScreen extends ConsumerWidget {
                       errorBuilder: (context, error, stackTrace) => Container(
                         width: 72,
                         height: 72,
-                        color: AppColors.primary.withOpacity(0.15),
+                        color: AppColors.primary.withValues(alpha: 0.15),
                         child: const Icon(Icons.person, size: 40, color: AppColors.primary),
                       ),
                     ),
@@ -112,7 +113,7 @@ class ProfileScreen extends ConsumerWidget {
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.gold.withOpacity(0.4)),
+                border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -136,9 +137,8 @@ class ProfileScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   ElevatedButton(
                     onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Đổi điểm ưu đãi sắp ra mắt!')),
-                      );
+                      Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                          user == null ? const LoginScreen() : const RewardPointsScreen()));
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.gold,
@@ -146,7 +146,7 @@ class ProfileScreen extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                     ),
-                    child: const Text('Đổi quà', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    child: Text(user == null ? 'Đăng nhập' : 'Xem điểm', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   ),
                 ],
               ),
@@ -285,7 +285,7 @@ class ProfileScreen extends ConsumerWidget {
         leading: Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: (iconColor ?? AppColors.primary).withOpacity(0.12),
+            color: (iconColor ?? AppColors.primary).withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(icon, color: iconColor ?? AppColors.primary, size: 20),

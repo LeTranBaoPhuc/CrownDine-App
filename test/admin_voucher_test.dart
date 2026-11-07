@@ -51,7 +51,8 @@ void main() {
         discountValue: 20,
         maxDiscountValue: 100000,
         minValue: 200000,
-        description: 'Ưu đãi');
+        description: 'Ưu đãi',
+        pointsRequired: 50);
     await repo.create(draft);
     await repo.update(4, draft);
     await repo.delete(4);
@@ -63,6 +64,7 @@ void main() {
       'DELETE vouchers/4'
     ]);
     expect(calls[2].data, containsPair('code', 'SAVE20'));
+    expect(calls[2].data, containsPair('pointsRequired', 50));
   });
 
   test('malformed voucher response does not become an empty success', () async {
