@@ -41,6 +41,11 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
         }
 
         if (order.getStatus().isFinal()) throw new com.crowndine.exception.InvalidDataException("Không thể thanh toán đơn đã hủy");
+        for (var detail : order.getOrderDetails()) {
+            if (detail.getStatus() != com.crowndine.common.enums.EOrderDetailStatus.CANCELLED) {
+                detail.setStatus(com.crowndine.common.enums.EOrderDetailStatus.SERVED);
+            }
+        }
         orderStatusService.transitionOrderStatus(order, EOrderStatus.COMPLETED);
         if (order.getReservation() != null) {
             order.getReservation().setStatus(com.crowndine.common.enums.EReservationStatus.COMPLETED);

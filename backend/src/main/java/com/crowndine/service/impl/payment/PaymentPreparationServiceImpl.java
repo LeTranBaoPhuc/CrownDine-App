@@ -209,6 +209,14 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
     }
 
     private void validateOrderForPayment(Order order) {
+        if (order.getOrderDetails().stream().anyMatch(d -> d.getStatus() == EOrderDetailStatus.PENDING || d.getStatus() == EOrderDetailStatus.COOKING)) {
+            throw new InvalidDataException("Hãy phục vụ xong các món trước khi tất toán đơn");
+        }
+        for (OrderDetail detail : order.getOrderDetails()) {
+            if (detail.getStatus() == EOrderDetailStatus.READY) {
+                detail.setStatus(EOrderDetailStatus.SERVED);
+            }
+        }
         if (order.getOrderDetails().stream().anyMatch(d -> d.getStatus() != EOrderDetailStatus.SERVED && d.getStatus() != EOrderDetailStatus.CANCELLED)) {
             throw new InvalidDataException("Hãy phục vụ xong các món trước khi tất toán đơn");
         }

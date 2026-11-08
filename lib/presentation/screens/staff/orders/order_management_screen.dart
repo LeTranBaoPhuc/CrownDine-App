@@ -157,29 +157,76 @@ class OrderManagementScreen extends ConsumerWidget {
                                                   const TextStyle(fontSize: 13),
                                             ),
                                           ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: d.status ==
-                                                      DishCookingStatus.ready
-                                                  ? AppColors.successContainer
-                                                  : AppColors.primary
-                                                      .withOpacity(0.1),
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              d.status.displayName,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: d.status ==
-                                                        DishCookingStatus.ready
-                                                    ? AppColors.success
-                                                    : AppColors.primary,
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: d.status == DishCookingStatus.ready
+                                                      ? AppColors.successContainer
+                                                      : d.status == DishCookingStatus.served
+                                                          ? const Color(0xFFDCFCE7)
+                                                          : AppColors.primary.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  d.status.displayName,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: d.status == DishCookingStatus.ready
+                                                        ? AppColors.success
+                                                        : d.status == DishCookingStatus.served
+                                                            ? const Color(0xFF16A34A)
+                                                            : AppColors.primary,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              if (d.status == DishCookingStatus.ready) ...[
+                                                const SizedBox(width: 6),
+                                                InkWell(
+                                                  onTap: () async {
+                                                    await ref
+                                                        .read(orderProvider.notifier)
+                                                        .advanceCookingStatus(order.id, d.id, DishCookingStatus.served);
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('Đã phục vụ món ${d.itemName} lên bàn!'),
+                                                          backgroundColor: AppColors.success,
+                                                          duration: const Duration(seconds: 1),
+                                                        ),
+                                                      );
+                                                    }
+                                                  },
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary,
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(Icons.check, size: 12, color: Colors.white),
+                                                        SizedBox(width: 3),
+                                                        Text(
+                                                          'Phục vụ',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ],
                                       ),
