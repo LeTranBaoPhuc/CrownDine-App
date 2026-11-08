@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/auth_provider.dart';
+import '../../../../providers/notification_provider.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import '../../auth/login_screen.dart';
@@ -13,6 +14,7 @@ import 'reservation_history_screen.dart';
 import 'reward_points_screen.dart';
 import 'voucher_wallet_sheet.dart';
 import '../favorite/favorites_screen.dart';
+import '../notification/notification_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -21,6 +23,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final notifState = ref.watch(notificationProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -194,6 +197,34 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   const Divider(height: 1),
                   _buildListTile(
+                    icon: Icons.notifications_none_rounded,
+                    title: 'Thông báo hệ thống',
+                    subtitle: 'Cập nhật lịch đặt bàn, voucher & ưu đãi',
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (notifState.unreadCount > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${notifState.unreadCount}',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen()));
+                    },
+                  ),
+                  const Divider(height: 1),
+                  _buildListTile(
                     icon: Icons.history,
                     title: 'Lịch sử đặt bàn',
                     subtitle: 'Xem lại các lần đặt bàn trước đây',
@@ -287,6 +318,7 @@ class ProfileScreen extends ConsumerWidget {
     required String title,
     required String subtitle,
     Color? iconColor,
+    Widget? trailing,
     required VoidCallback onTap,
   }) {
     return Material(
@@ -302,7 +334,7 @@ class ProfileScreen extends ConsumerWidget {
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
         subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-        trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+        trailing: trailing ?? const Icon(Icons.chevron_right, color: AppColors.textMuted),
         onTap: onTap,
       ),
     );

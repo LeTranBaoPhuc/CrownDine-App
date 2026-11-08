@@ -5,11 +5,13 @@ import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/favorite_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../screens/admin/feedback/admin_feedback_screen.dart';
 import '../screens/customer/customer_main_screen.dart';
 import '../screens/customer/favorite/favorites_screen.dart';
 import '../screens/customer/feedback/customer_reviews_screen.dart';
+import '../screens/customer/notification/notification_screen.dart';
 import '../screens/settings/server_config_screen.dart';
 
 class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
@@ -35,6 +37,8 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final cartState = ref.watch(cartProvider);
     final favState = ref.watch(favoriteProvider);
     final favCount = favState.totalCount;
+    final notifState = ref.watch(notificationProvider);
+    final unreadNotifCount = notifState.unreadCount;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -265,6 +269,54 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
                 ),
             ],
           ),
+
+          // Notification Bell with Unread Badge
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: Icon(
+                  unreadNotifCount > 0
+                      ? Icons.notifications_active_rounded
+                      : Icons.notifications_none_rounded,
+                  size: 22,
+                  color: unreadNotifCount > 0 ? AppColors.gold : (isDark ? Colors.white70 : AppColors.textPrimary),
+                ),
+                tooltip: 'Thông báo hệ thống',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const NotificationScreen()),
+                  );
+                },
+              ),
+              if (unreadNotifCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Center(
+                      child: Text(
+                        unreadNotifCount > 99 ? '99+' : '$unreadNotifCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
 
         // Server Config Options Menu (Hidden neatly in a 3-dots popup to prevent visual clutter)
@@ -283,6 +335,10 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
             } else if (val == 'favorites') {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+              );
+            } else if (val == 'notifications') {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationScreen()),
               );
             } else if (val == 'cart') {
               _showCartSheet(context, ref);
@@ -310,6 +366,19 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   Text(
                     'Món & Combo yêu thích',
                     style: TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            PopupMenuItem(
+              value: 'notifications',
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_outlined, size: 18, color: AppColors.gold),
+                  const SizedBox(width: 10),
+                  Text(
+                    unreadNotifCount > 0 ? 'Thông báo ($unreadNotifCount)' : 'Thông báo hệ thống',
+                    style: const TextStyle(fontSize: 13),
                   ),
                 ],
               ),

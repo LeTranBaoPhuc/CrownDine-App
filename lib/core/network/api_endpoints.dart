@@ -73,6 +73,11 @@ class ApiEndpoints {
   static String checkFavoriteItem(int itemId) => 'favorites/items/$itemId/check';
   static String checkFavoriteCombo(int comboId) => 'favorites/combos/$comboId/check';
 
+  // Notifications
+  static const String notifications = 'notifications';
+  static const String notificationUnreadCount = 'notifications/unread-count';
+  static String notificationMarkAsRead(int id) => 'notifications/$id/read';
+
   // Work Schedules & Shifts
   static const String workSchedules = 'work-schedules';
   static const String workSchedulesCreate = 'work-schedules/create';
