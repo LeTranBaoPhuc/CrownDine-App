@@ -48,12 +48,15 @@ class ApiEndpoints {
 
   // Tables & Layout
   static const String layoutFloors = 'layout/floors';
-  static const String layoutTables = 'layout/tables';
+  static const String layoutTables = 'restaurant-tables';
+  static const String restaurantTables = 'restaurant-tables';
   static const String layoutSummary = 'layout';
 
   // Orders
   static const String orders = 'orders';
+  static const String ordersKitchen = 'orders/kitchen';
   static const String orderDetails = 'order-details';
+  static String orderDetailStatus(int id) => 'order-details/$id/status';
 
   // Vouchers
   static const String vouchers = 'vouchers';

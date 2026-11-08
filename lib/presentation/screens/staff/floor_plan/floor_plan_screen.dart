@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../data/mock/mock_data.dart';
 import '../../../../data/models/table_model.dart';
+import '../../../../providers/menu_provider.dart';
 import '../../../../providers/order_provider.dart';
 import '../../../../providers/table_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
@@ -330,44 +331,66 @@ class FloorPlanScreen extends ConsumerWidget {
               ),
               const Text('Chọn món ăn hoặc đồ uống cần thêm. Món sẽ chuyển trực tiếp vào Bếp KDS.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const Divider(height: 20),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: MockData.items.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
-                  itemBuilder: (ctx, idx) {
-                    final item = MockData.items[idx];
-                    return Material(
-                      color: Colors.transparent,
-                      child: ListTile(
-                        contentPadding: EdgeInsets.zero,
-                    leading: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        item.imageUrl,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(width: 48, height: 48, color: AppColors.lightSurface, child: const Icon(Icons.restaurant, color: AppColors.primary)),
-                      ),
-                    ),
-                    title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    subtitle: Text(CurrencyFormatter.format(item.displayPrice), style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600)),
-                    trailing: ElevatedButton(
-                      onPressed: () {
-                        ref.read(orderProvider.notifier).addDishToTable(table.name, item, 1, 'Gọi thêm tại bàn');
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Đã thêm 1x ${item.name} cho ${table.name}! Bếp đã nhận vé.'), backgroundColor: AppColors.success),
+              Builder(
+                builder: (context) {
+                  final menuState = ref.watch(menuProvider);
+                  final availableItems = menuState.allItems.isNotEmpty ? menuState.allItems : MockData.items;
+
+                  return Expanded(
+                    child: ListView.separated(
+                      itemCount: availableItems.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (ctx, idx) {
+                        final item = availableItems[idx];
+                        return Material(
+                          color: Colors.transparent,
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                item.imageUrl,
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 48,
+                                  height: 48,
+                                  color: AppColors.lightSurface,
+                                  child: const Icon(Icons.restaurant, color: AppColors.primary),
+                                ),
+                              ),
+                            ),
+                            title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            subtitle: Text(
+                              CurrencyFormatter.format(item.displayPrice),
+                              style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                            trailing: ElevatedButton(
+                              onPressed: () {
+                                ref.read(orderProvider.notifier).addDishToTable(table.name, item, 1, 'Gọi thêm tại bàn');
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Đã thêm 1x ${item.name} cho ${table.name}! Bếp đã nhận vé.'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                              child: const Text('Thêm món', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
                         );
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                      child: const Text('Thêm món', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
-                  ),
+                  );
+                },
+              ),
                 );
               },
             ),

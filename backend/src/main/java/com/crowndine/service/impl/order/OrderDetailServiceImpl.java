@@ -76,25 +76,32 @@ public class OrderDetailServiceImpl implements OrderDetailService {
             throw new InvalidDataException("Đơn hàng đã kết thúc, không thể chỉnh sửa.");
         }
 
+        if (request.getQuantity() != null) {
+            if (orderDetail.getStatus().equals(EOrderDetailStatus.COOKING) ||
+                    orderDetail.getStatus().equals(EOrderDetailStatus.READY) ||
+                    orderDetail.getStatus().equals(EOrderDetailStatus.SERVED)) {
+                throw new InvalidDataException("Món ăn đã được chế biến hoặc phục vụ, không thể thay đổi số lượng.");
+            }
 
-        if (orderDetail.getStatus().equals(EOrderDetailStatus.COOKING) ||
-                orderDetail.getStatus().equals(EOrderDetailStatus.SERVED)) {
-            throw new InvalidDataException("Món ăn đã được chế biến hoặc phục vụ, không thể thay đổi số lượng.");
+            BigDecimal oldOrderDetailTotalPrice = orderDetail.getTotalPrice();
+            orderDetail.setQuantity(request.getQuantity());
+            orderDetail.calculateAndSetTotalPrice();
+
+            BigDecimal oldTotalPrice = order.getTotalPrice();
+            BigDecimal newOrderDetailTotalPrice = orderDetail.getTotalPrice();
+
+            //HĐ MỚI = HĐ CŨ + (DETAIL MỚI - DETAIL CŨ)
+            BigDecimal newOrderTotalPrice = oldTotalPrice.add(newOrderDetailTotalPrice.subtract(oldOrderDetailTotalPrice));
+            order.setTotalPrice(newOrderTotalPrice);
         }
 
-        BigDecimal oldOrderDetailTotalPrice = orderDetail.getTotalPrice();
+        if (request.getNote() != null) {
+            orderDetail.setNote(request.getNote());
+        }
 
-        orderDetail.setNote(request.getNote());
-        orderDetail.setQuantity(request.getQuantity());
-        orderDetail.calculateAndSetTotalPrice();
-
-        BigDecimal oldTotalPrice = order.getTotalPrice();
-        BigDecimal newOrderDetailTotalPrice = orderDetail.getTotalPrice();
-
-        //HĐ MỚI = HĐ CŨ + (DETAIL MỚI - DETAIL CŨ)
-        BigDecimal newOrderTotalPrice = oldTotalPrice.add(newOrderDetailTotalPrice.subtract(oldOrderDetailTotalPrice));
-
-        order.setTotalPrice(newOrderTotalPrice);
+        if (request.getStatus() != null) {
+            orderDetail.setStatus(request.getStatus());
+        }
 
         orderDetailRepository.save(orderDetail);
         log.info("Updated successfully order detail for order {}", order.getId());
@@ -107,6 +114,7 @@ public class OrderDetailServiceImpl implements OrderDetailService {
         Order order = detail.getOrder();
 
         if (detail.getStatus().equals(EOrderDetailStatus.COOKING) ||
+                detail.getStatus().equals(EOrderDetailStatus.READY) ||
                 detail.getStatus().equals(EOrderDetailStatus.SERVED) ||
                 detail.getStatus().equals(EOrderDetailStatus.CANCELLED)) {
             throw new InvalidDataException("Không thể xóa món khi đơn hàng đang ở trạng thái này.");

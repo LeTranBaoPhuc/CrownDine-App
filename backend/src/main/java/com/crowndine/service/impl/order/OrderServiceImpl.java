@@ -294,7 +294,7 @@ public class OrderServiceImpl implements OrderService {
                 .filter(o -> {
                     if (o.getStatus() == EOrderStatus.COMPLETED) {
                         return o.getOrderDetails().stream()
-                                .anyMatch(d -> d.getStatus() == EOrderDetailStatus.PENDING || d.getStatus() == EOrderDetailStatus.COOKING);
+                                .anyMatch(d -> d.getStatus() == EOrderDetailStatus.PENDING || d.getStatus() == EOrderDetailStatus.COOKING || d.getStatus() == EOrderDetailStatus.READY);
                     }
                     return true;
                 })

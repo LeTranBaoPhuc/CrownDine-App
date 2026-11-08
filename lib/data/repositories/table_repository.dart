@@ -29,15 +29,16 @@ class TableRepository {
     final useMock = await ApiConfig.isMockFallbackEnabled();
 
     try {
-      final response = await _client.dio.get(
-        ApiEndpoints.layoutTables,
-        queryParameters: floorId != null ? {'floorId': floorId} : null,
-      );
+      final response = await _client.dio.get(ApiEndpoints.restaurantTables);
 
       if (response.statusCode == 200 && response.data != null) {
         final list = (response.data['data'] as List?) ?? (response.data as List?);
         if (list != null && list.isNotEmpty) {
-          return list.map((e) => TableModel.fromJson(e)).toList();
+          var tables = list.map((e) => TableModel.fromJson(Map<String, dynamic>.from(e))).toList();
+          if (floorId != null) {
+            tables = tables.where((t) => t.floorId == floorId).toList();
+          }
+          return tables;
         }
       }
     } catch (e) {

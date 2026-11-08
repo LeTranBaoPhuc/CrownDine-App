@@ -11,13 +11,28 @@ class OrderRepository {
     final useMock = await ApiConfig.isMockFallbackEnabled();
 
     try {
-      final response = await _client.dio.get(ApiEndpoints.orders);
-      if (response.statusCode == 200 && response.data != null) {
-        final pageData = response.data['data'] ?? response.data;
-        final list = (pageData['items'] as List?) ?? (pageData['content'] as List?) ?? (pageData as List?);
-        if (list != null && list.isNotEmpty) {
-          return list.map((e) => OrderModel.fromJson(e)).toList();
+      dynamic responseData;
+      try {
+        final res = await _client.dio.get(ApiEndpoints.ordersKitchen);
+        if (res.statusCode == 200 && res.data != null) {
+          responseData = res.data['data'] ?? res.data;
         }
+      } catch (_) {}
+
+      if (responseData == null) {
+        final res = await _client.dio.get(ApiEndpoints.orders);
+        if (res.statusCode == 200 && res.data != null) {
+          final pageData = res.data['data'] ?? res.data;
+          responseData = (pageData is Map)
+              ? (pageData['items'] ?? pageData['content'])
+              : pageData;
+        }
+      }
+
+      if (responseData is List && responseData.isNotEmpty) {
+        return responseData
+            .map((e) => OrderModel.fromJson(Map<String, dynamic>.from(e)))
+            .toList();
       }
     } catch (e) {
       if (!useMock) rethrow;
@@ -28,11 +43,13 @@ class OrderRepository {
 
   Future<void> updateDishCookingStatus(int orderId, int detailId, DishCookingStatus status) async {
     final useMock = await ApiConfig.isMockFallbackEnabled();
+    final statusStr = status == DishCookingStatus.ready ? 'READY' : status.name.toUpperCase();
 
     try {
       await _client.dio.patch(
-        'order-details/$detailId/upd',
-        data: {'status': status.name.toUpperCase()},
+        ApiEndpoints.orderDetailStatus(detailId),
+        data: {'status': statusStr},
+        queryParameters: {'status': statusStr},
       );
     } catch (e) {
       if (!useMock) rethrow;
