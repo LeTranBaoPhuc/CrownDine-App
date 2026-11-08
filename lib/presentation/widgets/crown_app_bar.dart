@@ -4,9 +4,11 @@ import '../../core/theme/app_colors.dart';
 import '../../data/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/favorite_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../screens/admin/feedback/admin_feedback_screen.dart';
 import '../screens/customer/customer_main_screen.dart';
+import '../screens/customer/favorite/favorites_screen.dart';
 import '../screens/customer/feedback/customer_reviews_screen.dart';
 import '../screens/settings/server_config_screen.dart';
 
@@ -31,6 +33,8 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final cartState = ref.watch(cartProvider);
+    final favState = ref.watch(favoriteProvider);
+    final favCount = favState.totalCount;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -215,19 +219,25 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
           },
         ),
 
-        // Cart Icon with Notification Badge
+        // Favorites Icon with Notification Badge (Chuyển đổi từ icon cũ sang mục Món yêu thích)
         if (showCart && !authState.isStaff) ...[
           Stack(
             alignment: Alignment.center,
             children: [
               IconButton(
-                icon: const Icon(Icons.shopping_bag_outlined, size: 22),
-                tooltip: 'Giỏ món ăn',
+                icon: Icon(
+                  favCount > 0 ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                  size: 22,
+                  color: favCount > 0 ? const Color(0xFFEF4444) : (isDark ? Colors.white70 : AppColors.textPrimary),
+                ),
+                tooltip: 'Món & Combo yêu thích',
                 onPressed: () {
-                  _showCartSheet(context, ref);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+                  );
                 },
               ),
-              if (cartState.totalItemCount > 0)
+              if (favCount > 0)
                 Positioned(
                   top: 8,
                   right: 8,
@@ -243,7 +253,7 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
                     ),
                     child: Center(
                       child: Text(
-                        '${cartState.totalItemCount}',
+                        favCount > 99 ? '99+' : '$favCount',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 9,
@@ -270,6 +280,12 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const ServerConfigScreen()),
               );
+            } else if (val == 'favorites') {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const FavoritesScreen()),
+              );
+            } else if (val == 'cart') {
+              _showCartSheet(context, ref);
             } else if (val == 'feedback') {
               final isStaffOrAdmin =
                   authState.user?.role == UserRole.admin || authState.user?.role == UserRole.staff;
@@ -285,6 +301,30 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
             }
           },
           itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'favorites',
+              child: Row(
+                children: [
+                  Icon(Icons.favorite_rounded, size: 18, color: Colors.redAccent),
+                  SizedBox(width: 10),
+                  Text(
+                    'Món & Combo yêu thích',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+            if (cartState.totalItemCount > 0)
+              const PopupMenuItem(
+                value: 'cart',
+                child: Row(
+                  children: [
+                    Icon(Icons.shopping_bag_outlined, size: 18),
+                    SizedBox(width: 10),
+                    Text('Giỏ gọi món nhanh', style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
             PopupMenuItem(
               value: 'feedback',
               child: Row(

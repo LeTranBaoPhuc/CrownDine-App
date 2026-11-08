@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/currency_formatter.dart';
 import '../../data/models/item_model.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/favorite_provider.dart';
+import '../screens/auth/login_screen.dart';
 
-class FoodCard extends StatelessWidget {
+class FoodCard extends ConsumerWidget {
   final ItemModel item;
   final VoidCallback? onTap;
   final VoidCallback? onAddToCart;
@@ -16,9 +20,10 @@ class FoodCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isFav = ref.watch(favoriteProvider).favoriteItemIds.contains(item.id);
 
     return GestureDetector(
       onTap: onTap,
@@ -164,7 +169,7 @@ class FoodCard extends StatelessWidget {
                       ],
                     ),
 
-                    // Price & Add to Cart
+                    // Price & Favorite Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
@@ -192,14 +197,50 @@ class FoodCard extends StatelessWidget {
                           ],
                         ),
                         Material(
-                          color: AppColors.primary,
+                          color: isFav ? const Color(0xFFE11D48) : AppColors.primary,
                           borderRadius: BorderRadius.circular(10),
                           child: InkWell(
-                            onTap: onAddToCart,
+                            onTap: () async {
+                              final authState = ref.read(authProvider);
+                              if (!authState.isAuthenticated) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: const Text('Vui lòng đăng nhập để lưu món yêu thích'),
+                                    action: SnackBarAction(
+                                      label: 'Đăng nhập',
+                                      textColor: AppColors.gold,
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
+                              await ref.read(favoriteProvider.notifier).toggleItemFavorite(
+                                    itemId: item.id,
+                                    name: item.name,
+                                    imageUrl: item.imageUrl,
+                                    price: item.displayPrice,
+                                  );
+                            },
                             borderRadius: BorderRadius.circular(10),
-                            child: const Padding(
-                              padding: EdgeInsets.all(8),
-                              child: Icon(Icons.add, color: Colors.white, size: 18),
+                            child: Tooltip(
+                              message: isFav ? 'Bỏ yêu thích' : 'Yêu thích món ăn',
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                    key: ValueKey<bool>(isFav),
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ),
                             ),
                           ),
                         ),

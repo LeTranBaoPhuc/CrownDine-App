@@ -4,10 +4,12 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/utils/image_utils.dart';
 import '../../../../data/models/item_model.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../../providers/cart_provider.dart';
+import '../../../../providers/favorite_provider.dart';
 import '../../../../providers/feedback_provider.dart';
-import '../../../widgets/user_avatar.dart';
 import '../../../widgets/write_feedback_sheet.dart';
+import '../../auth/login_screen.dart';
 
 class MenuDetailSheet extends ConsumerStatefulWidget {
   final ItemModel item;
@@ -100,6 +102,58 @@ class _MenuDetailSheetState extends ConsumerState<MenuDetailSheet> {
                               ),
                             ),
                           ),
+
+                        // Favorite Heart Button
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Consumer(
+                            builder: (context, ref, _) {
+                              final isFav = ref.watch(favoriteProvider).favoriteItemIds.contains(item.id);
+                              return Material(
+                                color: Colors.black.withOpacity(0.55),
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: () async {
+                                    final authState = ref.read(authProvider);
+                                    if (!authState.isAuthenticated) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: const Text('Vui lòng đăng nhập để lưu món yêu thích'),
+                                          action: SnackBarAction(
+                                            label: 'Đăng nhập',
+                                            textColor: AppColors.gold,
+                                            onPressed: () {
+                                              Navigator.of(context).push(
+                                                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                      return;
+                                    }
+                                    await ref.read(favoriteProvider.notifier).toggleItemFavorite(
+                                          itemId: item.id,
+                                          name: item.name,
+                                          imageUrl: item.imageUrl,
+                                          price: item.displayPrice,
+                                        );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Icon(
+                                      isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                      color: isFav ? const Color(0xFFEF4444) : Colors.white,
+                                      size: 22,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   ),

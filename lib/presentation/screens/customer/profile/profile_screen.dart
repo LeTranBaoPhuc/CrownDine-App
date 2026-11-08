@@ -12,6 +12,7 @@ import 'edit_profile_screen.dart';
 import 'reservation_history_screen.dart';
 import 'reward_points_screen.dart';
 import 'voucher_wallet_sheet.dart';
+import '../favorite/favorites_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -183,6 +184,15 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                     const Divider(height: 1),
                   ],
+                  _buildListTile(
+                    icon: Icons.favorite_outline_rounded,
+                    title: 'Món ăn & Combo yêu thích',
+                    subtitle: 'Danh sách món ăn bạn đã lưu',
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()));
+                    },
+                  ),
+                  const Divider(height: 1),
                   _buildListTile(
                     icon: Icons.history,
                     title: 'Lịch sử đặt bàn',
