@@ -10,12 +10,61 @@ class Step1DateTimeView extends ConsumerWidget {
   static const List<String> lunchSlots = ['11:00', '11:30', '12:00', '12:30', '13:00', '13:30'];
   static const List<String> dinnerSlots = ['17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00'];
 
+  static bool isSlotPast(DateTime date, String timeStr) {
+    if (timeStr.isEmpty) return true;
+    final now = DateTime.now();
+    final isBeforeToday = DateTime(date.year, date.month, date.day)
+        .isBefore(DateTime(now.year, now.month, now.day));
+    if (isBeforeToday) return true;
+
+    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+    if (!isToday) return false;
+
+    final parts = timeStr.split(':');
+    if (parts.length != 2) return false;
+    final hour = int.tryParse(parts[0]) ?? 0;
+    final minute = int.tryParse(parts[1]) ?? 0;
+    final slotTime = DateTime(now.year, now.month, now.day, hour, minute);
+    return slotTime.isBefore(now);
+  }
+
+  void _onDateSelected(WidgetRef ref, DateTime pickedDate, String currentTime) {
+    final notifier = ref.read(reservationProvider.notifier);
+    final allSlots = [...lunchSlots, ...dinnerSlots];
+
+    if (isSlotPast(pickedDate, currentTime)) {
+      final nextValid = allSlots.firstWhere(
+        (slot) => !isSlotPast(pickedDate, slot),
+        orElse: () => '',
+      );
+      notifier.setDateTime(date: pickedDate, time: nextValid.isNotEmpty ? nextValid : '');
+    } else {
+      notifier.setDateTime(date: pickedDate);
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(reservationProvider);
     final notifier = ref.read(reservationProvider.notifier);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    final allLunchPast = lunchSlots.every((t) => isSlotPast(state.selectedDate, t));
+    final allDinnerPast = dinnerSlots.every((t) => isSlotPast(state.selectedDate, t));
+    final allDayPast = allLunchPast && allDinnerPast;
+
+    final isCurrentTimePast = isSlotPast(state.selectedDate, state.selectedTime);
+    if (isCurrentTimePast && state.selectedTime.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final allSlots = [...lunchSlots, ...dinnerSlots];
+        final nextValid = allSlots.firstWhere(
+          (slot) => !isSlotPast(state.selectedDate, slot),
+          orElse: () => '',
+        );
+        notifier.setDateTime(time: nextValid);
+      });
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -50,7 +99,7 @@ class Step1DateTimeView extends ConsumerWidget {
                     lastDate: DateTime.now().add(const Duration(days: 90)),
                   );
                   if (picked != null) {
-                    notifier.setDateTime(date: picked);
+                    _onDateSelected(ref, picked, state.selectedTime);
                   }
                 },
               ),
@@ -68,7 +117,7 @@ class Step1DateTimeView extends ConsumerWidget {
                 child: Padding(
                   padding: EdgeInsets.only(right: index < 3 ? 8 : 0),
                   child: InkWell(
-                    onTap: () => notifier.setDateTime(date: date),
+                    onTap: () => _onDateSelected(ref, date, state.selectedTime),
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -171,12 +220,47 @@ class Step1DateTimeView extends ConsumerWidget {
           const Text('3. Chọn khung giờ', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
 
+          if (allDayPast) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.shade700.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, color: Colors.amber.shade800, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Các khung giờ trong ngày đã qua. Vui lòng chọn ngày tiếp theo để đặt bàn.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.amber.shade300 : Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
           // Lunch
-          const Row(
+          Row(
             children: [
-              Icon(Icons.wb_sunny_outlined, size: 16, color: AppColors.gold),
-              SizedBox(width: 6),
-              Text('Bữa Trưa (11:00 - 14:00)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const Icon(Icons.wb_sunny_outlined, size: 16, color: AppColors.gold),
+              const SizedBox(width: 6),
+              const Text('Bữa Trưa (11:00 - 14:00)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              if (allLunchPast) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '(Đã qua)',
+                  style: TextStyle(fontSize: 11, color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 8),
@@ -184,27 +268,43 @@ class Step1DateTimeView extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: lunchSlots.map((time) {
-              final isSelected = state.selectedTime == time;
+              final isPast = isSlotPast(state.selectedDate, time);
+              final isSelected = !isPast && state.selectedTime == time;
               return ChoiceChip(
-                label: Text(time),
+                label: Text(
+                  time,
+                  style: TextStyle(
+                    color: isPast
+                        ? (isDark ? Colors.white24 : Colors.black26)
+                        : isSelected
+                            ? Colors.white
+                            : (isDark ? AppColors.textLight : AppColors.textPrimary),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    decoration: isPast ? TextDecoration.lineThrough : null,
+                  ),
+                ),
                 selected: isSelected,
                 selectedColor: AppColors.primary,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : (isDark ? AppColors.textLight : AppColors.textPrimary),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                ),
-                onSelected: (_) => notifier.setDateTime(time: time),
+                disabledColor: isDark ? const Color(0xFF231E1A) : const Color(0xFFF1F5F9),
+                onSelected: isPast ? null : (_) => notifier.setDateTime(time: time),
               );
             }).toList(),
           ),
           const SizedBox(height: 16),
 
           // Dinner
-          const Row(
+          Row(
             children: [
-              Icon(Icons.nights_stay_outlined, size: 16, color: AppColors.primary),
-              SizedBox(width: 6),
-              Text('Bữa Tối (17:30 - 22:00)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              const Icon(Icons.nights_stay_outlined, size: 16, color: AppColors.primary),
+              const SizedBox(width: 6),
+              const Text('Bữa Tối (17:30 - 22:00)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+              if (allDinnerPast) ...[
+                const SizedBox(width: 8),
+                Text(
+                  '(Đã qua)',
+                  style: TextStyle(fontSize: 11, color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 8),
@@ -212,16 +312,25 @@ class Step1DateTimeView extends ConsumerWidget {
             spacing: 8,
             runSpacing: 8,
             children: dinnerSlots.map((time) {
-              final isSelected = state.selectedTime == time;
+              final isPast = isSlotPast(state.selectedDate, time);
+              final isSelected = !isPast && state.selectedTime == time;
               return ChoiceChip(
-                label: Text(time),
+                label: Text(
+                  time,
+                  style: TextStyle(
+                    color: isPast
+                        ? (isDark ? Colors.white24 : Colors.black26)
+                        : isSelected
+                            ? Colors.white
+                            : (isDark ? AppColors.textLight : AppColors.textPrimary),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    decoration: isPast ? TextDecoration.lineThrough : null,
+                  ),
+                ),
                 selected: isSelected,
                 selectedColor: AppColors.primary,
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : (isDark ? AppColors.textLight : AppColors.textPrimary),
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                ),
-                onSelected: (_) => notifier.setDateTime(time: time),
+                disabledColor: isDark ? const Color(0xFF231E1A) : const Color(0xFFF1F5F9),
+                onSelected: isPast ? null : (_) => notifier.setDateTime(time: time),
               );
             }).toList(),
           ),
