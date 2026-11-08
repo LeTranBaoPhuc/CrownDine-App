@@ -30,6 +30,8 @@ class ApiEndpoints {
   // Items & Categories
   static const String items = 'items';
   static const String itemsList = 'items/list';
+  static String itemById(int id) => 'items/$id';
+  static String itemStatus(int id) => 'items/$id/status';
   static const String categories = 'categories';
   static const String combos = 'combos';
 

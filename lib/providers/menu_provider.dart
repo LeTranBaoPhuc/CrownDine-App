@@ -257,6 +257,103 @@ class MenuNotifier extends StateNotifier<MenuState> {
       onlyDiscount: false,
     );
   }
+
+  /// Thêm món ăn mới (Admin)
+  Future<ItemModel> createItem({
+    required String name,
+    required String description,
+    required String imageUrl,
+    required double price,
+    double? priceAfterDiscount,
+    required String status,
+    required int categoryId,
+    String? categoryName,
+  }) async {
+    final newItem = await _repo.createItem(
+      name: name,
+      description: description,
+      imageUrl: imageUrl,
+      price: price,
+      priceAfterDiscount: priceAfterDiscount,
+      status: status,
+      categoryId: categoryId,
+      categoryName: categoryName,
+    );
+    state = state.copyWith(allItems: [newItem, ...state.allItems]);
+    return newItem;
+  }
+
+  /// Cập nhật món ăn (Admin)
+  Future<ItemModel> updateItem(
+    int id, {
+    required String name,
+    required String description,
+    required String imageUrl,
+    required double price,
+    double? priceAfterDiscount,
+    required String status,
+    required int categoryId,
+    String? categoryName,
+  }) async {
+    final updated = await _repo.updateItem(
+      id,
+      name: name,
+      description: description,
+      imageUrl: imageUrl,
+      price: price,
+      priceAfterDiscount: priceAfterDiscount,
+      status: status,
+      categoryId: categoryId,
+      categoryName: categoryName,
+    );
+    final updatedList = state.allItems.map((i) => i.id == id ? updated : i).toList();
+    state = state.copyWith(allItems: updatedList);
+    return updated;
+  }
+
+  /// Xóa món ăn (Admin)
+  Future<void> deleteItem(int id) async {
+    await _repo.deleteItem(id);
+    final updatedList = state.allItems.where((i) => i.id != id).toList();
+    state = state.copyWith(allItems: updatedList);
+  }
+
+  /// Đổi trạng thái phục vụ của món (AVAILABLE <-> UNAVAILABLE)
+  Future<bool> toggleItemStatus(ItemModel item) async {
+    final newStatus = item.status == 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
+
+    // Optimistic UI update
+    final optimisticItem = ItemModel(
+      id: item.id,
+      categoryId: item.categoryId,
+      name: item.name,
+      description: item.description,
+      imageUrl: item.imageUrl,
+      price: item.price,
+      priceAfterDiscount: item.priceAfterDiscount,
+      status: newStatus,
+      categoryName: item.categoryName,
+      averageRating: item.averageRating,
+      feedbackCount: item.feedbackCount,
+      tags: item.tags,
+      isCombo: item.isCombo,
+    );
+    final previousList = state.allItems;
+    final updatedList = state.allItems.map((i) => i.id == item.id ? optimisticItem : i).toList();
+    state = state.copyWith(allItems: updatedList);
+
+    try {
+      final success = await _repo.updateItemStatus(item, newStatus);
+      if (!success) {
+        state = state.copyWith(allItems: previousList);
+        return false;
+      }
+      return true;
+    } catch (_) {
+      state = state.copyWith(allItems: previousList);
+      return false;
+    }
+  }
 }
 
 final menuProvider = StateNotifierProvider<MenuNotifier, MenuState>((ref) {

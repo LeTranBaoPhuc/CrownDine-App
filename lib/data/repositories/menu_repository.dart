@@ -146,4 +146,132 @@ class MenuRepository {
 
     return [];
   }
+
+  /// Tạo món ăn mới (Admin)
+  Future<ItemModel> createItem({
+    required String name,
+    required String description,
+    required String imageUrl,
+    required double price,
+    double? priceAfterDiscount,
+    required String status,
+    required int categoryId,
+    String? categoryName,
+  }) async {
+    try {
+      final response = await _client.dio.post(
+        ApiEndpoints.items,
+        data: {
+          'name': name,
+          'description': description,
+          'imageUrl': imageUrl,
+          'price': price,
+          if (priceAfterDiscount != null && priceAfterDiscount > 0)
+            'priceAfterDiscount': priceAfterDiscount,
+          'status': status.toUpperCase(),
+          'categoryId': categoryId,
+        },
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = response.data['data'] ?? response.data;
+        if (data is Map) {
+          return ItemModel.fromJson(
+            Map<String, dynamic>.from(data),
+            categoryNameFallback: categoryName,
+          );
+        }
+      }
+      throw Exception('Không nhận được dữ liệu món ăn mới từ máy chủ');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Cập nhật thông tin món ăn (Admin)
+  Future<ItemModel> updateItem(
+    int id, {
+    required String name,
+    required String description,
+    required String imageUrl,
+    required double price,
+    double? priceAfterDiscount,
+    required String status,
+    required int categoryId,
+    String? categoryName,
+  }) async {
+    try {
+      final response = await _client.dio.put(
+        ApiEndpoints.itemById(id),
+        data: {
+          'name': name,
+          'description': description,
+          'imageUrl': imageUrl,
+          'price': price,
+          if (priceAfterDiscount != null && priceAfterDiscount > 0)
+            'priceAfterDiscount': priceAfterDiscount,
+          'status': status.toUpperCase(),
+          'categoryId': categoryId,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data['data'] ?? response.data;
+        if (data is Map) {
+          return ItemModel.fromJson(
+            Map<String, dynamic>.from(data),
+            categoryNameFallback: categoryName,
+          );
+        }
+      }
+      throw Exception('Không thể cập nhật món ăn');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Xóa món ăn (Admin)
+  Future<bool> deleteItem(int id) async {
+    try {
+      final response = await _client.dio.delete(ApiEndpoints.itemById(id));
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Cập nhật trạng thái món ăn (AVAILABLE / UNAVAILABLE)
+  Future<bool> updateItemStatus(ItemModel item, String newStatus) async {
+    try {
+      // 1. Thử gọi PATCH /api/items/{id}/status nếu có
+      try {
+        final patchRes = await _client.dio.patch(
+          ApiEndpoints.itemStatus(item.id),
+          queryParameters: {'status': newStatus.toUpperCase()},
+          data: {'status': newStatus.toUpperCase()},
+        );
+        if (patchRes.statusCode == 200 || patchRes.statusCode == 204) {
+          return true;
+        }
+      } catch (_) {}
+
+      // 2. Gọi PUT /api/items/{id} chuẩn của ApiItemController
+      final putRes = await _client.dio.put(
+        ApiEndpoints.itemById(item.id),
+        data: {
+          'name': item.name,
+          'description': item.description,
+          'imageUrl': item.imageUrl,
+          'price': item.price,
+          if (item.priceAfterDiscount != null)
+            'priceAfterDiscount': item.priceAfterDiscount,
+          'status': newStatus.toUpperCase(),
+          'categoryId': item.categoryId,
+        },
+      );
+      return putRes.statusCode == 200;
+    } catch (e) {
+      rethrow;
+    }
+  }
 }
