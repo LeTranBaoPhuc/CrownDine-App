@@ -69,3 +69,4 @@ INSERT INTO `shifts` (`id`, `name`, `start_time`, `end_time`, `created_at`, `upd
 (4, 'Ca gãy', '10:00:00', '14:00:00', NOW(), NOW()),
 (5, 'Ca full-time', '08:00:00', '17:00:00', NOW(), NOW())
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
+

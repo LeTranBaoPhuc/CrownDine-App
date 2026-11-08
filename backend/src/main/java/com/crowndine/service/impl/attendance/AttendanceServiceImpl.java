@@ -151,19 +151,31 @@ public class AttendanceServiceImpl implements AttendanceService {
                         && (t.getEndDate() == null || !workDate.isAfter(t.getEndDate()))
                         && t.getDaysOfWeek() != null && t.getDaysOfWeek().contains(dayOfWeekStr))
                 .findFirst()
-                .orElseThrow(() -> new InvalidDataException("Nhân viên không có lịch làm việc cho ca này trong ngày đã chọn"));
+                .orElse(null);
 
-        WorkSchedule one = new WorkSchedule();
-        one.setWorkDate(workDate);
-        one.setStaff(user);
-        one.setShift(shift);
-        one.setStatus(EWorkScheduleStatus.APPROVED);
-        one.setNote(template.getNote());
-        one.setIsRepeated(false);
-        one.setRepeatGroupId("FROM-" + template.getId());
-        one.setEndDate(null);
-        one.setDaysOfWeek(null);
-        return workScheduleRepository.save(one);
+        if (template != null) {
+            WorkSchedule one = new WorkSchedule();
+            one.setWorkDate(workDate);
+            one.setStaff(user);
+            one.setShift(shift);
+            one.setStatus(EWorkScheduleStatus.APPROVED);
+            one.setNote(template.getNote());
+            one.setIsRepeated(false);
+            one.setRepeatGroupId("FROM-" + template.getId());
+            one.setEndDate(null);
+            one.setDaysOfWeek(null);
+            return workScheduleRepository.save(one);
+        }
+
+        // Nếu chưa có lịch phân ca trước đó, tự động tạo lịch phân ca Approved cho nhân viên để ghi nhận chấm công
+        WorkSchedule adHoc = new WorkSchedule();
+        adHoc.setWorkDate(workDate);
+        adHoc.setStaff(user);
+        adHoc.setShift(shift);
+        adHoc.setStatus(EWorkScheduleStatus.APPROVED);
+        adHoc.setNote("Chấm công trực tiếp");
+        adHoc.setIsRepeated(false);
+        return workScheduleRepository.save(adHoc);
     }
 
     private EAttendanceStatus computeStatus(Shift shift, AttendanceRecordRequest req) {

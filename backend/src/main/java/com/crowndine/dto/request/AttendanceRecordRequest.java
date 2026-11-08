@@ -1,7 +1,10 @@
 package com.crowndine.dto.request;
 
 import com.crowndine.common.enums.EAttendanceType;
+import com.crowndine.common.utils.FlexibleLocalDateDeserializer;
+import com.crowndine.common.utils.FlexibleLocalDateTimeDeserializer;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,7 +20,8 @@ public class AttendanceRecordRequest {
     private Long userId;
 
     @NotNull(message = "Ngày không được để trống")
-    @JsonFormat(pattern = "dd/MM/yyyy")
+    @JsonDeserialize(using = FlexibleLocalDateDeserializer.class)
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate workDate;
 
     @NotNull(message = "Ca làm việc không được để trống")
@@ -32,9 +36,11 @@ public class AttendanceRecordRequest {
 
     private Boolean hasPunchOut = false;
 
-    @JsonFormat(pattern = "dd/MM/yyyy HH:mm")
+    @JsonDeserialize(using = FlexibleLocalDateTimeDeserializer.class)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime checkInAt;
 
-    @JsonFormat(pattern = "dd/MM/yyyy HH:mm")
+    @JsonDeserialize(using = FlexibleLocalDateTimeDeserializer.class)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime checkOutAt;
 }

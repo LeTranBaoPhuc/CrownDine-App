@@ -103,8 +103,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
       attendanceType: _attendanceType,
       hasPunchIn: _hasPunchIn,
       hasPunchOut: _hasPunchOut,
-      checkInAt: _hasPunchIn ? _formatTimeOfDay(_checkInTime) : null,
-      checkOutAt: _hasPunchOut ? _formatTimeOfDay(_checkOutTime) : null,
+      checkInAt: _hasPunchIn ? '$workDateStr ${_formatTimeOfDay(_checkInTime)}:00' : null,
+      checkOutAt: _hasPunchOut ? '$workDateStr ${_formatTimeOfDay(_checkOutTime)}:00' : null,
       note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
     );
 

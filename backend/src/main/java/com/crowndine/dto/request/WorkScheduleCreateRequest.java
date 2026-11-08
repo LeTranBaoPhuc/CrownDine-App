@@ -1,6 +1,8 @@
 package com.crowndine.dto.request;
 
+import com.crowndine.common.utils.FlexibleLocalDateDeserializer;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -16,7 +18,8 @@ public class WorkScheduleCreateRequest {
     private Long shiftId;
 
     @NotNull(message = "Thời gian làm việc không được để trống")
-    @JsonFormat(pattern = "dd-MM-yyyy")
+    @JsonDeserialize(using = FlexibleLocalDateDeserializer.class)
+    @JsonFormat(pattern = "yyyy-MM-dd")
     @FutureOrPresent(message = "Thời gian làm việc phải là hôm nay hoặc mai")
     private LocalDate workDate;
 
@@ -26,7 +29,8 @@ public class WorkScheduleCreateRequest {
     private Boolean repeatWeekly;
     private List<Integer> daysOfWeek;
 
-    @JsonFormat(pattern = "dd-MM-yyyy")
+    @JsonDeserialize(using = FlexibleLocalDateDeserializer.class)
+    @JsonFormat(pattern = "yyyy-MM-dd")
     @FutureOrPresent(message = "Ngày kết thúc phải là hôm nay hoặc tương lai")
     private LocalDate endDate;
 }
