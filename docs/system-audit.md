@@ -1,6 +1,6 @@
 # Kiểm tra hệ thống và bản chạy local
 
-Ngày kiểm tra: 08/11/2026. Nhánh: `fix/system-p0-readiness`.
+Ngày kiểm tra: 08/11/2026. Nhánh: `feat/table-floor-api-orders`.
 
 ## Chạy và xem bàn ngay
 
@@ -14,13 +14,15 @@ Nguyên nhân bàn không hiển thị: cổng 8080 đang thuộc ứng dụng k
 
 Trong Cấu hình máy chủ, URL cho web là `http://127.0.0.1:8081/api/`; Android Emulator dùng `http://10.0.2.2:8081/api/`. Cấu hình đã lưu trên thiết bị được ưu tiên hơn giá trị `--dart-define=API_BASE_URL=...`. Đổi máy chủ sẽ xóa phiên đăng nhập cũ.
 
-Khởi động lại với các biến môi trường local trong `.env`:
+Khởi động backend từ thư mục dự án bằng PowerShell:
 
 ```powershell
-docker start crowndine-dev-mysql
-cd backend
-mvn spring-boot:run '-Dspring-boot.run.arguments=--server.port=8081 --spring.mail.username=local@example.invalid --spring.mail.password=disabled-local --spring.mail.from=local@example.invalid --spring.ai.google.genai.api-key=disabled-local'
+.\scripts\start-backend.ps1
 ```
+
+Script build bản JAR với profile `dev`, chạy nền ở cổng 8081 và tắt DevTools restart. JAR đang chạy được chép ra `%LOCALAPPDATA%\CrownDine\local-runtime`, nên việc IDE/Maven làm mới `backend/target` không làm mất cấu hình hoặc dừng API. Script chỉ báo sẵn sàng sau khi gọi API tầng thành công; log và PID cũng ở thư mục runtime này. Khi đã có JAR có thể dùng `-SkipBuild`.
+
+Script khởi động lại container `crowndine-dev-mysql` nếu container này đã tồn tại và đang dừng. Không tạo lại database hoặc xóa dữ liệu. Cần giữ file `.env` local. Mail/AI mặc định dùng cấu hình local; chỉ dùng `-EnableMail` / `-EnableAI` sau khi đã cấu hình dịch vụ thật.
 
 Trong terminal khác tại thư mục chứa `pubspec.yaml`:
 
@@ -82,3 +84,7 @@ V3 giữ nguyên thông tin CANCELLED/EXPIRED/REFUNDED lịch sử. Không suy �
 6. Các model Banner/Chat/Review phụ trợ chưa đồng nghĩa có đầy đủ nghiệp vụ và màn quản trị mobile; cần chốt phạm vi môn học trước khi mở rộng thành chức năng chính.
 
 Không coi bộ unit/widget test hoặc bản web chạy được là bằng chứng toàn bộ hệ thống đã hoàn thành kiểm thử tích hợp thực tế.
+
+### Sự cố kết nối khi chạy thử
+
+Nếu console báo `ERR_CONNECTION_REFUSED` ở mọi API `8081`, kiểm tra tiến trình backend trước khi sửa giao diện. Trong lần chạy thử, DevTools đã thấy 445 file bị xóa khỏi classpath, tự restart giữa lúc thư mục build đang được làm mới, rồi khởi động thiếu profile `dev` và báo thiếu `jwt.access-key`. Lệnh chạy JAR ở trên loại bỏ sự phụ thuộc đó. Các dòng `enable_copy.js` thuộc extension trình duyệt; DDC tải module là log khởi động Flutter web.
