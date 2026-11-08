@@ -1,14 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../data/mock/mock_data.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../../../../data/models/admin_voucher_model.dart';
 import '../../../../providers/cart_provider.dart';
 import '../../../../providers/feedback_provider.dart';
 import '../../../../providers/menu_provider.dart';
+import '../../../../providers/public_voucher_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import '../../../widgets/food_card.dart';
 import '../feedback/customer_reviews_screen.dart';
 import '../menu/menu_detail_sheet.dart';
+import '../profile/voucher_wallet_sheet.dart';
 import 'widgets/auto_scroll_reviews_banner.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -20,6 +24,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final menuState = ref.watch(menuProvider);
     final feedbacksAsync = ref.watch(allFeedbacksProvider);
+    final vouchersAsync = ref.watch(publicVouchersProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -31,6 +36,7 @@ class HomeScreen extends ConsumerWidget {
         onRefresh: () async {
           await ref.read(menuProvider.notifier).loadMenu();
           ref.invalidate(allFeedbacksProvider);
+          ref.invalidate(publicVouchersProvider);
         },
         child: SingleChildScrollView(
           child: Column(
@@ -224,71 +230,200 @@ class HomeScreen extends ConsumerWidget {
               // PROMOTIONAL VOUCHERS BANNER
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: const Text(
-                  'Ưu đãi độc quyền CrownDine',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Ưu đãi độc quyền CrownDine',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => const VoucherWalletSheet(),
+                        );
+                      },
+                      icon: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                      label: const Text(
+                        'Ví Voucher',
+                        style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
               SizedBox(
-                height: 110,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: MockData.vouchers.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
-                  itemBuilder: (context, index) {
-                    final v = MockData.vouchers[index];
-                    return Container(
-                      width: 260,
-                      padding: const EdgeInsets.all(14),
+                height: 116,
+                child: vouchersAsync.when(
+                  loading: () => ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: 3,
+                    separatorBuilder: (_, __) => const SizedBox(width: 12),
+                    itemBuilder: (_, __) => Container(
+                      width: 270,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF2B2623), Color(0xFF1E1815)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: isDark ? const Color(0xFF231C18) : const Color(0xFFF3F4F6),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.gold.withOpacity(0.5)),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: AppColors.gold.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (vouchers) {
+                    if (vouchers.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: isDark ? AppColors.darkCard : Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
                             ),
-                            child: const Icon(Icons.confirmation_number, color: AppColors.gold, size: 28),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  v.code,
-                                  style: const TextStyle(
-                                    color: AppColors.gold,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
+                          child: const Row(
+                            children: [
+                              Icon(Icons.confirmation_number_outlined, color: AppColors.gold, size: 28),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'CrownDine thường xuyên phát hành mã giảm giá độc quyền. Hãy kiểm tra lại sau nhé!',
+                                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: vouchers.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, index) {
+                        final v = vouchers[index];
+                        final discountText = v.type == AdminVoucherType.percentage
+                            ? 'Giảm ${v.discountValue.toInt()}%'
+                            : 'Giảm ${CurrencyFormatter.format(v.discountValue)}';
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: v.code));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Đã sao chép mã ưu đãi "${v.code}"!'),
+                                  backgroundColor: AppColors.primary,
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              width: 280,
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF2B2623), Color(0xFF1E1815)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: AppColors.gold.withValues(alpha: 0.5)),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 3),
                                   ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  v.name,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white, fontSize: 11),
-                                ),
-                              ],
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.gold.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.confirmation_number, color: AppColors.gold, size: 28),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Text(
+                                              v.code,
+                                              style: const TextStyle(
+                                                color: AppColors.gold,
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primary.withValues(alpha: 0.25),
+                                                borderRadius: BorderRadius.circular(6),
+                                              ),
+                                              child: Text(
+                                                discountText,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          v.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          v.minValue != null && v.minValue! > 0
+                                              ? 'Đơn từ ${CurrencyFormatter.format(v.minValue!)} • Chạm để chép mã'
+                                              : 'Chạm để chép mã ưu đãi',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.65),
+                                            fontSize: 10,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ],
-                      ),
+                        );
+                      },
                     );
                   },
                 ),
