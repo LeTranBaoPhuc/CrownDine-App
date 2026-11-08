@@ -1,6 +1,8 @@
 package com.crowndine.service.impl.payment;
 
 import com.crowndine.dto.request.PaymentFilterRequest;
+import com.crowndine.common.enums.EPaymentTarget;
+import com.crowndine.common.enums.EPaymentType;
 import com.crowndine.model.Payment;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.JoinType;
@@ -41,6 +43,10 @@ public class PaymentSpecification {
         }
         if (request.getType() != null) {
             predicates.add(cb.equal(root.get("type"), request.getType()));
+            if (request.getType() != EPaymentType.REFUND) {
+                predicates.add(cb.equal(root.get("target"), request.getType() == EPaymentType.DEPOSIT
+                        ? EPaymentTarget.RESERVATION : EPaymentTarget.ORDER));
+            }
         }
         if (request.getTarget() != null) {
             predicates.add(cb.equal(root.get("target"), request.getTarget()));
@@ -71,14 +77,14 @@ public class PaymentSpecification {
         }
 
         String keyword = "%" + request.getSearch().trim().toLowerCase() + "%";
-        var createdByJoin = root.join("createdBy", JoinType.LEFT);
+        var customerJoin = root.join("user", JoinType.LEFT);
         var orderJoin = root.join("order", JoinType.LEFT);
         var reservationJoin = root.join("reservation", JoinType.LEFT);
 
         predicates.add(cb.or(
                 cb.like(cb.lower(root.get("transactionCode")), keyword),
                 cb.like(cb.lower(root.get("code").as(String.class)), keyword),
-                cb.like(cb.lower(createdByJoin.get("username")), keyword),
+                cb.like(cb.lower(customerJoin.get("username")), keyword),
                 cb.like(cb.lower(orderJoin.get("code")), keyword),
                 cb.like(cb.lower(reservationJoin.get("code")), keyword)
         ));

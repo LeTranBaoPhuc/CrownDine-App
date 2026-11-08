@@ -86,7 +86,7 @@ public class PayOSService extends AbstractPaymentStrategy {
         try {
             CreatePaymentLinkResponse data = payOS.paymentRequests().create(paymentData);
             payment.setCheckoutUrl(data.getCheckoutUrl());
-            paymentRepository.updateCheckoutUrl(payment.getId(), data.getCheckoutUrl());
+            paymentRepository.updateCheckoutUrl(payment.getCode(), data.getCheckoutUrl());
             log.info("Created payment link successfully");
             return data.getCheckoutUrl();
         } catch (Exception ex) {
@@ -98,7 +98,7 @@ public class PayOSService extends AbstractPaymentStrategy {
                         && existing.getAmount() != null && payment.getAmount().compareTo(BigDecimal.valueOf(existing.getAmount())) == 0) {
                     String recoveredUrl = "https://pay.payos.vn/web/" + existing.getId();
                     payment.setCheckoutUrl(recoveredUrl);
-                    paymentRepository.updateCheckoutUrl(payment.getId(), recoveredUrl);
+                    paymentRepository.updateCheckoutUrl(payment.getCode(), recoveredUrl);
                     return recoveredUrl;
                 }
             } catch (Exception lookupError) {

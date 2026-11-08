@@ -16,9 +16,12 @@ import java.util.Optional;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long>, JpaSpecificationExecutor<Payment> {
     @org.springframework.transaction.annotation.Transactional
-    @org.springframework.data.jpa.repository.Modifying
-    @org.springframework.data.jpa.repository.Query("update Payment p set p.checkoutUrl = :url where p.id = :id")
-    void updateCheckoutUrl(@org.springframework.data.repository.query.Param("id") Long id, @org.springframework.data.repository.query.Param("url") String url);
+    default void updateCheckoutUrl(Long code, String url) {
+        // Reload under a lock so a late create response cannot overwrite a paid webhook.
+        Payment payment = findByCodeForUpdate(code).orElseThrow();
+        payment.setCheckoutUrl(url);
+        save(payment);
+    }
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.code = :code")

@@ -43,16 +43,10 @@
 					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
 					<key>UISceneStoryboardFile</key>
 					<string>Main</string>
-					<key>NSPhotoLibraryUsageDescription</key>
-	<string>Chọn ảnh đại diện cho tài khoản CrownDine.</string>
-</dict>
+				</dict>
 			</array>
-			<key>NSPhotoLibraryUsageDescription</key>
-	<string>Chọn ảnh đại diện cho tài khoản CrownDine.</string>
-</dict>
-		<key>NSPhotoLibraryUsageDescription</key>
-	<string>Chọn ảnh đại diện cho tài khoản CrownDine.</string>
-</dict>
+		</dict>
+	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

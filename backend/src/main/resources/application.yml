@@ -22,7 +22,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: "health,info"
+        include: "*"
 
 endpoint:
   confirmUser: ${app.base-url}/auth/verify-register

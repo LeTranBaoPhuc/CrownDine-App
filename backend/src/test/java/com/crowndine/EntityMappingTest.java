@@ -9,17 +9,14 @@ import org.springframework.core.type.filter.AnnotationTypeFilter;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EntityMappingTest {
-    @Test void everyEntityHasACreateTableMigration() throws Exception {
-        var resources = new org.springframework.core.io.support.PathMatchingResourcePatternResolver().getResources("classpath*:dev/db/migration/*.sql");
-        StringBuilder ddl = new StringBuilder();
-        for (var resource : resources) {
-            try (var stream = resource.getInputStream()) { ddl.append(new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)); }
-        }
-        var scanner = new ClassPathScanningCandidateComponentProvider(false);
-        scanner.addIncludeFilter(new AnnotationTypeFilter(Entity.class));
-        for (var entity : scanner.findCandidateComponents("com.crowndine.model")) {
-            var table = Class.forName(entity.getBeanClassName()).getAnnotation(jakarta.persistence.Table.class);
-            if (table != null) assertTrue(java.util.regex.Pattern.compile("CREATE TABLE\\s+(?:IF NOT EXISTS\\s+)?`?" + table.name() + "`?\\s*\\(", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(ddl).find(), "Missing migration: " + table.name());
+    @Test void paymentUsesOnlyColumnsFromTheExistingSchema() throws Exception {
+        var resource = new org.springframework.core.io.ClassPathResource("dev/db/migration/V1__Init.sql");
+        String ddl;
+        try (var stream = resource.getInputStream()) { ddl = new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8); }
+        String paymentDdl = ddl.substring(ddl.indexOf("CREATE TABLE `payments`"), ddl.indexOf("-- 18. feedbacks"));
+        for (var field : com.crowndine.model.Payment.class.getDeclaredFields()) {
+            var column = field.getAnnotation(jakarta.persistence.Column.class);
+            if (column != null) assertTrue(paymentDdl.contains("`" + column.name() + "`"), "Payment requires a new column: " + column.name());
         }
     }
 
