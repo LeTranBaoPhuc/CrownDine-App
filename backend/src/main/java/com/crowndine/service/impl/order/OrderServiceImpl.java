@@ -260,6 +260,9 @@ public class OrderServiceImpl implements OrderService {
     @Transactional(rollbackFor = Exception.class)
     public void appendItemsToOrder(Long id, OrderItemBatchRequest request, String name) {
         Order order = getOrder(id);
+        if (order.getStatus().isFinal() || order.getStatus() == EOrderStatus.PRE_ORDER) {
+            throw new InvalidDataException("Chỉ được gọi thêm món cho đơn đang phục vụ");
+        }
 
         orderDetailService.createPendingOrderDetails(order, request.getItems());
 
@@ -272,6 +275,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public Order getOrder(Long id) {
         return orderRepository.findById(id).orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
+    }
+
+    @Override
+    public OrderResponse getOrderResponse(Long id) {
+        return toResponse(getOrder(id));
     }
 
     @Override
@@ -378,6 +386,7 @@ public class OrderServiceImpl implements OrderService {
 
         if (order.getRestaurantTable() != null) {
             response.setTableName(order.getRestaurantTable().getName());
+            response.setTableId(order.getRestaurantTable().getId());
         }
 
         List<OrderDetailResponse> details = order.getOrderDetails().stream().map(d -> {

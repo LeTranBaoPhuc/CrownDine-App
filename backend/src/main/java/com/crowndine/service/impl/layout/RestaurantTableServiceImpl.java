@@ -1,6 +1,11 @@
 package com.crowndine.service.impl.layout;
 
 import com.crowndine.common.enums.ETableStatus;
+import com.crowndine.common.enums.EOrderStatus;
+import com.crowndine.common.enums.EReservationStatus;
+import com.crowndine.exception.InvalidDataException;
+import com.crowndine.repository.OrderRepository;
+import com.crowndine.repository.ReservationRepository;
 import com.crowndine.dto.request.TableRequest;
 import com.crowndine.dto.response.RestaurantTableResponse;
 import com.crowndine.dto.response.TableLayoutResponse;
@@ -21,6 +26,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -33,6 +39,8 @@ public class RestaurantTableServiceImpl implements RestaurantTableService {
     private final ReservationTimePolicy reservationTimePolicy;
     private final ReservationAvailabilityService reservationAvailabilityService;
     private final RestaurantTableStateService restaurantTableStateService;
+    private final OrderRepository orderRepository;
+    private final ReservationRepository reservationRepository;
 
     @Override
     public TableLayoutResponse create(Long areaId, TableRequest request) {
@@ -125,6 +133,20 @@ public class RestaurantTableServiceImpl implements RestaurantTableService {
 
     @Override
     public RestaurantTableResponse updateTableStatus(Long id, ETableStatus status) {
+        RestaurantTable table = tableRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+        if (table.getStatus() == status) return toResponse(table);
+        if (status == ETableStatus.OCCUPIED) {
+            throw new InvalidDataException("Hãy mở đơn gọi món hoặc check-in đặt chỗ để nhận bàn");
+        }
+        if (!orderRepository.findByRestaurantTableIdAndStatusIn(id,
+                List.of(EOrderStatus.CONFIRMED, EOrderStatus.IN_PROGRESS, EOrderStatus.SERVED)).isEmpty()
+                || !reservationRepository.findByTableIdAndStatusAndCheckedOutAtIsNull(
+                        id, EReservationStatus.CHECKED_IN).isEmpty()) {
+            throw new InvalidDataException("Bàn còn khách/đơn đang phục vụ. Hoàn tất đơn và đặt chỗ trước khi đổi trạng thái");
+        }
+        LocalDateTime now = LocalDateTime.now();
+        reservationAvailabilityService.ensureTableAvailable(now.toLocalDate(), now.toLocalTime(), id);
         return restaurantTableStateService.changeStatus(id, status);
     }
 
@@ -132,6 +154,12 @@ public class RestaurantTableServiceImpl implements RestaurantTableService {
         RestaurantTableResponse response = new RestaurantTableResponse();
         BeanUtils.copyProperties(restaurantTable, response);
         response.setId(restaurantTable.getId());
+        response.setDeposit(restaurantTable.getBaseDeposit());
+        response.setX(restaurantTable.getPositionX());
+        response.setY(restaurantTable.getPositionY());
+        response.setWidth(restaurantTable.getWidth());
+        response.setHeight(restaurantTable.getHeight());
+        response.setRotation(restaurantTable.getRotation());
 
         if (restaurantTable.getArea() != null) {
             response.setAreaId(restaurantTable.getArea().getId());

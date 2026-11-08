@@ -16,6 +16,7 @@ public class OrderResponse {
     private Long id;
 
     private String tableName;
+    private Long tableId;
 
     private BigDecimal totalPrice;
 

@@ -2,6 +2,8 @@ package com.crowndine.service.impl.order;
 
 import com.crowndine.common.enums.EOrderDetailStatus;
 import com.crowndine.common.enums.EOrderStatus;
+import com.crowndine.common.enums.EItemStatus;
+import com.crowndine.common.enums.EComboStatus;
 import com.crowndine.dto.request.OrderItemRequest;
 import com.crowndine.dto.request.UpdateOrderDetailRequest;
 import com.crowndine.dto.response.UpdateStatusOrderDetailResponse;
@@ -42,12 +44,20 @@ public class OrderDetailServiceImpl implements OrderDetailService {
         List<OrderDetail> newOrderDetails = new ArrayList<>();
 
         request.forEach(item -> {
+            if ((item.getItemId() == null) == (item.getComboId() == null)
+                    || item.getQuantity() == null || item.getQuantity() < 1) {
+                throw new InvalidDataException("Mỗi dòng phải có một món/combo và số lượng hợp lệ");
+            }
             OrderDetail orderDetailItem = new OrderDetail();
             if (item.getItemId() != null) {
                 orderDetailItem.setItem(itemRepository.findById(item.getItemId()).orElseThrow(() -> new ResourceNotFoundException("Item Not Found")));
             }
             if (item.getComboId() != null) {
                 orderDetailItem.setCombo(comboRepository.findById(item.getComboId()).orElseThrow(() -> new ResourceNotFoundException("Combo Not Found")));
+            }
+            if ((orderDetailItem.getItem() != null && orderDetailItem.getItem().getStatus() != EItemStatus.AVAILABLE)
+                    || (orderDetailItem.getCombo() != null && orderDetailItem.getCombo().getStatus() != EComboStatus.AVAILABLE)) {
+                throw new InvalidDataException("Món ăn hoặc combo đã ngưng phục vụ. Vui lòng tải lại thực đơn");
             }
 
             orderDetailItem.setQuantity(item.getQuantity());

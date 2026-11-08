@@ -1,5 +1,7 @@
 # crowndine
 
+Staff floor plan and ordering: [API integration and verification](docs/staff-floor-plan-api.md).
+
 A new Flutter project.
 
 ## Getting Started

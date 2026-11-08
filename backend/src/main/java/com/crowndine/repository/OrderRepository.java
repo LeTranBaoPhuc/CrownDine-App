@@ -18,6 +18,7 @@ import java.util.Optional;
 
 public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
     Optional<Order> findByCode(String code);
+    List<Order> findByRestaurantTableIdAndStatusIn(Long tableId, List<EOrderStatus> statuses);
 
     long countByStatusAndCreatedAtBetween(EOrderStatus status, LocalDateTime start, LocalDateTime end);
 

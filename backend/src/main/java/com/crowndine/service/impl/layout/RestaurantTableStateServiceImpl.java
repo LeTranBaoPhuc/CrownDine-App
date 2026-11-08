@@ -29,6 +29,20 @@ public class RestaurantTableStateServiceImpl implements RestaurantTableStateServ
         RestaurantTableResponse response = new RestaurantTableResponse();
         BeanUtils.copyProperties(table, response);
         response.setId(table.getId());
+        response.setDeposit(table.getBaseDeposit());
+        response.setX(table.getPositionX());
+        response.setY(table.getPositionY());
+        response.setWidth(table.getWidth());
+        response.setHeight(table.getHeight());
+        response.setRotation(table.getRotation());
+        if (table.getArea() != null) {
+            response.setAreaId(table.getArea().getId());
+            response.setAreaName(table.getArea().getName());
+            if (table.getArea().getFloor() != null) {
+                response.setFloorId(table.getArea().getFloor().getId());
+                response.setFloorName(table.getArea().getFloor().getName());
+            }
+        }
 
         if (table.getStatus() == targetStatus) {
             return response;

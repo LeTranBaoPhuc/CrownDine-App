@@ -88,6 +88,7 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
     );
 
     Optional<Reservation> findByCode(String code);
+    List<Reservation> findByTableIdAndStatusAndCheckedOutAtIsNull(Long tableId, EReservationStatus status);
 
     @Query("SELECT r FROM Reservation r WHERE " +
             "(:fromDate IS NULL OR r.date >= :fromDate) AND " +

@@ -24,6 +24,8 @@ class TableWidget extends StatelessWidget {
         return AppColors.tableOccupied;
       case TableStatus.reserved:
         return AppColors.tableReserved;
+      case TableStatus.unavailable:
+        return Colors.grey;
     }
   }
 

@@ -3,7 +3,7 @@ import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../data/models/attendance_model.dart';
 
-class ScheduleByShiftTable extends StatelessWidget {
+class ScheduleByShiftTable extends StatefulWidget {
   final AttendanceScheduleResponse data;
   final Function(int userId, int shiftId, String workDate) onCellClick;
 
@@ -12,6 +12,22 @@ class ScheduleByShiftTable extends StatelessWidget {
     required this.data,
     required this.onCellClick,
   });
+
+  @override
+  State<ScheduleByShiftTable> createState() => _ScheduleByShiftTableState();
+}
+
+class _ScheduleByShiftTableState extends State<ScheduleByShiftTable> {
+  final _scrollController = ScrollController();
+  AttendanceScheduleResponse get data => widget.data;
+  Function(int userId, int shiftId, String workDate) get onCellClick =>
+      widget.onCellClick;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   static const double _shiftColWidth = 180.0;
   static const double _dayColWidth = 150.0;
@@ -26,12 +42,21 @@ class ScheduleByShiftTable extends StatelessWidget {
 
     // Generate 7 days from weekStart
     final start = DateTime.tryParse(data.weekStart) ?? DateTime.now();
-    final dayNames = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ nhật'];
+    final dayNames = [
+      'Thứ 2',
+      'Thứ 3',
+      'Thứ 4',
+      'Thứ 5',
+      'Thứ 6',
+      'Thứ 7',
+      'Chủ nhật'
+    ];
     final days = List.generate(7, (i) {
       final d = start.add(Duration(days: i));
       return {
         'dayOfWeek': dayNames[i],
-        'dateShort': '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}',
+        'dateShort':
+            '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}',
         'date': DateFormatter.toApiDate(d),
       };
     });
@@ -45,8 +70,10 @@ class ScheduleByShiftTable extends StatelessWidget {
         ),
       ),
       child: Scrollbar(
+        controller: _scrollController,
         thumbVisibility: true,
         child: SingleChildScrollView(
+          controller: _scrollController,
           scrollDirection: Axis.horizontal,
           child: SizedBox(
             width: _shiftColWidth + (7 * _dayColWidth),
@@ -55,27 +82,33 @@ class ScheduleByShiftTable extends StatelessWidget {
               children: [
                 // Header Row
                 Container(
-                  color: isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
+                  color:
+                      isDark ? AppColors.darkSurface : const Color(0xFFF8FAFC),
                   child: Row(
                     children: [
                       // Shift Column Header
                       Container(
                         width: _shiftColWidth,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                         decoration: BoxDecoration(
                           border: Border(
                             right: BorderSide(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
                             ),
                           ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.access_time_filled_rounded, size: 18, color: AppColors.primary),
+                            const Icon(Icons.access_time_filled_rounded,
+                                size: 18, color: AppColors.primary),
                             const SizedBox(width: 8),
                             Text(
                               'Ca làm việc',
-                              style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.labelLarge
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
@@ -88,14 +121,17 @@ class ScheduleByShiftTable extends StatelessWidget {
 
                         return Container(
                           width: _dayColWidth,
-                          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 8),
                           decoration: BoxDecoration(
                             color: isToday
                                 ? AppColors.primary.withValues(alpha: 0.08)
                                 : Colors.transparent,
                             border: Border(
                               right: BorderSide(
-                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                color: isDark
+                                    ? AppColors.darkBorder
+                                    : AppColors.lightBorder,
                               ),
                             ),
                           ),
@@ -106,10 +142,14 @@ class ScheduleByShiftTable extends StatelessWidget {
                                 d['dayOfWeek']!,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: isToday ? FontWeight.bold : FontWeight.w600,
+                                  fontWeight: isToday
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
                                   color: isToday
                                       ? AppColors.primary
-                                      : (isDark ? AppColors.textLightSecondary : AppColors.textSecondary),
+                                      : (isDark
+                                          ? AppColors.textLightSecondary
+                                          : AppColors.textSecondary),
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -138,14 +178,18 @@ class ScheduleByShiftTable extends StatelessWidget {
                   final isEven = index % 2 == 0;
                   final rowBg = isEven
                       ? Colors.transparent
-                      : (isDark ? AppColors.darkSurface.withValues(alpha: 0.4) : const Color(0xFFFAFBFD));
+                      : (isDark
+                          ? AppColors.darkSurface.withValues(alpha: 0.4)
+                          : const Color(0xFFFAFBFD));
 
                   return Container(
                     decoration: BoxDecoration(
                       color: rowBg,
                       border: Border(
                         bottom: BorderSide(
-                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
                         ),
                       ),
                     ),
@@ -160,7 +204,9 @@ class ScheduleByShiftTable extends StatelessWidget {
                             decoration: BoxDecoration(
                               border: Border(
                                 right: BorderSide(
-                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
                                 ),
                               ),
                             ),
@@ -182,7 +228,9 @@ class ScheduleByShiftTable extends StatelessWidget {
                                     Expanded(
                                       child: Text(
                                         shift.name,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -193,7 +241,9 @@ class ScheduleByShiftTable extends StatelessWidget {
                                   shift.displayTimeRange,
                                   style: TextStyle(
                                     fontSize: 11.5,
-                                    color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                    color: isDark
+                                        ? AppColors.textLightSecondary
+                                        : AppColors.textSecondary,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
@@ -210,7 +260,8 @@ class ScheduleByShiftTable extends StatelessWidget {
 
                             return Container(
                               width: _dayColWidth,
-                              constraints: const BoxConstraints(minHeight: _minRowHeight),
+                              constraints: const BoxConstraints(
+                                  minHeight: _minRowHeight),
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 color: isToday
@@ -218,7 +269,9 @@ class ScheduleByShiftTable extends StatelessWidget {
                                     : Colors.transparent,
                                 border: Border(
                                   right: BorderSide(
-                                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                    color: isDark
+                                        ? AppColors.darkBorder
+                                        : AppColors.lightBorder,
                                   ),
                                 ),
                               ),
@@ -226,26 +279,37 @@ class ScheduleByShiftTable extends StatelessWidget {
                                   ? const Center(
                                       child: Text(
                                         '-',
-                                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                                        style: TextStyle(
+                                            color: Colors.grey, fontSize: 12),
                                       ),
                                     )
                                   : Column(
-                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
                                       children: employees.map((emp) {
                                         return Padding(
-                                          padding: const EdgeInsets.only(bottom: 5),
+                                          padding:
+                                              const EdgeInsets.only(bottom: 5),
                                           child: InkWell(
-                                            onTap: () => onCellClick(emp.userId, shift.id, dateStr),
-                                            borderRadius: BorderRadius.circular(6),
+                                            onTap: () => onCellClick(
+                                                emp.userId, shift.id, dateStr),
+                                            borderRadius:
+                                                BorderRadius.circular(6),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 7,
+                                                      vertical: 5),
                                               decoration: BoxDecoration(
                                                 color: isDark
                                                     ? AppColors.darkSurface
-                                                    : emp.status.backgroundColor,
-                                                borderRadius: BorderRadius.circular(6),
+                                                    : emp
+                                                        .status.backgroundColor,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
                                                 border: Border.all(
-                                                  color: emp.status.color.withValues(alpha: 0.4),
+                                                  color: emp.status.color
+                                                      .withValues(alpha: 0.4),
                                                 ),
                                               ),
                                               child: Row(
@@ -264,11 +328,16 @@ class ScheduleByShiftTable extends StatelessWidget {
                                                       emp.fullName,
                                                       style: TextStyle(
                                                         fontSize: 11,
-                                                        fontWeight: FontWeight.bold,
-                                                        color: isDark ? Colors.white : AppColors.textPrimary,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: isDark
+                                                            ? Colors.white
+                                                            : AppColors
+                                                                .textPrimary,
                                                       ),
                                                       maxLines: 1,
-                                                      overflow: TextOverflow.ellipsis,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
                                                     ),
                                                   ),
                                                 ],
@@ -293,4 +362,3 @@ class ScheduleByShiftTable extends StatelessWidget {
     );
   }
 }
-

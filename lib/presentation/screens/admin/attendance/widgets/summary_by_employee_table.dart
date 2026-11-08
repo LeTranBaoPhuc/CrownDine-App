@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../data/models/attendance_model.dart';
 
-class SummaryByEmployeeTable extends StatelessWidget {
+class SummaryByEmployeeTable extends StatefulWidget {
   final AttendanceSummaryResponse data;
   final Function(int userId)? onEmployeeClick;
 
@@ -11,6 +11,21 @@ class SummaryByEmployeeTable extends StatelessWidget {
     required this.data,
     this.onEmployeeClick,
   });
+
+  @override
+  State<SummaryByEmployeeTable> createState() => _SummaryByEmployeeTableState();
+}
+
+class _SummaryByEmployeeTableState extends State<SummaryByEmployeeTable> {
+  final _scrollController = ScrollController();
+  AttendanceSummaryResponse get data => widget.data;
+  Function(int userId)? get onEmployeeClick => widget.onEmployeeClick;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,8 +49,10 @@ class SummaryByEmployeeTable extends StatelessWidget {
         ),
       ),
       child: Scrollbar(
+        controller: _scrollController,
         thumbVisibility: true,
         child: SingleChildScrollView(
+          controller: _scrollController,
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 800),
@@ -49,25 +66,32 @@ class SummaryByEmployeeTable extends StatelessWidget {
               horizontalMargin: 16,
               columns: const [
                 DataColumn(
-                  label: Text('Nhân viên', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Nhân viên',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 DataColumn(
-                  label: Text('Đi làm', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Đi làm',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 DataColumn(
-                  label: Text('Nghỉ làm', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Nghỉ làm',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 DataColumn(
-                  label: Text('Đi muộn', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Đi muộn',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 DataColumn(
-                  label: Text('Về sớm', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Về sớm',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 DataColumn(
-                  label: Text('Tăng ca', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Tăng ca',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 DataColumn(
-                  label: Text('Thao tác', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: Text('Thao tác',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
               rows: data.employees.map((emp) {
@@ -76,16 +100,24 @@ class SummaryByEmployeeTable extends StatelessWidget {
                     cells: [
                       DataCell(
                         Text('${emp.fullName} (${emp.staffCode})',
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
                       ),
-                      const DataCell(Text('-', style: TextStyle(color: Colors.grey))),
-                      const DataCell(Text('-', style: TextStyle(color: Colors.grey))),
-                      const DataCell(Text('-', style: TextStyle(color: Colors.grey))),
-                      const DataCell(Text('-', style: TextStyle(color: Colors.grey))),
-                      const DataCell(Text('-', style: TextStyle(color: Colors.grey))),
+                      const DataCell(
+                          Text('-', style: TextStyle(color: Colors.grey))),
+                      const DataCell(
+                          Text('-', style: TextStyle(color: Colors.grey))),
+                      const DataCell(
+                          Text('-', style: TextStyle(color: Colors.grey))),
+                      const DataCell(
+                          Text('-', style: TextStyle(color: Colors.grey))),
+                      const DataCell(
+                          Text('-', style: TextStyle(color: Colors.grey))),
                       DataCell(
                         TextButton(
-                          onPressed: onEmployeeClick != null ? () => onEmployeeClick!(emp.userId) : null,
+                          onPressed: onEmployeeClick != null
+                              ? () => onEmployeeClick!(emp.userId)
+                              : null,
                           child: const Text('Chấm công'),
                         ),
                       ),
@@ -101,10 +133,14 @@ class SummaryByEmployeeTable extends StatelessWidget {
                         children: [
                           CircleAvatar(
                             radius: 16,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                            backgroundColor:
+                                AppColors.primary.withValues(alpha: 0.15),
                             child: Text(
-                              emp.fullName.isNotEmpty ? emp.fullName[0].toUpperCase() : 'U',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                              emp.fullName.isNotEmpty
+                                  ? emp.fullName[0].toUpperCase()
+                                  : 'U',
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 12),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -112,11 +148,16 @@ class SummaryByEmployeeTable extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text(emp.fullName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              Text(emp.fullName,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
                               Text(emp.staffCode,
                                   style: TextStyle(
                                     fontSize: 11,
-                                    color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                    color: isDark
+                                        ? AppColors.textLightSecondary
+                                        : AppColors.textSecondary,
                                   )),
                             ],
                           ),
@@ -128,7 +169,8 @@ class SummaryByEmployeeTable extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppColors.success.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
@@ -143,14 +185,16 @@ class SummaryByEmployeeTable extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(width: 6),
-                          Text(emp.workHoursTotal, style: const TextStyle(fontSize: 12)),
+                          Text(emp.workHoursTotal,
+                              style: const TextStyle(fontSize: 12)),
                         ],
                       ),
                     ),
                     DataCell(
                       emp.leaveShiftCount > 0
                           ? Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: AppColors.error.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(6),
@@ -164,40 +208,57 @@ class SummaryByEmployeeTable extends StatelessWidget {
                                 ),
                               ),
                             )
-                          : const Text('-', style: TextStyle(color: Colors.grey)),
+                          : const Text('-',
+                              style: TextStyle(color: Colors.grey)),
                     ),
                     DataCell(
                       emp.lateCount > 0
                           ? Text(
                               '${emp.lateCount} lần (${emp.lateDuration})',
-                              style: const TextStyle(color: Color(0xFFA855F7), fontWeight: FontWeight.w600, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Color(0xFFA855F7),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12),
                             )
-                          : const Text('-', style: TextStyle(color: Colors.grey)),
+                          : const Text('-',
+                              style: TextStyle(color: Colors.grey)),
                     ),
                     DataCell(
                       emp.earlyLeaveCount > 0
                           ? Text(
                               '${emp.earlyLeaveCount} lần (${emp.earlyLeaveDuration})',
-                              style: const TextStyle(color: Color(0xFFA855F7), fontWeight: FontWeight.w600, fontSize: 12),
+                              style: const TextStyle(
+                                  color: Color(0xFFA855F7),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12),
                             )
-                          : const Text('-', style: TextStyle(color: Colors.grey)),
+                          : const Text('-',
+                              style: TextStyle(color: Colors.grey)),
                     ),
                     DataCell(
                       emp.overtime != '0m'
-                          ? Text(emp.overtime, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12))
-                          : const Text('-', style: TextStyle(color: Colors.grey)),
+                          ? Text(emp.overtime,
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 12))
+                          : const Text('-',
+                              style: TextStyle(color: Colors.grey)),
                     ),
                     DataCell(
                       ElevatedButton(
-                        onPressed: onEmployeeClick != null ? () => onEmployeeClick!(emp.userId) : null,
+                        onPressed: onEmployeeClick != null
+                            ? () => onEmployeeClick!(emp.userId)
+                            : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           visualDensity: VisualDensity.compact,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
                         ),
-                        child: const Text('Chấm công', style: TextStyle(fontSize: 12)),
+                        child: const Text('Chấm công',
+                            style: TextStyle(fontSize: 12)),
                       ),
                     ),
                   ],
@@ -210,4 +271,3 @@ class SummaryByEmployeeTable extends StatelessWidget {
     );
   }
 }
-

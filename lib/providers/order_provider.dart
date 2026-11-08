@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/network/api_error.dart';
 import '../data/models/order_model.dart';
 import '../data/repositories/order_repository.dart';
 
-final orderRepositoryProvider = Provider<OrderRepository>((ref) => OrderRepository());
+final orderRepositoryProvider =
+    Provider<OrderRepository>((ref) => OrderRepository());
 
 class OrderState {
   final List<OrderModel> orders;
@@ -29,7 +31,8 @@ class OrderState {
     final List<Map<String, dynamic>> list = [];
     for (final order in orders) {
       for (final detail in order.details) {
-        if (detail.status == DishCookingStatus.pending || detail.status == DishCookingStatus.cooking) {
+        if (detail.status == DishCookingStatus.pending ||
+            detail.status == DishCookingStatus.cooking) {
           list.add({
             'orderId': order.id,
             'orderCode': order.code,
@@ -50,7 +53,8 @@ class OrderState {
   }) {
     return OrderState(
       orders: orders ?? this.orders,
-      selectedStatus: selectedStatus != null ? selectedStatus() : this.selectedStatus,
+      selectedStatus:
+          selectedStatus != null ? selectedStatus() : this.selectedStatus,
       isLoading: isLoading ?? this.isLoading,
       errorMessage: errorMessage,
     );
@@ -65,14 +69,17 @@ class OrderNotifier extends StateNotifier<OrderState> {
   }
 
   Future<void> loadOrders() async {
+    if (state.isLoading) return;
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final orders = await _repo.getAllOrders();
+      if (!mounted) return;
       state = state.copyWith(orders: orders, isLoading: false);
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Lỗi tải đơn hàng: ${e.toString()}',
+        errorMessage: apiErrorMessage(e),
       );
     }
   }
@@ -81,13 +88,9 @@ class OrderNotifier extends StateNotifier<OrderState> {
     state = state.copyWith(selectedStatus: () => status);
   }
 
-  Future<void> advanceCookingStatus(int orderId, int detailId, DishCookingStatus nextStatus) async {
+  Future<void> advanceCookingStatus(
+      int orderId, int detailId, DishCookingStatus nextStatus) async {
     await _repo.updateDishCookingStatus(orderId, detailId, nextStatus);
-    await loadOrders();
-  }
-
-  Future<void> addDishToTable(String tableName, dynamic item, int quantity, String? note) async {
-    await _repo.addDishToOrder(tableName, item, quantity, note);
     await loadOrders();
   }
 

@@ -4,6 +4,8 @@ import com.crowndine.common.enums.EOrderStatus;
 import com.crowndine.dto.request.OrderApplyVoucherRequest;
 import com.crowndine.dto.request.OrderItemBatchRequest;
 import com.crowndine.dto.request.OrderRequest;
+import com.crowndine.dto.request.TableOrderItemsRequest;
+import com.crowndine.service.impl.order.TableOrderService;
 import com.crowndine.dto.response.ApiResponse;
 import com.crowndine.service.order.OrderStatusService;
 import com.crowndine.service.order.OrderService;
@@ -29,6 +31,22 @@ public class ApiOrderController {
     private final OrderService orderService;
     private final OrderStatusService orderStatusService;
     private final OrderVoucherService orderVoucherService;
+    private final TableOrderService tableOrderService;
+
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
+    @GetMapping("/tables/{tableId}/active")
+    public ApiResponse getActiveTableOrder(@Min(1) @PathVariable Long tableId) {
+        return ApiResponse.builder().status(200).message("Active table order")
+                .data(tableOrderService.activeOrder(tableId)).build();
+    }
+
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
+    @PostMapping("/tables/{tableId}/details")
+    public ApiResponse addTableItems(@Min(1) @PathVariable Long tableId,
+                                    @Valid @RequestBody TableOrderItemsRequest request, Principal principal) {
+        return ApiResponse.builder().status(200).message("Items sent to kitchen")
+                .data(tableOrderService.addItems(tableId, request, principal.getName())).build();
+    }
 
     @GetMapping
     public ApiResponse getAllOrders(@RequestParam(required = false) LocalDate fromDate,
