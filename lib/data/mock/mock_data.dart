@@ -455,7 +455,7 @@ class MockData {
       code: 'ORD-001',
       guestName: 'Bàn T1-02 (Khách Anh Tuấn)',
       tableName: 'Bàn T1-02',
-      status: OrderStatus.inProgress,
+      status: OrderStatus.completed,
       totalPrice: 1630000,
       finalPrice: 1630000,
       details: [
@@ -465,7 +465,7 @@ class MockData {
           itemName: 'Bò Wagyu A5 Áp Chảo',
           quantity: 1,
           totalPrice: 1090000,
-          status: DishCookingStatus.cooking,
+          status: DishCookingStatus.served,
           note: 'Chín vừa (Medium Rare)',
         ),
         OrderDetailModel(
@@ -474,7 +474,7 @@ class MockData {
           itemName: 'Salad Cá Hồi Xông Khói',
           quantity: 1,
           totalPrice: 245000,
-          status: DishCookingStatus.ready,
+          status: DishCookingStatus.served,
           note: 'Để sốt riêng',
         ),
         OrderDetailModel(
@@ -492,7 +492,7 @@ class MockData {
       code: 'ORD-002',
       guestName: 'Phòng VIP 02 (Đoàn Doanh nghiệp)',
       tableName: 'Phòng VIP 02',
-      status: OrderStatus.inProgress,
+      status: OrderStatus.completed,
       totalPrice: 3850000,
       finalPrice: 3850000,
       details: [
@@ -502,7 +502,7 @@ class MockData {
           itemName: 'Combo Hoàng Gia Crown Royal (4 người)',
           quantity: 1,
           totalPrice: 2790000,
-          status: DishCookingStatus.cooking,
+          status: DishCookingStatus.served,
           note: 'Ra súp và salad trước',
         ),
         OrderDetailModel(

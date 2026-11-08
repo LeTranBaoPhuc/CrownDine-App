@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_colors.dart';
+import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../data/models/work_schedule_model.dart';
 import '../../../../../providers/auth_provider.dart';
 import '../../../../../providers/staff_work_schedule_provider.dart';
@@ -28,24 +29,13 @@ class ShiftDetailDialog extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final scheduleNotifier = ref.read(staffWorkScheduleProvider.notifier);
 
-    final canDelete = authState.isAdmin || schedule.user.id == authState.user?.id;
+    final canDelete = authState.isAdmin;
 
     // Format date in Vietnamese
     DateTime? date = schedule.parsedDate;
     String dateStr = schedule.workDate;
     if (date != null) {
-      final daysOfWeek = [
-        '',
-        'Thứ Hai',
-        'Thứ Ba',
-        'Thứ Tư',
-        'Thứ Năm',
-        'Thứ Sáu',
-        'Thứ Bảy',
-        'Chủ Nhật'
-      ];
-      final dayName = daysOfWeek[date.weekday];
-      dateStr = '$dayName, ${DateFormat('dd/MM/yyyy').format(date)}';
+      dateStr = DateFormatter.formatVietnameseDate(date);
     }
 
     final shiftColor = schedule.shift.themeColor;

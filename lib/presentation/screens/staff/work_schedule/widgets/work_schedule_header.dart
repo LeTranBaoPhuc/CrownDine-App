@@ -20,8 +20,6 @@ class WorkScheduleHeader extends ConsumerWidget {
     final scheduleState = ref.watch(staffWorkScheduleProvider);
     final scheduleNotifier = ref.read(staffWorkScheduleProvider.notifier);
     final authState = ref.watch(authProvider);
-
-    final isStaffOrAdmin = authState.isStaff || authState.isAdmin;
     final currentUserId = authState.user?.id;
 
     return Container(
@@ -34,170 +32,181 @@ class WorkScheduleHeader extends ConsumerWidget {
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Row 1: Title, Week Navigator, View Mode Toggle, Add Shift Button
-          Row(
+          // Row 1: Title, Week Navigator, View Mode Toggle, Add Shift Button (Responsive Wrap)
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               // Icon & Title
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.calendar_month_rounded,
-                  color: AppColors.primary,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Lịch làm việc',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.calendar_month_rounded,
+                      color: AppColors.primary,
+                      size: 22,
                     ),
                   ),
-                  Text(
-                    'Phân ca & Theo dõi lịch trực',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                    ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        authState.isAdmin ? 'Phân ca làm việc' : 'Lịch làm việc',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        authState.isAdmin
+                            ? 'Phân ca & Quản lý lịch trực nhân viên'
+                            : 'Xem ca làm việc của bạn',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
 
-              const Spacer(),
-
-              // Week Navigation Controls
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              // Controls: Week Navigation, Today, View Mode, Phân ca button
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  // Week Navigation Controls
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                          tooltip: 'Tuần trước',
+                          onPressed: scheduleNotifier.prevWeek,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        InkWell(
+                          onTap: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: scheduleState.referenceDate,
+                              firstDate: DateTime(2025),
+                              lastDate: DateTime(2030),
+                            );
+                            if (picked != null) {
+                              scheduleNotifier.changeWeek(picked);
+                            }
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  scheduleState.weekRangeDisplay,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(Icons.arrow_drop_down_rounded, size: 18),
+                              ],
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                          tooltip: 'Tuần sau',
+                          onPressed: scheduleNotifier.nextWeek,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left_rounded, size: 20),
-                      tooltip: 'Tuần trước',
-                      onPressed: scheduleNotifier.prevWeek,
+
+                  // Button "Hôm nay"
+                  OutlinedButton.icon(
+                    onPressed: scheduleNotifier.goToCurrentWeek,
+                    icon: const Icon(Icons.today_rounded, size: 16),
+                    label: const Text('Hôm nay'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       visualDensity: VisualDensity.compact,
                     ),
-                    InkWell(
-                      onTap: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: scheduleState.referenceDate,
-                          firstDate: DateTime(2025),
-                          lastDate: DateTime(2030),
-                        );
-                        if (picked != null) {
-                          scheduleNotifier.changeWeek(picked);
-                        }
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              scheduleState.weekRangeDisplay,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.arrow_drop_down_rounded, size: 18),
-                          ],
+                  ),
+
+                  // View Mode Toggle (Table / Agenda)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: Icon(
+                            Icons.grid_view_rounded,
+                            size: 18,
+                            color: scheduleState.viewMode.isTable ? AppColors.primary : null,
+                          ),
+                          tooltip: 'Xem bảng tuần (Ma trận)',
+                          onPressed: () => scheduleNotifier.setViewMode(WorkScheduleViewMode.table),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        IconButton(
+                          icon: Icon(
+                            Icons.view_agenda_rounded,
+                            size: 18,
+                            color: scheduleState.viewMode.isAgenda ? AppColors.primary : null,
+                          ),
+                          tooltip: 'Xem danh sách (Agenda)',
+                          onPressed: () => scheduleNotifier.setViewMode(WorkScheduleViewMode.agenda),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  if (authState.isAdmin)
+                    ElevatedButton.icon(
+                      onPressed: onAddShift,
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Phân ca'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right_rounded, size: 20),
-                      tooltip: 'Tuần sau',
-                      onPressed: scheduleNotifier.nextWeek,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
+                ],
               ),
-
-              const SizedBox(width: 8),
-
-              // Button "Hôm nay"
-              OutlinedButton.icon(
-                onPressed: scheduleNotifier.goToCurrentWeek,
-                icon: const Icon(Icons.today_rounded, size: 16),
-                label: const Text('Hôm nay'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-
-              const SizedBox(width: 8),
-
-              // View Mode Toggle (Table / Agenda)
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Icons.grid_view_rounded,
-                        size: 18,
-                        color: scheduleState.viewMode.isTable ? AppColors.primary : null,
-                      ),
-                      tooltip: 'Xem bảng tuần (Ma trận)',
-                      onPressed: () => scheduleNotifier.setViewMode(WorkScheduleViewMode.table),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.view_agenda_rounded,
-                        size: 18,
-                        color: scheduleState.viewMode.isAgenda ? AppColors.primary : null,
-                      ),
-                      tooltip: 'Xem danh sách (Agenda)',
-                      onPressed: () => scheduleNotifier.setViewMode(WorkScheduleViewMode.agenda),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
-                ),
-              ),
-
-              if (isStaffOrAdmin) ...[
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: onAddShift,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Đăng ký / Thêm ca'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                ),
-              ],
             ],
           ),
 
@@ -414,7 +423,7 @@ class WorkScheduleHeader extends ConsumerWidget {
       borderRadius: BorderRadius.circular(8),
       child: Container(
         height: 38,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: selected
               ? (color != null ? color.withValues(alpha: 0.15) : AppColors.primary.withValues(alpha: 0.15))
@@ -426,10 +435,11 @@ class WorkScheduleHeader extends ConsumerWidget {
                 : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
           ),
         ),
-        alignment: Alignment.center,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: Center(
+          widthFactor: 1.0,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             if (color != null) ...[
               Container(
                 width: 8,
@@ -452,6 +462,7 @@ class WorkScheduleHeader extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

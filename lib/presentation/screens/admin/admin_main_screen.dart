@@ -2,9 +2,12 @@ import 'setup/admin_setup_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/crown_app_bar.dart';
+import '../staff/work_schedule/work_schedule_screen.dart';
 import 'attendance/attendance_screen.dart';
 import 'dashboard/admin_dashboard_screen.dart';
+import 'feedback/admin_feedback_screen.dart';
 import 'menu/admin_menu_management_screen.dart';
+import 'payment/admin_payment_screen.dart';
 import 'voucher/admin_voucher_screen.dart';
 import 'staff/admin_staff_screen.dart';
 
@@ -31,6 +34,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     AdminMenuManagementScreen(),
     AdminVoucherScreen(),
     AdminStaffScreen(),
+    WorkScheduleScreen(showAppBar: false),
     AttendanceScreen(),
   ];
 
@@ -43,10 +47,29 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
       appBar: CrownAppBar(
         actions: [
           IconButton(
-              tooltip: 'Thiết lập nhà hàng',
-              icon: const Icon(Icons.tune),
-              onPressed: () => Navigator.push(context,
-                  MaterialPageRoute(builder: (_) => const AdminSetupScreen())))
+            tooltip: 'Đánh giá & Phản hồi',
+            icon: const Icon(Icons.rate_review_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminFeedbackScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Quản lý thanh toán',
+            icon: const Icon(Icons.receipt_long_outlined),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminPaymentScreen()),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Thiết lập nhà hàng',
+            icon: const Icon(Icons.tune),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminSetupScreen()),
+            ),
+          ),
         ],
         showCart: false,
       ),
@@ -97,6 +120,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
               icon: Icon(Icons.people_outline),
               activeIcon: Icon(Icons.people),
               label: 'Nhân sự',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.calendar_month_outlined),
+              activeIcon: Icon(Icons.calendar_month),
+              label: 'Phân ca',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.how_to_reg_outlined),

@@ -117,7 +117,7 @@ class _WorkScheduleMatrixTableState extends ConsumerState<WorkScheduleMatrixTabl
                     todayStr: todayStr,
                     isEven: isEven,
                     isDark: isDark,
-                    canAddShift: authState.isAdmin || staff.id == authState.user?.id,
+                    canAddShift: authState.isAdmin,
                   );
                 }),
               ],

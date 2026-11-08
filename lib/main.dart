@@ -2,15 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/screens/admin/admin_main_screen.dart';
+import 'presentation/screens/admin/feedback/admin_feedback_screen.dart';
+import 'presentation/screens/admin/payment/admin_payment_screen.dart';
 import 'presentation/screens/auth/login_screen.dart';
 import 'presentation/screens/auth/register_screen.dart';
 import 'presentation/screens/customer/customer_main_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'presentation/screens/staff/staff_main_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await initializeDateFormatting('vi_VN', null);
+    await initializeDateFormatting('vi', null);
+  } catch (_) {}
   runApp(
     const ProviderScope(
       child: CrownDineApp(),
@@ -43,10 +50,26 @@ class CrownDineApp extends ConsumerWidget {
               builder: (_) =>
                   const _RoleGate(admin: true, child: AdminMainScreen()));
         }
-        if (path == '/admin/attendance' || path.endsWith('/admin/attendance')) {
+        if (path == '/admin/work-schedule' ||
+            path.endsWith('/admin/work-schedule')) {
           return MaterialPageRoute(
               builder: (_) => const _RoleGate(
                   admin: true, child: AdminMainScreen(initialIndex: 4)));
+        }
+        if (path == '/admin/attendance' || path.endsWith('/admin/attendance')) {
+          return MaterialPageRoute(
+              builder: (_) => const _RoleGate(
+                  admin: true, child: AdminMainScreen(initialIndex: 5)));
+        }
+        if (path == '/admin/feedback' || path.endsWith('/admin/feedback')) {
+          return MaterialPageRoute(
+              builder: (_) =>
+                  const _RoleGate(admin: true, child: AdminFeedbackScreen()));
+        }
+        if (path == '/admin/payment' || path.endsWith('/admin/payment')) {
+          return MaterialPageRoute(
+              builder: (_) =>
+                  const _RoleGate(admin: true, child: AdminPaymentScreen()));
         }
         if (path == '/staff/reservation-list' ||
             path.endsWith('/staff/reservation-list')) {
