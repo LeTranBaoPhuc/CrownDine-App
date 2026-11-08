@@ -13,6 +13,10 @@ public class TableLayoutResponse {
 
     private Long id;
     private String name;
+    private Long floorId;
+    private String floorName;
+    private Long areaId;
+    private String areaName;
 
     private ETableShape shape;
     private ETableStatus status;

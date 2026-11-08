@@ -11,6 +11,7 @@ class AdminPayment {
   final String type;
   final String target;
   final String source;
+  final String? reservationStatus;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -27,6 +28,7 @@ class AdminPayment {
     required this.type,
     required this.target,
     required this.source,
+    this.reservationStatus,
     required this.createdAt,
     this.updatedAt,
   });
@@ -73,6 +75,7 @@ class AdminPayment {
       username: optional('username'),
       orderCode: optional('orderCode'),
       reservationCode: optional('reservationCode'),
+      reservationStatus: optional('reservationStatus'),
       transactionCode: optional('transactionCode'),
       method: value('method'),
       status: value('status'),

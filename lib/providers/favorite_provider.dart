@@ -51,14 +51,6 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
     if (authState.isAuthenticated) {
       loadFavorites();
     }
-
-    _ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.isAuthenticated && !(previous?.isAuthenticated ?? false)) {
-        loadFavorites();
-      } else if (!next.isAuthenticated && (previous?.isAuthenticated ?? false)) {
-        state = const FavoriteState();
-      }
-    });
   }
 
   bool isItemFavorite(int itemId) => state.favoriteItemIds.contains(itemId);
@@ -74,6 +66,7 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final list = await _repo.getMyFavorites();
+      if (!mounted) return;
       final itemIds = <int>{};
       final comboIds = <int>{};
       for (final f in list) {
@@ -87,6 +80,7 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
         favoriteComboIds: comboIds,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Không thể tải danh sách yêu thích: $e',
@@ -112,8 +106,10 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
     // Optimistic UI update
     if (isCurrentlyFavorite) {
       final updatedIds = Set<int>.from(state.favoriteItemIds)..remove(itemId);
-      final updatedList = state.favorites.where((f) => f.itemId != itemId).toList();
-      state = state.copyWith(favoriteItemIds: updatedIds, favorites: updatedList);
+      final updatedList =
+          state.favorites.where((f) => f.itemId != itemId).toList();
+      state =
+          state.copyWith(favoriteItemIds: updatedIds, favorites: updatedList);
     } else {
       final updatedIds = Set<int>.from(state.favoriteItemIds)..add(itemId);
       final dummyFavorite = FavoriteModel(
@@ -125,7 +121,8 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
         createdAt: DateTime.now(),
       );
       final updatedList = [dummyFavorite, ...state.favorites];
-      state = state.copyWith(favoriteItemIds: updatedIds, favorites: updatedList);
+      state =
+          state.copyWith(favoriteItemIds: updatedIds, favorites: updatedList);
     }
 
     try {
@@ -134,12 +131,15 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
       } else {
         await _repo.addFavoriteItem(itemId);
         // Refresh silently from backend to get server-generated id
+        if (!mounted) return false;
         await loadFavorites();
       }
       return true;
     } catch (e) {
       // Rollback on error
-      state = previousState.copyWith(errorMessage: 'Lỗi cập nhật yêu thích: $e');
+      if (!mounted) return false;
+      state =
+          previousState.copyWith(errorMessage: 'Lỗi cập nhật yêu thích: $e');
       return false;
     }
   }
@@ -162,8 +162,10 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
     // Optimistic UI update
     if (isCurrentlyFavorite) {
       final updatedIds = Set<int>.from(state.favoriteComboIds)..remove(comboId);
-      final updatedList = state.favorites.where((f) => f.comboId != comboId).toList();
-      state = state.copyWith(favoriteComboIds: updatedIds, favorites: updatedList);
+      final updatedList =
+          state.favorites.where((f) => f.comboId != comboId).toList();
+      state =
+          state.copyWith(favoriteComboIds: updatedIds, favorites: updatedList);
     } else {
       final updatedIds = Set<int>.from(state.favoriteComboIds)..add(comboId);
       final dummyFavorite = FavoriteModel(
@@ -175,7 +177,8 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
         createdAt: DateTime.now(),
       );
       final updatedList = [dummyFavorite, ...state.favorites];
-      state = state.copyWith(favoriteComboIds: updatedIds, favorites: updatedList);
+      state =
+          state.copyWith(favoriteComboIds: updatedIds, favorites: updatedList);
     }
 
     try {
@@ -183,19 +186,23 @@ class FavoriteNotifier extends StateNotifier<FavoriteState> {
         await _repo.removeFavoriteCombo(comboId);
       } else {
         await _repo.addFavoriteCombo(comboId);
+        if (!mounted) return false;
         await loadFavorites();
       }
       return true;
     } catch (e) {
       // Rollback on error
-      state = previousState.copyWith(errorMessage: 'Lỗi cập nhật yêu thích combo: $e');
+      if (!mounted) return false;
+      state = previousState.copyWith(
+          errorMessage: 'Lỗi cập nhật yêu thích combo: $e');
       return false;
     }
   }
 }
 
-final favoriteProvider = StateNotifierProvider<FavoriteNotifier, FavoriteState>((ref) {
+final favoriteProvider =
+    StateNotifierProvider<FavoriteNotifier, FavoriteState>((ref) {
+  ref.watch(authProvider.select((state) => state.user?.id));
   final repo = ref.watch(favoriteRepositoryProvider);
   return FavoriteNotifier(repo, ref);
 });
-

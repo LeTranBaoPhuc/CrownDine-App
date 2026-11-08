@@ -63,6 +63,13 @@ public class ApiVoucherController {
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ApiResponse deleteVoucher(@Min(1) @PathVariable Long id) {
+        voucherService.deleteVoucher(id);
+        return ApiResponse.builder().status(200).message("Đã xóa voucher").build();
+    }
+
+    @PreAuthorize("hasAuthority('ADMIN')")
     @PatchMapping("/{id}")
     public ApiResponse updateVoucher(@Min(1) @PathVariable Long id, @Valid @RequestBody VoucherRequest request) {
         return ApiResponse.builder()

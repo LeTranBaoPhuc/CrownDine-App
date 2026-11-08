@@ -15,6 +15,7 @@ import com.crowndine.model.OrderDetail;
 import com.crowndine.model.Reservation;
 import com.crowndine.model.RestaurantTable;
 import com.crowndine.model.User;
+import com.crowndine.security.ResourceAccess;
 import com.crowndine.repository.FeedbackRepository;
 import com.crowndine.repository.OrderDetailRepository;
 import com.crowndine.repository.ReservationRepository;
@@ -43,11 +44,13 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
     private final FeedbackRepository feedbackRepository;
     private final CalculationService calculationService;
     private final OrderService orderService;
+    private final com.crowndine.repository.PaymentRepository paymentRepository;
 
     @Override
     @Transactional(readOnly = true)
     public ReservationCheckoutResponse getReservationCheckout(Long reservationId) {
         Reservation reservation = getReservationById(reservationId);
+        ResourceAccess.requireOwnerOrStaff(reservation.getUser());
         return toReservationCheckoutResponse(reservation);
     }
 
@@ -56,9 +59,10 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
     public ReservationCheckoutResponse addItemToReservationOrder(Long reservationId, OrderItemRequest request, String username) {
         log.info("Adding order item for reservation id {}", reservationId);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
         User user = getUserByUserName(username);
         validateReservationForUser(reservation, user);
+        ensureEditable(reservation);
 
         Order order = reservation.getOrder();
         if (order == null) {
@@ -77,9 +81,10 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
     public ReservationCheckoutResponse updateReservationOrderItem(Long reservationId, OrderItemRequest request, String username) {
         log.info("Processing update order item for reservation id {}", reservationId);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
         User user = getUserByUserName(username);
         validateReservationForUser(reservation, user);
+        ensureEditable(reservation);
 
         if (reservation.getOrder() == null) {
             throw new InvalidDataException("Đặt bàn này chưa có đơn hàng để cập nhật");
@@ -95,9 +100,10 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
     public ReservationCheckoutResponse removeReservationOrderItem(Long reservationId, OrderItemRemoveRequest request, String username) {
         log.info("Processing remove order item for reservation id {}", reservationId);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
         User user = getUserByUserName(username);
         validateReservationForUser(reservation, user);
+        ensureEditable(reservation);
 
         if (reservation.getOrder() == null) {
             throw new InvalidDataException("Đặt bàn này chưa có đơn hàng để xóa món");
@@ -110,6 +116,18 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
 
     private Reservation getReservationById(Long reservationId) {
         return reservationRepository.findById(reservationId).orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
+    }
+
+    private void ensureEditable(Reservation reservation) {
+        if (paymentRepository.existsByTargetAndReservationIdAndStatus(com.crowndine.common.enums.EPaymentTarget.RESERVATION,
+                reservation.getId(), com.crowndine.common.enums.EPaymentStatus.PENDING)) {
+            throw new InvalidDataException("Đang có giao dịch thanh toán, không thể sửa số tiền");
+        }
+        if (reservation.getStatus() != EReservationStatus.PENDING
+                || reservation.getExpiratedAt() == null
+                || !reservation.getExpiratedAt().isAfter(java.time.LocalDateTime.now())) {
+            throw new InvalidDataException("Chỉ được sửa món đặt trước khi còn thời gian giữ chỗ và chưa thanh toán");
+        }
     }
 
     private User getUserByUserName(String username) {
@@ -161,9 +179,14 @@ public class ReservationOrderServiceImpl implements ReservationOrderService {
         BigDecimal discountPrice = defaultMoney(order.getDiscountPrice());
         BigDecimal finalPrice = defaultMoney(order.getFinalPrice());
         BigDecimal itemsTotal = totalPrice;
-        BigDecimal depositAmount = calculationService.calculateDepositPayment(finalPrice, tableDeposit);
-        BigDecimal remainingAmount = finalPrice.subtract(finalPrice.multiply(DEPOSIT_RATE))
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal depositAmount = calculationService.calculateDepositPayment(finalPrice, tableDeposit).setScale(0, RoundingMode.HALF_UP);
+        var recorded = paymentRepository.findFirstByTargetAndReservationIdAndStatusOrderByIdDesc(com.crowndine.common.enums.EPaymentTarget.RESERVATION, reservation.getId(), com.crowndine.common.enums.EPaymentStatus.SUCCESS)
+                .or(() -> paymentRepository.findFirstByTargetAndReservationIdAndStatusOrderByIdDesc(com.crowndine.common.enums.EPaymentTarget.RESERVATION, reservation.getId(), com.crowndine.common.enums.EPaymentStatus.PENDING));
+        if (recorded.isPresent()) {
+            depositAmount = recorded.get().getAmount();
+            if (recorded.get().getTableDepositAmount() != null) tableDeposit = recorded.get().getTableDepositAmount();
+        }
+        BigDecimal remainingAmount = finalPrice.subtract(depositAmount.subtract(tableDeposit).max(BigDecimal.ZERO)).max(BigDecimal.ZERO).setScale(0, RoundingMode.HALF_UP);
 
         ReservationCheckoutResponse response = new ReservationCheckoutResponse();
         response.setReservationId(reservation.getId());

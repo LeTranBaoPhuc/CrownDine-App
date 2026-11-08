@@ -76,6 +76,7 @@ class ReservationPaymentResult {
   final String code;
   final String reservationCode;
   final String status;
+  final String reservationStatus;
   final String target;
   final double amount;
 
@@ -83,6 +84,7 @@ class ReservationPaymentResult {
       {required this.code,
       required this.reservationCode,
       required this.status,
+      this.reservationStatus = 'CONFIRMED',
       required this.target,
       required this.amount});
 
@@ -95,6 +97,7 @@ class ReservationPaymentResult {
       code: '${json['code'] ?? ''}',
       reservationCode: json['reservationCode'] as String? ?? '',
       status: json['status'] as String? ?? '',
+      reservationStatus: json['reservationStatus'] as String? ?? '',
       target: json['target'] as String? ?? '',
       amount: amount.toDouble(),
     );

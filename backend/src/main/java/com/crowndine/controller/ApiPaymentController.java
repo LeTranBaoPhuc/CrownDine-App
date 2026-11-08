@@ -44,12 +44,20 @@ public class ApiPaymentController {
 
     @PostMapping("/payos-ipn")
     public void handleWebhook(@RequestBody Map<String, Object> body) {
-        try {
-            log.info("Webhook called: PayOS return received: {}", body);
-            paymentFactory.get(EPaymentMethod.PAYOS).handleWebHook(body);
-        } catch (Exception e) {
-            log.error("Exception occurred while handling payment request {}, message = {}", e, e.getMessage());
-        }
+        paymentFactory.get(EPaymentMethod.PAYOS).handleWebHook(body);
+    }
+
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
+    @GetMapping("/orders/{id}/latest")
+    public ApiResponse latestOrder(@Min(1) @PathVariable Long id) {
+        return ApiResponse.builder().status(200).message("Latest order payment").data(paymentService.latestForOrder(id)).build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/reservations/{id}/latest")
+    public ApiResponse latestReservation(@Min(1) @PathVariable Long id, Principal principal) {
+        return ApiResponse.builder().status(200).message("Latest reservation payment")
+                .data(paymentService.latestForReservation(id, principal.getName())).build();
     }
 
     @PreAuthorize("hasAuthority('ADMIN')")

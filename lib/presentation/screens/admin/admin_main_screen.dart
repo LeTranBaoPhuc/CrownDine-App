@@ -1,3 +1,4 @@
+import 'setup/admin_setup_screen.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/crown_app_bar.dart';
@@ -39,7 +40,14 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: const CrownAppBar(
+      appBar: CrownAppBar(
+        actions: [
+          IconButton(
+              tooltip: 'Thiết lập nhà hàng',
+              icon: const Icon(Icons.tune),
+              onPressed: () => Navigator.push(context,
+                  MaterialPageRoute(builder: (_) => const AdminSetupScreen())))
+        ],
         showCart: false,
       ),
       body: IndexedStack(
@@ -64,7 +72,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           selectedItemColor: AppColors.primary,
-          unselectedItemColor: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+          unselectedItemColor:
+              isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
           selectedFontSize: 12,
           unselectedFontSize: 12,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),

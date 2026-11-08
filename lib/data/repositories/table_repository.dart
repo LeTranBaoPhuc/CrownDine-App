@@ -34,6 +34,24 @@ class TableRepository {
         : tables.where((t) => t.floorId == floorId).toList();
   }
 
+  Future<List<TableModel>> getAvailableTables(
+      {required String date,
+      required String startTime,
+      required int guestNumber}) async {
+    final data = _data(await _dio
+        .get('${ApiEndpoints.restaurantTables}/available', queryParameters: {
+      'date': date,
+      'startTime': startTime,
+      'guestNumber': guestNumber
+    }));
+    if (data is! List)
+      throw const FormatException('Thiếu danh sách bàn trống.');
+    return data
+        .map((e) => TableModel.fromJson(
+            {...Map<String, dynamic>.from(e), 'status': 'AVAILABLE'}))
+        .toList();
+  }
+
   Future<TableModel> updateStatus(int tableId, TableStatus status) async {
     final data = _data(await _dio.patch(
         '${ApiEndpoints.restaurantTables}/$tableId',

@@ -74,7 +74,7 @@ public class ApiWorkScheduleController {
         long count = workScheduleService.createWorkSchedule(request);
 
         if (count > 0) {
-            return ResponseEntity.ok().body(Collections.singletonMap("message", "ok"));
+            return ResponseEntity.ok().body(ApiResponse.builder().status(200).message("Đã tạo lịch làm việc").data(count).build());
         }
         return ResponseEntity.badRequest().body(Collections.singletonMap("message", "error"));
     }

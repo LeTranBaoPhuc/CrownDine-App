@@ -49,6 +49,7 @@ public class ApiOrderController {
     }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     public ApiResponse getAllOrders(@RequestParam(required = false) LocalDate fromDate,
                                     @RequestParam(required = false) LocalDate toDate,
                                     @RequestParam(required = false) EOrderStatus status,
@@ -96,6 +97,7 @@ public class ApiOrderController {
     @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     @PutMapping("/{id}")
     public ApiResponse updateOrder(@Min(1) @PathVariable Long id, @Valid @RequestBody OrderItemBatchRequest request, Principal principal) {
+        orderService.appendItemsToOrder(id, request, principal.getName());
         return ApiResponse.builder()
                 .status(200)
                 .message("Successfully updated order + order details")
@@ -134,6 +136,7 @@ public class ApiOrderController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     public ApiResponse updateOrderStatus(@Min(1) @PathVariable Long id, 
                                          @RequestParam EOrderStatus status,
                                          @RequestParam(required = false) String cancelReason,

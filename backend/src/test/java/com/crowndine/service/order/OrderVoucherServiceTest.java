@@ -54,11 +54,13 @@ class OrderVoucherServiceTest {
     @Mock
     private UserVoucherValidator userVoucherValidator;
 
+    @Mock private com.crowndine.repository.PaymentRepository paymentRepository;
     private OrderVoucherService orderVoucherService;
 
     @BeforeEach
     void setUp() {
-        orderVoucherService = new OrderVoucherServiceImpl(orderRepository, userRepository, userVoucherRepository,
+        org.mockito.Mockito.lenient().when(orderRepository.findByIdForUpdate(any())).thenAnswer(invocation -> orderRepository.findById(invocation.getArgument(0)));
+        orderVoucherService = new OrderVoucherServiceImpl(orderRepository, paymentRepository, userRepository, userVoucherRepository,
                 calculationService, voucherService, userVoucherValidator);
     }
 
@@ -196,7 +198,7 @@ class OrderVoucherServiceTest {
     }
 
     @Test
-    void applyVoucher_shouldDetachVoucherFromPreviousActiveOrders() {
+    void applyVoucher_shouldRejectReuseWithoutChangingPreviousOrder() {
         User user = new User();
         user.setId(100L);
         user.setUsername("alice");
@@ -214,6 +216,7 @@ class OrderVoucherServiceTest {
         previousOrder.setVoucher(voucher);
         previousOrder.setUser(user);
 
+        when(userRepository.findByUsernameForUpdate("alice")).thenReturn(Optional.of(user));
         when(orderRepository.findById(10L)).thenReturn(Optional.of(currentOrder), Optional.of(currentOrder));
         when(calculationService.calculateTotalOrder(currentOrder.getOrderDetails())).thenReturn(new BigDecimal("300.00"));
         when(voucherService.getVoucherByCode(anyString())).thenReturn(voucher);
@@ -223,16 +226,9 @@ class OrderVoucherServiceTest {
                 .thenReturn(new BigDecimal("270.00"));
         when(orderRepository.findActiveOrdersUsingVoucherByUserId(100L, 20L, 10L, List.of(EOrderStatus.COMPLETED, EOrderStatus.CANCELLED)))
                 .thenReturn(List.of(previousOrder));
-        when(calculationService.calculateOrderPricing(previousOrder))
-                .thenReturn(new OrderPricingResult(new BigDecimal("200.00"), BigDecimal.ZERO, new BigDecimal("200.00")));
-        when(calculationService.calculateOrderPricing(currentOrder))
-                .thenReturn(new OrderPricingResult(new BigDecimal("300.00"), new BigDecimal("30.00"), new BigDecimal("270.00")));
-        when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        orderVoucherService.applyVoucher(10L, "unique10", "alice");
-
-        assertNull(previousOrder.getVoucher());
-        verify(orderRepository, times(2)).save(any(Order.class));
+        assertThrows(InvalidDataException.class, () -> orderVoucherService.applyVoucher(10L, "unique10", "alice"));
+        assertEquals(voucher, previousOrder.getVoucher());
+        verify(orderRepository, org.mockito.Mockito.never()).save(any(Order.class));
     }
 
     private Order baseOrder(EOrderStatus status, boolean withOneItem) {

@@ -41,6 +41,7 @@ public class ApiReservationController {
     }
 
     @GetMapping("/all")
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     public ApiResponse getAllReservations(
             @RequestParam(required = false) LocalDate fromDate,
             @RequestParam(required = false) LocalDate toDate,

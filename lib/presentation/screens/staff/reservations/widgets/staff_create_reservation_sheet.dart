@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/utils/date_formatter.dart';
-import '../../../../../data/mock/mock_data.dart';
 import '../../../../../providers/staff_reservation_provider.dart';
 import '../../../../../providers/table_provider.dart';
 
@@ -37,10 +36,12 @@ class StaffCreateReservationSheet extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<StaffCreateReservationSheet> createState() => _StaffCreateReservationSheetState();
+  ConsumerState<StaffCreateReservationSheet> createState() =>
+      _StaffCreateReservationSheetState();
 }
 
-class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReservationSheet> {
+class _StaffCreateReservationSheetState
+    extends ConsumerState<StaffCreateReservationSheet> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -53,10 +54,27 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
   bool _isSubmitting = false;
 
   final List<String> _timeSlots = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '13:00', '13:30', '14:00',
-    '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
-    '20:00', '20:30', '21:00', '21:30',
+    '09:00',
+    '09:30',
+    '10:00',
+    '10:30',
+    '11:00',
+    '11:30',
+    '12:00',
+    '12:30',
+    '13:00',
+    '13:30',
+    '14:00',
+    '17:00',
+    '17:30',
+    '18:00',
+    '18:30',
+    '19:00',
+    '19:30',
+    '20:00',
+    '20:30',
+    '21:00',
+    '21:30',
   ];
 
   @override
@@ -86,7 +104,7 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final tableState = ref.watch(tableProvider);
-    final allTables = tableState.allTables.isNotEmpty ? tableState.allTables : MockData.tables;
+    final allTables = tableState.allTables;
 
     // Ensure initial table exists
     if (_selectedTableId == null && allTables.isNotEmpty) {
@@ -147,7 +165,9 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                       'Dành cho khách vãng lai hoặc đặt trước qua điện thoại',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.textLightSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -173,7 +193,8 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                     // 1. Tên khách hàng & SĐT
                     const Text(
                       'Thông tin khách hàng (*)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
@@ -211,7 +232,8 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                     // 2. Ngày giờ & Số lượng khách
                     const Text(
                       'Thời gian & Số lượng khách (*)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -224,8 +246,10 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                               final picked = await showDatePicker(
                                 context: context,
                                 initialDate: _selectedDate,
-                                firstDate: DateTime.now().subtract(const Duration(days: 1)),
-                                lastDate: DateTime.now().add(const Duration(days: 60)),
+                                firstDate: DateTime.now()
+                                    .subtract(const Duration(days: 1)),
+                                lastDate: DateTime.now()
+                                    .add(const Duration(days: 60)),
                               );
                               if (picked != null) {
                                 setState(() => _selectedDate = picked);
@@ -234,11 +258,13 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                             child: InputDecorator(
                               decoration: const InputDecoration(
                                 labelText: 'Ngày đến',
-                                prefixIcon: Icon(Icons.calendar_today, size: 18),
+                                prefixIcon:
+                                    Icon(Icons.calendar_today, size: 18),
                               ),
                               child: Text(
                                 DateFormatter.format(_selectedDate),
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ),
                           ),
@@ -257,11 +283,15 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                             items: _timeSlots.map((time) {
                               return DropdownMenuItem(
                                 value: time,
-                                child: Text(time, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                                child: Text(time,
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold)),
                               );
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null) setState(() => _selectedTime = val);
+                              if (val != null)
+                                setState(() => _selectedTime = val);
                             },
                           ),
                         ),
@@ -275,14 +305,19 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                       children: [
                         const Text(
                           'Số lượng khách:',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                         Container(
                           decoration: BoxDecoration(
-                            color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                            color: isDark
+                                ? AppColors.darkSurface
+                                : AppColors.lightSurface,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder,
                             ),
                           ),
                           child: Row(
@@ -290,19 +325,25 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                             children: [
                               IconButton(
                                 icon: const Icon(Icons.remove, size: 18),
-                                onPressed: _guestNumber > 1 ? () => setState(() => _guestNumber--) : null,
+                                onPressed: _guestNumber > 1
+                                    ? () => setState(() => _guestNumber--)
+                                    : null,
                               ),
                               Container(
                                 constraints: const BoxConstraints(minWidth: 32),
                                 alignment: Alignment.center,
                                 child: Text(
                                   '$_guestNumber',
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add, size: 18),
-                                onPressed: _guestNumber < 30 ? () => setState(() => _guestNumber++) : null,
+                                onPressed: _guestNumber < 30
+                                    ? () => setState(() => _guestNumber++)
+                                    : null,
                               ),
                             ],
                           ),
@@ -314,7 +355,8 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                     // 3. Chọn Bàn phục vụ
                     const Text(
                       'Bàn phục vụ (*)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
                     DropdownButtonFormField<int>(
@@ -343,14 +385,16 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                     // 4. Ghi chú của khách
                     const Text(
                       'Ghi chú phục vụ',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
                       controller: _noteController,
                       maxLines: 2,
                       decoration: const InputDecoration(
-                        hintText: 'Yêu cầu đặc biệt: vị trí yên tĩnh, ghế trẻ em, trang trí hoa...',
+                        hintText:
+                            'Yêu cầu đặc biệt: vị trí yên tĩnh, ghế trẻ em, trang trí hoa...',
                         prefixIcon: Icon(Icons.notes, size: 20),
                       ),
                     ),
@@ -367,7 +411,9 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkCard : Colors.white,
               border: Border(
-                top: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                top: BorderSide(
+                    color:
+                        isDark ? AppColors.darkBorder : AppColors.lightBorder),
               ),
             ),
             child: SizedBox(
@@ -378,16 +424,21 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
                       )
                     : const Icon(Icons.check, color: Colors.white),
                 label: Text(
                   _isSubmitting ? 'Đang tạo đặt bàn...' : 'Xác Nhận Đặt Bàn',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _isSubmitting ? null : _submitForm,
               ),
@@ -414,15 +465,16 @@ class _StaffCreateReservationSheetState extends ConsumerState<StaffCreateReserva
     final note = _noteController.text.trim();
     final dateStr = DateFormatter.toApiDate(_selectedDate);
 
-    final success = await ref.read(staffReservationProvider.notifier).createWalkIn(
-          guestName: guestName,
-          guestPhone: guestPhone,
-          date: dateStr,
-          startTime: _selectedTime,
-          guestNumber: _guestNumber,
-          tableId: _selectedTableId!,
-          note: note.isNotEmpty ? note : null,
-        );
+    final success =
+        await ref.read(staffReservationProvider.notifier).createWalkIn(
+              guestName: guestName,
+              guestPhone: guestPhone,
+              date: dateStr,
+              startTime: _selectedTime,
+              guestNumber: _guestNumber,
+              tableId: _selectedTableId!,
+              note: note.isNotEmpty ? note : null,
+            );
 
     setState(() => _isSubmitting = false);
 

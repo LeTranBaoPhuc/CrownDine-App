@@ -20,6 +20,12 @@ public class Payment extends AbstractEntity<Long> {
     @Column(name = "amount")
     private BigDecimal amount;
 
+    @Column(name = "table_deposit_amount")
+    private BigDecimal tableDepositAmount;
+
+    @Column(name = "checkout_url", length = 1000)
+    private String checkoutUrl;
+
     @Column(name = "transaction_code")
     private String transactionCode;
 

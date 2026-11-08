@@ -119,6 +119,12 @@ public class GlobalExceptionHandler {
                 messageService.resolveMessageOrKey(e.getMessage()));
     }
 
+    @ResponseStatus(TOO_MANY_REQUESTS)
+    @ExceptionHandler(TooManyAttemptsException.class)
+    public ErrorResponse handleTooManyAttempts(TooManyAttemptsException e, WebRequest request) {
+        return buildErrorResponse(TOO_MANY_REQUESTS, request, "TOO_MANY_ATTEMPTS", e.getMessage());
+    }
+
     @ResponseStatus(BAD_GATEWAY)
     @ExceptionHandler(AiServiceException.class)
     public ErrorResponse handleAiServiceException(AiServiceException e, WebRequest request) {

@@ -63,7 +63,8 @@ public class RewardPointServiceImpl implements RewardPointService {
             return;
         }
 
-        User user = order.getUser();
+        User user = userRepository.findByUsernameForUpdate(order.getUser().getUsername()).orElseThrow();
+        if (pointHistoryRepository.existsByUserIdAndReasonAndReferenceId(user.getId(), EPointReason.EARN_FROM_ORDER, orderId)) return;
         user.setRewardPoints(user.getRewardPoints() + pointsToAdd);
         userRepository.save(user);
 
@@ -80,7 +81,7 @@ public class RewardPointServiceImpl implements RewardPointService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void exchangeVoucher(Long voucherId, String username) {
-        User user = userRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = userRepository.findByUsernameForUpdate(username).orElseThrow(() -> new ResourceNotFoundException("User not found"));
         Voucher voucher = voucherRepository.findById(voucherId).orElseThrow(() -> new ResourceNotFoundException("Voucher not found"));
 
         if (voucher.getPointsRequired() == null || voucher.getPointsRequired() <= 0) {

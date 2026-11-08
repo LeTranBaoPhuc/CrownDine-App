@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/utils/date_formatter.dart';
-import '../../../../../data/mock/mock_data.dart';
+import '../../../../../data/models/user_model.dart';
+import '../../../../../data/models/work_schedule_model.dart';
+import '../../../../../data/repositories/work_schedule_repository.dart';
+import '../../../../../data/repositories/attendance_repository.dart';
+import '../../../../../core/network/api_error.dart';
 import '../../../../../data/models/attendance_model.dart';
 import '../../../../../providers/attendance_provider.dart';
 
@@ -52,30 +56,68 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
   TimeOfDay _checkOutTime = const TimeOfDay(hour: 16, minute: 0);
   final TextEditingController _noteController = TextEditingController();
   bool _isSubmitting = false;
+  bool _loadingContext = true;
+  String? _contextError;
+  UserModel? _staff;
+  AttendanceStatus _status = AttendanceStatus.notPunched;
+  List<ShiftModel> _shifts = [];
+
+  Future<void> _loadContext() async {
+    setState(() {
+      _loadingContext = true;
+      _contextError = null;
+    });
+    try {
+      final repo = WorkScheduleRepository();
+      final shifts = await repo.getAllShifts();
+      final staff = (await repo.getAllStaffs())
+          .where((s) => s.id == widget.userId)
+          .firstOrNull;
+      final status =
+          await AttendanceRepository().getEmployeeCurrentStatus(widget.userId);
+      if (staff == null || shifts.isEmpty)
+        throw StateError('Thiếu nhân viên hoặc ca làm việc trên máy chủ.');
+      if (!mounted) return;
+      setState(() {
+        _staff = staff;
+        _status = status;
+        _shifts = shifts;
+        if (!shifts.any((s) => s.id == _shiftId)) _shiftId = shifts.first.id;
+        final shift = shifts.firstWhere((s) => s.id == _shiftId);
+        _checkInTime = _shiftTime(shift.startTime);
+        _checkOutTime = _shiftTime(shift.endTime);
+        _loadingContext = false;
+      });
+    } catch (e) {
+      if (mounted)
+        setState(() {
+          _loadingContext = false;
+          _contextError = apiErrorMessage(e);
+        });
+    }
+  }
+
+  TimeOfDay _shiftTime(String value) {
+    final parts = value.split(':');
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
 
-    _shiftId = widget.defaultShiftId ?? (MockData.sampleShifts.isNotEmpty ? MockData.sampleShifts.first.id : 1);
+    _shiftId = widget.defaultShiftId;
     if (widget.defaultWorkDate != null) {
       _workDate = DateTime.tryParse(widget.defaultWorkDate!) ?? DateTime.now();
     } else {
       _workDate = DateTime.now();
     }
 
-    // Set times from selected shift if possible
-    final matchingShift = MockData.sampleShifts.firstWhere(
-      (s) => s.id == _shiftId,
-      orElse: () => MockData.sampleShifts.first,
-    );
-    _checkInTime = TimeOfDay(hour: matchingShift.startHour, minute: 0);
-    _checkOutTime = TimeOfDay(hour: matchingShift.endHour, minute: 0);
-
     // Load initial user history
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(attendanceProvider.notifier).fetchUserHistory(widget.userId);
+      _loadContext();
     });
   }
 
@@ -93,22 +135,33 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
   }
 
   Future<void> _handleSave() async {
+    if (_shiftId == null ||
+        _staff == null ||
+        _loadingContext ||
+        _contextError != null) return;
     setState(() => _isSubmitting = true);
 
     final workDateStr = DateFormatter.toApiDate(_workDate);
     final req = AttendanceRecordRequest(
       userId: widget.userId,
       workDate: workDateStr,
-      shiftId: _shiftId ?? 1,
+      shiftId: _shiftId!,
       attendanceType: _attendanceType,
       hasPunchIn: _hasPunchIn,
       hasPunchOut: _hasPunchOut,
-      checkInAt: _hasPunchIn ? '$workDateStr ${_formatTimeOfDay(_checkInTime)}:00' : null,
-      checkOutAt: _hasPunchOut ? '$workDateStr ${_formatTimeOfDay(_checkOutTime)}:00' : null,
-      note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+      checkInAt: _hasPunchIn
+          ? '$workDateStr ${_formatTimeOfDay(_checkInTime)}:00'
+          : null,
+      checkOutAt: _hasPunchOut
+          ? '$workDateStr ${_formatTimeOfDay(_checkOutTime)}:00'
+          : null,
+      note: _noteController.text.trim().isNotEmpty
+          ? _noteController.text.trim()
+          : null,
     );
 
     final ok = await ref.read(attendanceProvider.notifier).saveRecord(req);
+    if (!mounted) return;
     setState(() => _isSubmitting = false);
 
     if (mounted) {
@@ -123,7 +176,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Không thể lưu thông tin chấm công, vui lòng thử lại'),
+            content:
+                Text('Không thể lưu thông tin chấm công, vui lòng thử lại'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -137,12 +191,22 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
     final isDark = theme.brightness == Brightness.dark;
     final state = ref.watch(attendanceProvider);
 
-    // Lookup staff info from mock or list
-    final staff = MockData.staffList.firstWhere(
-      (s) => s.id == widget.userId,
-      orElse: () => MockData.staffList.first,
-    );
-    final staffStatus = MockData.getEmployeeAttendanceStatus(widget.userId);
+    if (_loadingContext)
+      return const Dialog(
+          child: SizedBox(
+              height: 160, child: Center(child: CircularProgressIndicator())));
+    if (_contextError != null || _staff == null)
+      return AlertDialog(
+          title: const Text('Không tải được thông tin chấm công'),
+          content: Text(_contextError ?? 'Thiếu dữ liệu nhân viên'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Đóng')),
+            FilledButton(onPressed: _loadContext, child: const Text('Thử lại'))
+          ]);
+    final staff = _staff!;
+    final staffStatus = _status;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -159,10 +223,13 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: staff.avatarUrl != null ? NetworkImage(staff.avatarUrl!) : null,
+                    backgroundImage: staff.avatarUrl != null
+                        ? NetworkImage(staff.avatarUrl!)
+                        : null,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                     child: staff.avatarUrl == null
-                        ? Text(staff.fullName[0], style: const TextStyle(fontWeight: FontWeight.bold))
+                        ? Text(staff.fullName.isEmpty ? '?' : staff.fullName[0],
+                            style: const TextStyle(fontWeight: FontWeight.bold))
                         : null,
                   ),
                   const SizedBox(width: 12),
@@ -172,24 +239,29 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                       children: [
                         Text(
                           staff.fullName,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15),
                         ),
                         Text(
                           'NV${staff.id.toString().padLeft(6, '0')} • ${staff.membershipTier ?? staff.role.displayName}',
                           style: TextStyle(
                             fontSize: 12,
-                            color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                            color: isDark
+                                ? AppColors.textLightSecondary
+                                : AppColors.textSecondary,
                           ),
                         ),
                       ],
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
                       color: staffStatus.backgroundColor,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: staffStatus.color.withValues(alpha: 0.4)),
+                      border: Border.all(
+                          color: staffStatus.color.withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -228,7 +300,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
               // Tab Bar (Cập nhật vs Lịch sử)
               Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  color:
+                      isDark ? AppColors.darkSurface : AppColors.lightSurface,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: TabBar(
@@ -239,8 +312,11 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                   ),
                   indicatorSize: TabBarIndicatorSize.tab,
                   labelColor: Colors.white,
-                  unselectedLabelColor: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  unselectedLabelColor: isDark
+                      ? AppColors.textLightSecondary
+                      : AppColors.textSecondary,
+                  labelStyle: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13),
                   tabs: const [
                     Tab(text: 'Cập nhật chấm công'),
                     Tab(text: 'Lịch sử chấm công'),
@@ -271,7 +347,7 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
   }
 
   Widget _buildFormTab(BuildContext context, bool isDark) {
-    final shifts = MockData.sampleShifts;
+    final shifts = _shifts;
 
     return SingleChildScrollView(
       child: Column(
@@ -285,14 +361,21 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ca làm việc', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    const Text('Ca làm việc',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 12.5)),
                     const SizedBox(height: 6),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.lightSurface,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                        border: Border.all(
+                            color: isDark
+                                ? AppColors.darkBorder
+                                : AppColors.lightBorder),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<int>(
@@ -311,9 +394,10 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                             if (id != null) {
                               setState(() {
                                 _shiftId = id;
-                                final s = shifts.firstWhere((item) => item.id == id);
-                                _checkInTime = TimeOfDay(hour: s.startHour, minute: 0);
-                                _checkOutTime = TimeOfDay(hour: s.endHour, minute: 0);
+                                final s =
+                                    shifts.firstWhere((item) => item.id == id);
+                                _checkInTime = _shiftTime(s.startTime);
+                                _checkOutTime = _shiftTime(s.endTime);
                               });
                             }
                           },
@@ -330,7 +414,9 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ngày làm việc', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+                    const Text('Ngày làm việc',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 12.5)),
                     const SizedBox(height: 6),
                     InkWell(
                       onTap: () async {
@@ -344,19 +430,27 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                       },
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 11),
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          color: isDark
+                              ? AppColors.darkSurface
+                              : AppColors.lightSurface,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          border: Border.all(
+                              color: isDark
+                                  ? AppColors.darkBorder
+                                  : AppColors.lightBorder),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.calendar_today_rounded, size: 16, color: AppColors.primary),
+                            const Icon(Icons.calendar_today_rounded,
+                                size: 16, color: AppColors.primary),
                             const SizedBox(width: 8),
                             Text(
                               DateFormat('dd/MM/yyyy').format(_workDate),
-                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12.5, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -371,14 +465,16 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
           const SizedBox(height: 14),
 
           // Attendance Type
-          const Text('Hình thức', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+          const Text('Hình thức',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
           const SizedBox(height: 6),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(
+                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<AttendanceType>(
@@ -387,7 +483,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                 items: AttendanceType.values.map((type) {
                   return DropdownMenuItem<AttendanceType>(
                     value: type,
-                    child: Text(type.displayName, style: const TextStyle(fontSize: 12.5)),
+                    child: Text(type.displayName,
+                        style: const TextStyle(fontSize: 12.5)),
                   );
                 }).toList(),
                 onChanged: (t) {
@@ -411,11 +508,14 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                         children: [
                           Checkbox(
                             value: _hasPunchIn,
-                            onChanged: (v) => setState(() => _hasPunchIn = v ?? true),
+                            onChanged: (v) =>
+                                setState(() => _hasPunchIn = v ?? true),
                             activeColor: AppColors.primary,
                             visualDensity: VisualDensity.compact,
                           ),
-                          const Text('Chấm công vào', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const Text('Chấm công vào',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
                         ],
                       ),
                       if (_hasPunchIn)
@@ -425,21 +525,32 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                               context: context,
                               initialTime: _checkInTime,
                             );
-                            if (picked != null) setState(() => _checkInTime = picked);
+                            if (picked != null)
+                              setState(() => _checkInTime = picked);
                           },
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                              color: isDark
+                                  ? AppColors.darkSurface
+                                  : AppColors.lightSurface,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                              border: Border.all(
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time_rounded, size: 16, color: AppColors.primary),
+                                const Icon(Icons.access_time_rounded,
+                                    size: 16, color: AppColors.primary),
                                 const SizedBox(width: 8),
-                                Text(_formatTimeOfDay(_checkInTime), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(_formatTimeOfDay(_checkInTime),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13)),
                               ],
                             ),
                           ),
@@ -458,11 +569,14 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                         children: [
                           Checkbox(
                             value: _hasPunchOut,
-                            onChanged: (v) => setState(() => _hasPunchOut = v ?? true),
+                            onChanged: (v) =>
+                                setState(() => _hasPunchOut = v ?? true),
                             activeColor: AppColors.primary,
                             visualDensity: VisualDensity.compact,
                           ),
-                          const Text('Chấm công ra', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                          const Text('Chấm công ra',
+                              style: TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w600)),
                         ],
                       ),
                       if (_hasPunchOut)
@@ -472,21 +586,32 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                               context: context,
                               initialTime: _checkOutTime,
                             );
-                            if (picked != null) setState(() => _checkOutTime = picked);
+                            if (picked != null)
+                              setState(() => _checkOutTime = picked);
                           },
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                              color: isDark
+                                  ? AppColors.darkSurface
+                                  : AppColors.lightSurface,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                              border: Border.all(
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time_rounded, size: 16, color: AppColors.primary),
+                                const Icon(Icons.access_time_rounded,
+                                    size: 16, color: AppColors.primary),
                                 const SizedBox(width: 8),
-                                Text(_formatTimeOfDay(_checkOutTime), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                Text(_formatTimeOfDay(_checkOutTime),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13)),
                               ],
                             ),
                           ),
@@ -501,7 +626,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
           const SizedBox(height: 14),
 
           // Note Field
-          const Text('Ghi chú lý do / giải trình', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
+          const Text('Ghi chú lý do / giải trình',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5)),
           const SizedBox(height: 6),
           TextField(
             controller: _noteController,
@@ -510,16 +636,22 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
               hintText: 'Nhập ghi chú hoặc lý do đi muộn / nghỉ phép...',
               hintStyle: TextStyle(
                 fontSize: 12.5,
-                color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                color: isDark
+                    ? AppColors.textLightSecondary
+                    : AppColors.textSecondary,
               ),
               contentPadding: const EdgeInsets.all(10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                borderSide: BorderSide(
+                    color:
+                        isDark ? AppColors.darkBorder : AppColors.lightBorder),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                borderSide: BorderSide(
+                    color:
+                        isDark ? AppColors.darkBorder : AppColors.lightBorder),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -540,15 +672,18 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               child: _isSubmitting
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Lưu thông tin chấm công', style: TextStyle(fontWeight: FontWeight.bold)),
+                  : const Text('Lưu thông tin chấm công',
+                      style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -558,7 +693,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
 
   Widget _buildHistoryTab(AttendanceState state, bool isDark) {
     if (state.isHistoryLoading) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary));
     }
 
     if (state.userHistory.isEmpty) {
@@ -566,7 +702,8 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
         child: Text(
           'Chưa có lịch sử chấm công',
           style: TextStyle(
-            color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+            color:
+                isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
             fontSize: 13,
           ),
         ),
@@ -606,14 +743,17 @@ class _AttendanceModalState extends ConsumerState<AttendanceModal>
                   children: [
                     Text(
                       item.content ?? item.status.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       item.time,
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.textLightSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],

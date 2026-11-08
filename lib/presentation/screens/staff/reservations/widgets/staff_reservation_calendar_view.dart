@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/utils/date_formatter.dart';
-import '../../../../../data/mock/mock_data.dart';
 import '../../../../../data/models/reservation_model.dart';
 import '../../../../../providers/staff_reservation_provider.dart';
 import '../../../../../providers/table_provider.dart';
@@ -14,10 +13,12 @@ class StaffReservationCalendarView extends ConsumerStatefulWidget {
   const StaffReservationCalendarView({super.key});
 
   @override
-  ConsumerState<StaffReservationCalendarView> createState() => _StaffReservationCalendarViewState();
+  ConsumerState<StaffReservationCalendarView> createState() =>
+      _StaffReservationCalendarViewState();
 }
 
-class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationCalendarView> {
+class _StaffReservationCalendarViewState
+    extends ConsumerState<StaffReservationCalendarView> {
   final ScrollController _horizontalController = ScrollController();
   final ScrollController _verticalController = ScrollController();
 
@@ -70,14 +71,16 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
     final staffState = ref.watch(staffReservationProvider);
     final tableState = ref.watch(tableProvider);
 
-    final allTables = tableState.allTables.isNotEmpty ? tableState.allTables : MockData.tables;
+    final allTables = tableState.allTables;
 
     // Filter tables by floor
     final tables = allTables.where((t) {
-      if (staffState.selectedFloor != 'Tất cả' && 'Tầng ${t.floorId}' != staffState.selectedFloor) {
+      if (staffState.selectedFloor != 'Tất cả' &&
+          'Tầng ${t.floorId}' != staffState.selectedFloor) {
         return false;
       }
-      if (staffState.selectedArea != 'Tất cả' && t.areaName != staffState.selectedArea) {
+      if (staffState.selectedArea != 'Tất cả' &&
+          t.areaName != staffState.selectedArea) {
         return false;
       }
       return true;
@@ -116,13 +119,19 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                             alignment: Alignment.centerLeft,
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: isDark ? AppColors.darkCard : AppColors.lightSurface,
+                              color: isDark
+                                  ? AppColors.darkCard
+                                  : AppColors.lightSurface,
                               border: Border(
                                 right: BorderSide(
-                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
                                 ),
                                 bottom: BorderSide(
-                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
                                 ),
                               ),
                             ),
@@ -146,20 +155,28 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                 final t = tables[i];
                                 return Container(
                                   height: _rowHeight,
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: isDark ? AppColors.darkCard : Colors.white,
+                                    color: isDark
+                                        ? AppColors.darkCard
+                                        : Colors.white,
                                     border: Border(
                                       right: BorderSide(
-                                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                        color: isDark
+                                            ? AppColors.darkBorder
+                                            : AppColors.lightBorder,
                                       ),
                                       bottom: BorderSide(
-                                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                        color: isDark
+                                            ? AppColors.darkBorder
+                                            : AppColors.lightBorder,
                                       ),
                                     ),
                                   ),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Text(
@@ -167,7 +184,9 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                         style: TextStyle(
                                           fontSize: 12.5,
                                           fontWeight: FontWeight.bold,
-                                          color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                                          color: isDark
+                                              ? AppColors.textLight
+                                              : AppColors.textPrimary,
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
@@ -175,11 +194,17 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                       const SizedBox(height: 2),
                                       Row(
                                         children: [
-                                          Icon(Icons.people, size: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
+                                          Icon(Icons.people,
+                                              size: 11,
+                                              color: isDark
+                                                  ? Colors.white60
+                                                  : AppColors.textSecondary),
                                           const SizedBox(width: 3),
                                           Text(
                                             '${t.capacity} chỗ',
-                                            style: const TextStyle(fontSize: 10.5, color: AppColors.textSecondary),
+                                            style: const TextStyle(
+                                                fontSize: 10.5,
+                                                color: AppColors.textSecondary),
                                           ),
                                           const Spacer(),
                                           Text(
@@ -215,17 +240,22 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                               Container(
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: isDark ? AppColors.darkCard : AppColors.lightSurface,
+                                  color: isDark
+                                      ? AppColors.darkCard
+                                      : AppColors.lightSurface,
                                   border: Border(
                                     bottom: BorderSide(
-                                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                      color: isDark
+                                          ? AppColors.darkBorder
+                                          : AppColors.lightBorder,
                                     ),
                                   ),
                                 ),
                                 child: Stack(
                                   children: [
                                     Row(
-                                      children: List.generate(_endHour - _startHour, (i) {
+                                      children: List.generate(
+                                          _endHour - _startHour, (i) {
                                         final hour = _startHour + i;
                                         return Container(
                                           width: _hourWidth,
@@ -233,7 +263,9 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                           decoration: BoxDecoration(
                                             border: Border(
                                               right: BorderSide(
-                                                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                                color: isDark
+                                                    ? AppColors.darkBorder
+                                                    : AppColors.lightBorder,
                                               ),
                                             ),
                                           ),
@@ -273,15 +305,21 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                   itemCount: tables.length,
                                   itemBuilder: (ctx, i) {
                                     final t = tables[i];
-                                    final tableReservations = reservations.where((r) => r.tableId == t.id).toList();
+                                    final tableReservations = reservations
+                                        .where((r) => r.tableId == t.id)
+                                        .toList();
 
                                     return Container(
                                       height: _rowHeight,
                                       decoration: BoxDecoration(
-                                        color: isDark ? AppColors.darkBackground : Colors.white,
+                                        color: isDark
+                                            ? AppColors.darkBackground
+                                            : Colors.white,
                                         border: Border(
                                           bottom: BorderSide(
-                                            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                            color: isDark
+                                                ? AppColors.darkBorder
+                                                : AppColors.lightBorder,
                                           ),
                                         ),
                                       ),
@@ -289,14 +327,19 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                         children: [
                                           // Background Hour Grid Lines & Tap Detectors
                                           Row(
-                                            children: List.generate(_endHour - _startHour, (hIndex) {
+                                            children: List.generate(
+                                                _endHour - _startHour,
+                                                (hIndex) {
                                               final hour = _startHour + hIndex;
                                               return InkWell(
                                                 onTap: () {
-                                                  final timeStr = '${hour.toString().padLeft(2, '0')}:00';
-                                                  StaffCreateReservationSheet.show(
+                                                  final timeStr =
+                                                      '${hour.toString().padLeft(2, '0')}:00';
+                                                  StaffCreateReservationSheet
+                                                      .show(
                                                     context,
-                                                    initialDate: staffState.selectedDate,
+                                                    initialDate:
+                                                        staffState.selectedDate,
                                                     initialStartTime: timeStr,
                                                     initialTableId: t.id,
                                                   );
@@ -307,8 +350,13 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                                   decoration: BoxDecoration(
                                                     border: Border(
                                                       right: BorderSide(
-                                                        color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
-                                                            .withValues(alpha: 0.5),
+                                                        color: (isDark
+                                                                ? AppColors
+                                                                    .darkBorder
+                                                                : AppColors
+                                                                    .lightBorder)
+                                                            .withValues(
+                                                                alpha: 0.5),
                                                       ),
                                                     ),
                                                   ),
@@ -325,7 +373,8 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                                               bottom: 0,
                                               child: Container(
                                                 width: 2,
-                                                color: Colors.red.withValues(alpha: 0.8),
+                                                color: Colors.red
+                                                    .withValues(alpha: 0.8),
                                               ),
                                             ),
 
@@ -354,7 +403,8 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
   Widget _buildReservationBlock(ReservationModel res) {
     final startParts = res.startTime.split(':');
     final startHour = int.tryParse(startParts[0]) ?? 12;
-    final startMin = int.tryParse(startParts.length > 1 ? startParts[1] : '0') ?? 0;
+    final startMin =
+        int.tryParse(startParts.length > 1 ? startParts[1] : '0') ?? 0;
 
     int endHour = startHour + 2;
     int endMin = startMin;
@@ -411,14 +461,18 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.black26,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       '${res.guestNumber}k',
-                      style: const TextStyle(fontSize: 9.5, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 9.5,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
@@ -473,7 +527,8 @@ class _StaffReservationCalendarViewState extends ConsumerState<StaffReservationC
               const SizedBox(width: 5),
               Text(
                 l['label'] as String,
-                style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textSecondary),
               ),
             ],
           );

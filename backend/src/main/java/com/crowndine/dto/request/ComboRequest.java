@@ -21,13 +21,17 @@ public class ComboRequest {
     private String description;
 
     @NotNull(message = "Giá combo không được null")
+    @jakarta.validation.constraints.DecimalMin("0.0")
     private BigDecimal price;
 
+    @jakarta.validation.constraints.DecimalMin("0.0")
     private BigDecimal priceAfterDiscount;
 
     private EComboStatus status;
 
     private String imageUrl;
 
+    @jakarta.validation.Valid
+    @jakarta.validation.constraints.NotEmpty
     private List<ComboItemRequest> items;
 }

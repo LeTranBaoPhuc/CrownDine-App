@@ -52,6 +52,7 @@ public class OrderServiceImpl implements OrderService {
     private final CalculationService calculationService;
     private final OrderDetailService orderDetailService;
     private final OrderStatusService orderStatusService;
+    private final com.crowndine.service.reservation.ReservationAvailabilityService reservationAvailabilityService;
 
     private static final String ORDER_NOT_FOUND_MESSAGE = "Order not found";
 
@@ -97,6 +98,11 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
 
+        if ((request.getItemId() == null) == (request.getComboId() == null) || request.getQuantity() == null || request.getQuantity() < 1) throw new InvalidDataException("Sản phẩm/số lượng không hợp lệ");
+        if (request.getItemId() != null && itemRepository.findById(request.getItemId()).orElseThrow().getStatus() != com.crowndine.common.enums.EItemStatus.AVAILABLE
+                || request.getComboId() != null && comboRepository.findById(request.getComboId()).orElseThrow().getStatus() != com.crowndine.common.enums.EComboStatus.AVAILABLE) {
+            throw new InvalidDataException("Món hoặc combo đã ngưng phục vụ");
+        }
         List<OrderDetail> orderDetails = order.getOrderDetails();
 
         // Check trùng orderDetails item id == request item id
@@ -204,13 +210,21 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void createWalkInOrder(OrderRequest request, String username) {
         log.info("Processing create new walk-in order by username {}", username);
         User staff = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Staff not found"));
 
-        RestaurantTable table = tableRepository.findById(request.getTableId())
+        RestaurantTable table = tableRepository.findByIdForUpdate(request.getTableId())
                 .orElseThrow(() -> new ResourceNotFoundException("Table not found"));
+        if (table.getStatus() != com.crowndine.common.enums.ETableStatus.AVAILABLE
+                || !orderRepository.findByRestaurantTableIdAndStatusIn(table.getId(), List.of(EOrderStatus.CONFIRMED, EOrderStatus.IN_PROGRESS, EOrderStatus.SERVED)).isEmpty()
+                || !reservationRepository.findByTableIdAndStatusAndCheckedOutAtIsNull(table.getId(), EReservationStatus.CHECKED_IN).isEmpty()) {
+            throw new InvalidDataException("Bàn đã có khách hoặc không thể mở đơn mới");
+        }
+        var now = java.time.LocalDateTime.now();
+        reservationAvailabilityService.ensureTableAvailable(now.toLocalDate(), now.toLocalTime(), table.getId());
         Order order = new Order();
         order.setCode(CodeUtils.generateOrderCode());
         order.setStaff(staff);
@@ -232,7 +246,7 @@ public class OrderServiceImpl implements OrderService {
     public OrderResponse openOrderForReservation(Long reservationId, OrderItemBatchRequest request, String username) {
         log.info("Opening order for reservation {} by staff {}", reservationId, username);
 
-        Reservation reservation = reservationRepository.findById(reservationId)
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Reservation not found"));
         User staff = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Staff not found"));
@@ -259,7 +273,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void appendItemsToOrder(Long id, OrderItemBatchRequest request, String name) {
-        Order order = getOrder(id);
+        Order order = orderRepository.findByIdForUpdate(id).orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
+        if (paymentRepository.existsByTargetAndOrderIdAndStatus(EPaymentTarget.ORDER, id, EPaymentStatus.PENDING)) {
+            throw new InvalidDataException("Đơn đang thanh toán, không thể thay đổi món");
+        }
         if (order.getStatus().isFinal() || order.getStatus() == EOrderStatus.PRE_ORDER) {
             throw new InvalidDataException("Chỉ được gọi thêm món cho đơn đang phục vụ");
         }
@@ -285,7 +302,11 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void mapCustomerToOrder(Long orderId, Long customerId) {
-        Order order = getOrder(orderId);
+        Order order = orderRepository.findByIdForUpdate(orderId).orElseThrow();
+        if (order.getStatus().isFinal() || order.getUser() != null || order.getVoucher() != null
+                || paymentRepository.existsByTargetAndOrderIdAndStatus(EPaymentTarget.ORDER, orderId, EPaymentStatus.PENDING)) {
+            throw new InvalidDataException("Không thể thay đổi khách của đơn đã gắn khách/voucher hoặc đang thanh toán");
+        }
         User customer = userRepository.findById(customerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Customer not found"));
         order.setUser(customer);
@@ -325,25 +346,13 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal depositedAmount = BigDecimal.ZERO;
         BigDecimal tableDepositPaidAmount = BigDecimal.ZERO;
         if (order.getReservation() != null) {
-            depositedAmount = defaultMoney(paymentRepository.sumAmountByTargetAndReservationIdAndStatus(
-                    EPaymentTarget.RESERVATION,
-                    order.getReservation().getId(),
-                    EPaymentStatus.SUCCESS
-            ));
-
-            if (depositedAmount.compareTo(BigDecimal.ZERO) > 0 && order.getReservation().getTable() != null) {
-                tableDepositPaidAmount = defaultMoney(order.getReservation().getTable().getBaseDeposit())
-                        .setScale(2, RoundingMode.HALF_UP);
-                if (tableDepositPaidAmount.compareTo(depositedAmount) > 0) {
-                    tableDepositPaidAmount = depositedAmount;
-                }
-            }
+            var paid = paymentRepository.findByTargetAndReservationIdAndStatus(
+                    EPaymentTarget.RESERVATION, order.getReservation().getId(), EPaymentStatus.SUCCESS);
+            if (paid.stream().anyMatch(p -> p.getTableDepositAmount() == null)) throw new InvalidDataException("Cọc cũ thiếu số tiền giữ bàn. Cần đối soát dữ liệu trước khi tất toán");
+            depositedAmount = paid.stream().map(p -> defaultMoney(p.getAmount())).reduce(BigDecimal.ZERO, BigDecimal::add);
+            tableDepositPaidAmount = paid.stream().map(p -> defaultMoney(p.getTableDepositAmount())).reduce(BigDecimal.ZERO, BigDecimal::add);
         }
-
-        BigDecimal orderDepositPaidAmount = depositedAmount.subtract(tableDepositPaidAmount);
-        if (orderDepositPaidAmount.compareTo(BigDecimal.ZERO) < 0) {
-            orderDepositPaidAmount = BigDecimal.ZERO;
-        }
+        BigDecimal orderDepositPaidAmount = depositedAmount.subtract(tableDepositPaidAmount).max(BigDecimal.ZERO);
 
         // Final price after ALL discounts and reservation deposits
         BigDecimal orderFinalAmount = defaultMoney(order.getFinalPrice());
@@ -353,6 +362,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         OrderCheckoutResponse response = new OrderCheckoutResponse();
+        response.setStatus(order.getStatus());
         response.setOrderId(order.getId());
         response.setOrderCode(order.getCode());
         response.setTotalAmount(totalAmount);

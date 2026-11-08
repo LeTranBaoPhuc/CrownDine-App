@@ -1,3 +1,5 @@
+import '../setup/admin_setup_screen.dart';
+import '../../../../data/repositories/admin_setup_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -10,10 +12,12 @@ class AdminMenuManagementScreen extends ConsumerStatefulWidget {
   const AdminMenuManagementScreen({super.key});
 
   @override
-  ConsumerState<AdminMenuManagementScreen> createState() => _AdminMenuManagementScreenState();
+  ConsumerState<AdminMenuManagementScreen> createState() =>
+      _AdminMenuManagementScreenState();
 }
 
-class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementScreen> {
+class _AdminMenuManagementScreenState
+    extends ConsumerState<AdminMenuManagementScreen> {
   int _selectedCategory = 0; // 0 = Tất cả
   String _searchQuery = '';
 
@@ -26,7 +30,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
   }
 
   void _toggleItemStatus(ItemModel item) async {
-    final success = await ref.read(menuProvider.notifier).toggleItemStatus(item);
+    final success =
+        await ref.read(menuProvider.notifier).toggleItemStatus(item);
     if (!mounted) return;
     if (success) {
       final willBeAvailable = item.status != 'AVAILABLE';
@@ -42,7 +47,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Không thể cập nhật trạng thái món ăn. Vui lòng thử lại!'),
+          content:
+              Text('Không thể cập nhật trạng thái món ăn. Vui lòng thử lại!'),
           backgroundColor: AppColors.error,
         ),
       );
@@ -60,7 +66,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
             Text('Xác nhận xóa món'),
           ],
         ),
-        content: Text('Bạn có chắc chắn muốn ngưng và xóa món "${item.name}" khỏi thực đơn?'),
+        content: Text(
+            'Bạn có chắc chắn muốn ngưng và xóa món "${item.name}" khỏi thực đơn?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -71,7 +78,14 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
             onPressed: () async {
               Navigator.pop(ctx);
               try {
-                await ref.read(menuProvider.notifier).deleteItem(item.id);
+                if (item.isCombo) {
+                  await ref
+                      .read(adminSetupRepositoryProvider)
+                      .delete(SetupKind.combo, item.id);
+                  await ref.read(menuProvider.notifier).loadMenu();
+                } else {
+                  await ref.read(menuProvider.notifier).deleteItem(item.id);
+                }
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -91,33 +105,72 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                 }
               }
             },
-            child: const Text('Xóa món', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Xóa món',
+                style: TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
   }
 
+  Future<void> _editCombo(ItemModel item) async {
+    try {
+      final repo = ref.read(adminSetupRepositoryProvider);
+      final combo = (await repo.list(SetupKind.combo))
+          .firstWhere((c) => c['id'] == item.id);
+      final items = await repo.items();
+      if (!mounted) return;
+      final saved = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+              builder: (_) => SetupEditScreen(
+                  kind: SetupKind.combo, row: combo, items: items)));
+      if (saved == true && mounted)
+        await ref.read(menuProvider.notifier).loadMenu();
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Không chỉnh sửa được combo: $e')));
+    }
+  }
+
   void _showAddEditDishSheet([ItemModel? existingItem]) {
+    if (existingItem?.isCombo == true) {
+      _editCombo(existingItem!);
+      return;
+    }
     final isEditing = existingItem != null;
     final menuState = ref.read(menuProvider);
 
     // List of real database categories (exclude 'Tất cả' and 'Combo')
     final realCategories = menuState.categories.where((c) => c.id > 0).toList();
 
-    final nameController = TextEditingController(text: existingItem?.name ?? '');
+    if (realCategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content:
+              Text('Hãy tạo danh mục món trong Thiết lập nhà hàng trước.')));
+      return;
+    }
+    final nameController =
+        TextEditingController(text: existingItem?.name ?? '');
     final priceController = TextEditingController(
       text: existingItem != null ? existingItem.price.toStringAsFixed(0) : '',
     );
     final discountPriceController = TextEditingController(
-      text: existingItem?.priceAfterDiscount != null ? existingItem!.priceAfterDiscount!.toStringAsFixed(0) : '',
+      text: existingItem?.priceAfterDiscount != null
+          ? existingItem!.priceAfterDiscount!.toStringAsFixed(0)
+          : '',
     );
     final imageUrlController = TextEditingController(
-      text: existingItem?.imageUrl ?? 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80',
+      text: existingItem?.imageUrl ??
+          'https://images.unsplash.com/photo-1544025162-d76694265947?w=800&q=80',
     );
-    final descController = TextEditingController(text: existingItem?.description ?? '');
+    final descController =
+        TextEditingController(text: existingItem?.description ?? '');
 
-    int selectedCatId = existingItem?.categoryId ?? (realCategories.isNotEmpty ? realCategories.first.id : 1);
+    int selectedCatId = existingItem?.categoryId ??
+        (realCategories.isNotEmpty ? realCategories.first.id : 1);
     String selectedStatus = existingItem?.status ?? 'AVAILABLE';
     bool isSubmitting = false;
 
@@ -136,7 +189,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
               child: Container(
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.darkCard : Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
                 ),
                 padding: const EdgeInsets.all(24),
                 child: SingleChildScrollView(
@@ -149,7 +203,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         children: [
                           Text(
                             isEditing ? 'Chỉnh Sửa Món Ăn' : 'Thêm Món Mới',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           IconButton(
                             icon: const Icon(Icons.close),
@@ -163,8 +218,10 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         controller: nameController,
                         decoration: InputDecoration(
                           labelText: 'Tên món ăn *',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          prefixIcon: const Icon(Icons.restaurant, color: AppColors.primary),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.restaurant,
+                              color: AppColors.primary),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -176,8 +233,10 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Giá niêm yết (₫) *',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                prefixIcon: const Icon(Icons.attach_money, color: AppColors.gold),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                prefixIcon: const Icon(Icons.attach_money,
+                                    color: AppColors.gold),
                               ),
                             ),
                           ),
@@ -188,8 +247,11 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                               keyboardType: TextInputType.number,
                               decoration: InputDecoration(
                                 labelText: 'Giá khuyến mãi (₫)',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                                prefixIcon: const Icon(Icons.local_offer_outlined, color: AppColors.primary),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12)),
+                                prefixIcon: const Icon(
+                                    Icons.local_offer_outlined,
+                                    color: AppColors.primary),
                               ),
                             ),
                           ),
@@ -201,14 +263,18 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                           initialValue: selectedCatId,
                           decoration: InputDecoration(
                             labelText: 'Danh mục món *',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                            prefixIcon: const Icon(Icons.category_outlined, color: AppColors.primary),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(Icons.category_outlined,
+                                color: AppColors.primary),
                           ),
                           items: realCategories
-                              .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+                              .map((c) => DropdownMenuItem(
+                                  value: c.id, child: Text(c.name)))
                               .toList(),
                           onChanged: (val) {
-                            if (val != null) setSheetState(() => selectedCatId = val);
+                            if (val != null)
+                              setSheetState(() => selectedCatId = val);
                           },
                         ),
                       const SizedBox(height: 14),
@@ -216,15 +282,22 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         initialValue: selectedStatus,
                         decoration: InputDecoration(
                           labelText: 'Trạng thái phục vụ',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          prefixIcon: const Icon(Icons.toggle_on_outlined, color: AppColors.primary),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.toggle_on_outlined,
+                              color: AppColors.primary),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'AVAILABLE', child: Text('Sẵn sàng phục vụ')),
-                          DropdownMenuItem(value: 'UNAVAILABLE', child: Text('Tạm ngưng phục vụ')),
+                          DropdownMenuItem(
+                              value: 'AVAILABLE',
+                              child: Text('Sẵn sàng phục vụ')),
+                          DropdownMenuItem(
+                              value: 'UNAVAILABLE',
+                              child: Text('Tạm ngưng phục vụ')),
                         ],
                         onChanged: (val) {
-                          if (val != null) setSheetState(() => selectedStatus = val);
+                          if (val != null)
+                            setSheetState(() => selectedStatus = val);
                         },
                       ),
                       const SizedBox(height: 14),
@@ -232,8 +305,10 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         controller: imageUrlController,
                         decoration: InputDecoration(
                           labelText: 'Đường dẫn ảnh món ăn (URL)',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          prefixIcon: const Icon(Icons.image_outlined, color: AppColors.primary),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          prefixIcon: const Icon(Icons.image_outlined,
+                              color: AppColors.primary),
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -242,7 +317,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         maxLines: 2,
                         decoration: InputDecoration(
                           labelText: 'Mô tả nguyên liệu / hương vị',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -256,32 +332,44 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                   final name = nameController.text.trim();
                                   if (name.isEmpty) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng nhập tên món ăn')),
+                                      const SnackBar(
+                                          content:
+                                              Text('Vui lòng nhập tên món ăn')),
                                     );
                                     return;
                                   }
-                                  final price = double.tryParse(priceController.text);
+                                  final price =
+                                      double.tryParse(priceController.text);
                                   if (price == null || price <= 0) {
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Vui lòng nhập giá niêm yết hợp lệ')),
+                                      const SnackBar(
+                                          content: Text(
+                                              'Vui lòng nhập giá niêm yết hợp lệ')),
                                     );
                                     return;
                                   }
-                                  final discountPrice = double.tryParse(discountPriceController.text);
-                                  final catName = realCategories.firstWhere(
-                                    (c) => c.id == selectedCatId,
-                                    orElse: () => realCategories.first,
-                                  ).name;
+                                  final discountPrice = double.tryParse(
+                                      discountPriceController.text);
+                                  final catName = realCategories
+                                      .firstWhere(
+                                        (c) => c.id == selectedCatId,
+                                        orElse: () => realCategories.first,
+                                      )
+                                      .name;
 
                                   setSheetState(() => isSubmitting = true);
 
                                   try {
                                     if (isEditing) {
-                                      await ref.read(menuProvider.notifier).updateItem(
+                                      await ref
+                                          .read(menuProvider.notifier)
+                                          .updateItem(
                                             existingItem.id,
                                             name: name,
-                                            description: descController.text.trim(),
-                                            imageUrl: imageUrlController.text.trim(),
+                                            description:
+                                                descController.text.trim(),
+                                            imageUrl:
+                                                imageUrlController.text.trim(),
                                             price: price,
                                             priceAfterDiscount: discountPrice,
                                             status: selectedStatus,
@@ -289,10 +377,14 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                             categoryName: catName,
                                           );
                                     } else {
-                                      await ref.read(menuProvider.notifier).createItem(
+                                      await ref
+                                          .read(menuProvider.notifier)
+                                          .createItem(
                                             name: name,
-                                            description: descController.text.trim(),
-                                            imageUrl: imageUrlController.text.trim(),
+                                            description:
+                                                descController.text.trim(),
+                                            imageUrl:
+                                                imageUrlController.text.trim(),
                                             price: price,
                                             priceAfterDiscount: discountPrice,
                                             status: selectedStatus,
@@ -303,9 +395,12 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
 
                                     if (context.mounted) {
                                       Navigator.pop(ctx);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         SnackBar(
-                                          content: Text(isEditing ? 'Đã cập nhật món ăn' : 'Đã thêm món mới thành công!'),
+                                          content: Text(isEditing
+                                              ? 'Đã cập nhật món ăn'
+                                              : 'Đã thêm món mới thành công!'),
                                           backgroundColor: AppColors.success,
                                         ),
                                       );
@@ -313,7 +408,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                   } catch (e) {
                                     setSheetState(() => isSubmitting = false);
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         SnackBar(
                                           content: Text('Lỗi: $e'),
                                           backgroundColor: AppColors.error,
@@ -324,17 +420,22 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           child: isSubmitting
                               ? const SizedBox(
                                   width: 22,
                                   height: 22,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2),
                                 )
                               : Text(
                                   isEditing ? 'Lưu Thay Đổi' : 'Tạo Món Ăn',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16),
                                 ),
                         ),
                       ),
@@ -357,10 +458,15 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
 
     final filteredItems = menuState.allItems.where((item) {
       final matchesCategory = _selectedCategory == 0 ||
-          (_selectedCategory == -99 ? item.isCombo : item.categoryId == _selectedCategory);
+          (_selectedCategory == -99
+              ? item.isCombo
+              : item.categoryId == _selectedCategory);
       final matchesSearch = _searchQuery.isEmpty ||
           item.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (item.categoryName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+          (item.categoryName
+                  ?.toLowerCase()
+                  .contains(_searchQuery.toLowerCase()) ??
+              false);
       return matchesCategory && matchesSearch;
     }).toList();
 
@@ -380,10 +486,14 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         onChanged: (val) => setState(() => _searchQuery = val),
                         decoration: InputDecoration(
                           hintText: 'Tìm kiếm món ăn, danh mục...',
-                          prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.primary),
+                          prefixIcon: const Icon(Icons.search,
+                              size: 20, color: AppColors.primary),
                           filled: true,
-                          fillColor: isDark ? AppColors.darkBackground : AppColors.lightSurface,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          fillColor: isDark
+                              ? AppColors.darkBackground
+                              : AppColors.lightSurface,
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide.none,
@@ -394,12 +504,18 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                     const SizedBox(width: 10),
                     ElevatedButton.icon(
                       onPressed: () => _showAddEditDishSheet(),
-                      icon: const Icon(Icons.add, size: 18, color: Colors.white),
-                      label: const Text('Thêm món', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      icon:
+                          const Icon(Icons.add, size: 18, color: Colors.white),
+                      label: const Text('Thêm món',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                       ),
                     ),
                   ],
@@ -422,18 +538,29 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                             cat.name,
                             style: TextStyle(
                               fontSize: 12,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              color: isSelected ? Colors.white : (isDark ? Colors.white70 : AppColors.textPrimary),
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark
+                                      ? Colors.white70
+                                      : AppColors.textPrimary),
                             ),
                           ),
                           selected: isSelected,
                           selectedColor: AppColors.primary,
-                          backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightSurface,
-                          onSelected: (_) => setState(() => _selectedCategory = cat.id),
+                          backgroundColor: isDark
+                              ? AppColors.darkBackground
+                              : AppColors.lightSurface,
+                          onSelected: (_) =>
+                              setState(() => _selectedCategory = cat.id),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
-                              color: isSelected ? AppColors.primary : Colors.transparent,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : Colors.transparent,
                             ),
                           ),
                         );
@@ -452,13 +579,18 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
               children: [
                 Text(
                   'Hiển thị ${filteredItems.length} món',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textSecondary),
                 ),
                 const Row(
                   children: [
                     Icon(Icons.toggle_on, color: AppColors.success, size: 18),
                     SizedBox(width: 4),
-                    Text('Bật/tắt trạng thái phục vụ', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    Text('Bật/tắt trạng thái phục vụ',
+                        style: TextStyle(
+                            fontSize: 11, color: AppColors.textSecondary)),
                   ],
                 ),
               ],
@@ -477,7 +609,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                         children: [
                           CircularProgressIndicator(color: AppColors.primary),
                           SizedBox(height: 14),
-                          Text('Đang tải thực đơn từ máy chủ...', style: TextStyle(color: AppColors.textSecondary)),
+                          Text('Đang tải thực đơn từ máy chủ...',
+                              style: TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     )
@@ -489,7 +622,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.search_off, size: 50, color: AppColors.textMuted),
+                                  Icon(Icons.search_off,
+                                      size: 50, color: AppColors.textMuted),
                                   SizedBox(height: 8),
                                   Text('Không tìm thấy món ăn nào phù hợp'),
                                 ],
@@ -498,9 +632,11 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                           ],
                         )
                       : ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 6),
                           itemCount: filteredItems.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
                           itemBuilder: (context, index) {
                             final item = filteredItems[index];
                             final isAvailable = item.status == 'AVAILABLE';
@@ -508,10 +644,13 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                             return Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkCard : Colors.white,
+                                color:
+                                    isDark ? AppColors.darkCard : Colors.white,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
                                 ),
                               ),
                               child: Row(
@@ -522,22 +661,26 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                     child: Stack(
                                       children: [
                                         Image.network(
-                                          ImageUtils.getSafeImageUrl(item.imageUrl),
+                                          ImageUtils.getSafeImageUrl(
+                                              item.imageUrl),
                                           width: 76,
                                           height: 76,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => Container(
+                                          errorBuilder: (_, __, ___) =>
+                                              Container(
                                             width: 76,
                                             height: 76,
                                             color: AppColors.lightSurface,
-                                            child: const Icon(Icons.fastfood, color: AppColors.primary),
+                                            child: const Icon(Icons.fastfood,
+                                                color: AppColors.primary),
                                           ),
                                         ),
                                         if (!isAvailable)
                                           Container(
                                             width: 76,
                                             height: 76,
-                                            color: Colors.black.withValues(alpha: 0.6),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.6),
                                             child: const Center(
                                               child: Text(
                                                 'Hết món',
@@ -557,18 +700,25 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                   // Dish Info
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Row(
                                           children: [
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2),
                                               decoration: BoxDecoration(
-                                                color: AppColors.primary.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(6),
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
                                               ),
                                               child: Text(
-                                                item.categoryName ?? 'Món chính',
+                                                item.categoryName ??
+                                                    'Món chính',
                                                 style: const TextStyle(
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.bold,
@@ -581,7 +731,9 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                         const SizedBox(height: 4),
                                         Text(
                                           item.name,
-                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -589,7 +741,8 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                         Row(
                                           children: [
                                             Text(
-                                              CurrencyFormatter.format(item.displayPrice),
+                                              CurrencyFormatter.format(
+                                                  item.displayPrice),
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: AppColors.primary,
@@ -599,11 +752,13 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                             if (item.hasDiscount) ...[
                                               const SizedBox(width: 8),
                                               Text(
-                                                CurrencyFormatter.format(item.price),
+                                                CurrencyFormatter.format(
+                                                    item.price),
                                                 style: const TextStyle(
                                                   fontSize: 12,
                                                   color: AppColors.textMuted,
-                                                  decoration: TextDecoration.lineThrough,
+                                                  decoration: TextDecoration
+                                                      .lineThrough,
                                                 ),
                                               ),
                                             ],
@@ -619,31 +774,42 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                       Switch(
                                         value: isAvailable,
                                         activeThumbColor: AppColors.success,
-                                        onChanged: (_) => _toggleItemStatus(item),
+                                        onChanged: (_) =>
+                                            _toggleItemStatus(item),
                                       ),
                                       const SizedBox(height: 4),
                                       Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           InkWell(
-                                            onTap: () => _showAddEditDishSheet(item),
-                                            borderRadius: BorderRadius.circular(10),
+                                            onTap: () =>
+                                                _showAddEditDishSheet(item),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 6),
                                               decoration: BoxDecoration(
-                                                color: AppColors.primary.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(10),
+                                                color: AppColors.primary
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                               child: const Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(Icons.edit_outlined, size: 15, color: AppColors.primary),
+                                                  Icon(Icons.edit_outlined,
+                                                      size: 15,
+                                                      color: AppColors.primary),
                                                   SizedBox(width: 2),
                                                   Text(
                                                     'Sửa',
                                                     style: TextStyle(
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       color: AppColors.primary,
                                                     ),
                                                   ),
@@ -653,24 +819,34 @@ class _AdminMenuManagementScreenState extends ConsumerState<AdminMenuManagementS
                                           ),
                                           const SizedBox(width: 6),
                                           InkWell(
-                                            onTap: () => _confirmDeleteItem(item),
-                                            borderRadius: BorderRadius.circular(10),
+                                            onTap: () =>
+                                                _confirmDeleteItem(item),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 6),
                                               decoration: BoxDecoration(
-                                                color: AppColors.error.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(10),
+                                                color: AppColors.error
+                                                    .withValues(alpha: 0.1),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                               child: const Row(
                                                 mainAxisSize: MainAxisSize.min,
                                                 children: [
-                                                  Icon(Icons.delete_outline, size: 15, color: AppColors.error),
+                                                  Icon(Icons.delete_outline,
+                                                      size: 15,
+                                                      color: AppColors.error),
                                                   SizedBox(width: 2),
                                                   Text(
                                                     'Xóa',
                                                     style: TextStyle(
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       color: AppColors.error,
                                                     ),
                                                   ),

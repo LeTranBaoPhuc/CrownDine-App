@@ -106,3 +106,8 @@ class TableNotifier extends StateNotifier<TableState> {
 
 final tableProvider = StateNotifierProvider<TableNotifier, TableState>(
     (ref) => TableNotifier(ref.watch(tableRepositoryProvider)));
+
+final availableTablesProvider = FutureProvider.autoDispose
+    .family<List<TableModel>, ({String date, String time, int guests})>(
+        (ref, slot) => ref.watch(tableRepositoryProvider).getAvailableTables(
+            date: slot.date, startTime: slot.time, guestNumber: slot.guests));

@@ -139,10 +139,13 @@ public class UserVoucherServiceImpl implements UserVoucherService {
             }
             User user = userRepository.findByUsername(username).orElseThrow(() -> new ResourceNotFoundException("user.not_found"));
 
-            UserVoucher userVoucher = userVoucherRepository.findByVoucher_IdAndCustomer_Id(voucher.getId(), user.getId())
-                    .orElseThrow(() -> new InvalidDataException("voucher.not_assigned_to_user"));
-            userVoucherValidator.validateAvailability(userVoucher);
-
+            // The persisted order price was accepted before collecting money. Expiry or
+            // later admin edits must not roll back a genuine successful payment.
+            UserVoucher userVoucher = userVoucherRepository.findAssignmentForUpdate(voucher.getId(), user.getId()).orElse(null);
+            if (userVoucher == null) {
+                log.warn("Paid order references a removed personal voucher assignment for user {}", user.getId());
+                return voucher;
+            }
             int usageCount = userVoucher.getUsageCount() == null ? 0 : userVoucher.getUsageCount();
             userVoucher.setUsageCount(usageCount + 1);
             userVoucherRepository.save(userVoucher);

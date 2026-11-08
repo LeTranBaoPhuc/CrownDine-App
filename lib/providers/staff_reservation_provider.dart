@@ -4,7 +4,8 @@ import '../data/models/reservation_model.dart';
 import '../data/repositories/reservation_repository.dart';
 import 'auth_provider.dart';
 
-final staffReservationRepositoryProvider = Provider<ReservationRepository>((ref) => ReservationRepository());
+final staffReservationRepositoryProvider =
+    Provider<ReservationRepository>((ref) => ReservationRepository());
 
 enum ReservationViewMode {
   list,
@@ -20,7 +21,8 @@ class StaffReservationState {
   final bool isActionLoading;
   final String? errorMessage;
   final DateTime selectedDate;
-  final String selectedStatus; // 'ALL', 'CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED', 'CANCELLED', 'NO_SHOW'
+  final String
+      selectedStatus; // 'ALL', 'CONFIRMED', 'CHECKED_IN', 'PENDING', 'COMPLETED', 'CANCELLED', 'NO_SHOW'
   final String selectedFloor;
   final String selectedArea;
   final String searchQuery;
@@ -61,12 +63,16 @@ class StaffReservationState {
       }
 
       // 3. Lọc theo Tầng
-      if (selectedFloor != 'Tất cả' && r.floorName != null && r.floorName != selectedFloor) {
+      if (selectedFloor != 'Tất cả' &&
+          r.floorName != null &&
+          r.floorName != selectedFloor) {
         return false;
       }
 
       // 4. Lọc theo Khu vực
-      if (selectedArea != 'Tất cả' && r.areaName != null && r.areaName != selectedArea) {
+      if (selectedArea != 'Tất cả' &&
+          r.areaName != null &&
+          r.areaName != selectedArea) {
         return false;
       }
 
@@ -91,12 +97,30 @@ class StaffReservationState {
   }
 
   // Số lượng theo từng trạng thái trong ngày đã chọn
-  int get countAll => allReservations.where((r) => r.date == apiDateString).length;
-  int get countConfirmed => allReservations.where((r) => r.date == apiDateString && r.status == ReservationStatus.confirmed).length;
-  int get countCheckedIn => allReservations.where((r) => r.date == apiDateString && r.status == ReservationStatus.checkedIn).length;
-  int get countPending => allReservations.where((r) => r.date == apiDateString && r.status == ReservationStatus.pending).length;
-  int get countCompleted => allReservations.where((r) => r.date == apiDateString && r.status == ReservationStatus.completed).length;
-  int get countCancelled => allReservations.where((r) => r.date == apiDateString && (r.status == ReservationStatus.cancelled || r.status == ReservationStatus.noShow)).length;
+  int get countAll =>
+      allReservations.where((r) => r.date == apiDateString).length;
+  int get countConfirmed => allReservations
+      .where((r) =>
+          r.date == apiDateString && r.status == ReservationStatus.confirmed)
+      .length;
+  int get countCheckedIn => allReservations
+      .where((r) =>
+          r.date == apiDateString && r.status == ReservationStatus.checkedIn)
+      .length;
+  int get countPending => allReservations
+      .where((r) =>
+          r.date == apiDateString && r.status == ReservationStatus.pending)
+      .length;
+  int get countCompleted => allReservations
+      .where((r) =>
+          r.date == apiDateString && r.status == ReservationStatus.completed)
+      .length;
+  int get countCancelled => allReservations
+      .where((r) =>
+          r.date == apiDateString &&
+          (r.status == ReservationStatus.cancelled ||
+              r.status == ReservationStatus.noShow))
+      .length;
 
   /// Danh sách Tầng có trong dữ liệu
   List<String> get availableFloors {
@@ -146,7 +170,9 @@ class StaffReservationState {
       selectedArea: selectedArea ?? this.selectedArea,
       searchQuery: searchQuery ?? this.searchQuery,
       viewMode: viewMode ?? this.viewMode,
-      selectedReservation: selectedReservation != null ? selectedReservation() : this.selectedReservation,
+      selectedReservation: selectedReservation != null
+          ? selectedReservation()
+          : this.selectedReservation,
     );
   }
 }
@@ -155,7 +181,8 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
   final ReservationRepository _repo;
   final Ref _ref;
 
-  StaffReservationNotifier(this._repo, this._ref) : super(StaffReservationState()) {
+  StaffReservationNotifier(this._repo, this._ref)
+      : super(StaffReservationState()) {
     fetchReservations();
   }
 
@@ -269,25 +296,46 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
 
         ReservationModel? updatedSelected;
         if (state.selectedReservation?.id == reservationId) {
-          updatedSelected = state.selectedReservation?.copyWith(status: ReservationStatus.checkedIn);
+          updatedSelected = state.selectedReservation
+              ?.copyWith(status: ReservationStatus.checkedIn);
         }
 
         state = state.copyWith(
           allReservations: updatedList,
           isActionLoading: false,
-          selectedReservation: () => updatedSelected ?? state.selectedReservation,
+          selectedReservation: () =>
+              updatedSelected ?? state.selectedReservation,
         );
         return true;
       }
     } catch (e) {
       state = state.copyWith(
         isActionLoading: false,
-        errorMessage: 'Check-in thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
+        errorMessage:
+            'Check-in thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
 
     state = state.copyWith(isActionLoading: false);
     return false;
+  }
+
+  Future<bool> complete(int id) async {
+    if (state.isActionLoading) return false;
+    state = state.copyWith(isActionLoading: true);
+    try {
+      await _repo.completeReservation(id);
+      await fetchReservations(showLoading: false);
+      if (!mounted) return false;
+      state = state.copyWith(
+          isActionLoading: false, selectedReservation: () => null);
+      return true;
+    } catch (e) {
+      if (mounted)
+        state =
+            state.copyWith(isActionLoading: false, errorMessage: e.toString());
+      return false;
+    }
   }
 
   /// [Action] Huỷ đặt bàn
@@ -307,20 +355,23 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
 
         ReservationModel? updatedSelected;
         if (state.selectedReservation?.id == reservationId) {
-          updatedSelected = state.selectedReservation?.copyWith(status: ReservationStatus.cancelled);
+          updatedSelected = state.selectedReservation
+              ?.copyWith(status: ReservationStatus.cancelled);
         }
 
         state = state.copyWith(
           allReservations: updatedList,
           isActionLoading: false,
-          selectedReservation: () => updatedSelected ?? state.selectedReservation,
+          selectedReservation: () =>
+              updatedSelected ?? state.selectedReservation,
         );
         return true;
       }
     } catch (e) {
       state = state.copyWith(
         isActionLoading: false,
-        errorMessage: 'Huỷ đặt bàn thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
+        errorMessage:
+            'Huỷ đặt bàn thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
 
@@ -364,7 +415,8 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
     } catch (e) {
       state = state.copyWith(
         isActionLoading: false,
-        errorMessage: 'Tạo đặt bàn thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
+        errorMessage:
+            'Tạo đặt bàn thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
 
@@ -377,7 +429,8 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
     state = state.copyWith(isActionLoading: true);
 
     try {
-      final success = await _repo.updateReservationTable(reservationId, newTableId);
+      final success =
+          await _repo.updateReservationTable(reservationId, newTableId);
       if (success) {
         await fetchReservations(showLoading: false);
         state = state.copyWith(isActionLoading: false);
@@ -386,7 +439,8 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
     } catch (e) {
       state = state.copyWith(
         isActionLoading: false,
-        errorMessage: 'Đổi bàn thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
+        errorMessage:
+            'Đổi bàn thất bại: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
 
@@ -396,8 +450,8 @@ class StaffReservationNotifier extends StateNotifier<StaffReservationState> {
 }
 
 final staffReservationProvider =
-    StateNotifierProvider<StaffReservationNotifier, StaffReservationState>((ref) {
+    StateNotifierProvider<StaffReservationNotifier, StaffReservationState>(
+        (ref) {
   final repo = ref.watch(staffReservationRepositoryProvider);
   return StaffReservationNotifier(repo, ref);
 });
-

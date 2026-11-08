@@ -26,6 +26,8 @@ import java.util.Random;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final com.crowndine.security.VerificationAttemptLimiter attemptLimiter;
+    private final com.crowndine.repository.TokenRepository tokenRepository;
     private final CloudinaryService cloudinaryService;
     private final PasswordEncoder passwordEncoder;
     private final MailService mailService;
@@ -51,6 +53,7 @@ public class UserServiceImpl implements UserService {
         // 3. Update password
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+        tokenRepository.revokeByUsername(user.getUsername());
 
         log.info("Successfully changed password for user {}", username);
     }
@@ -92,7 +95,7 @@ public class UserServiceImpl implements UserService {
                 .dateOfBirth(user.getDateOfBirth())
                 .avatarUrl(user.getAvatarUrl())
                 // Only getting the first role's name as a string for simplicity
-                .role(user.getRoles().isEmpty() ? null : user.getRoles().iterator().next().getName().name())
+                .role(user.getRoles().stream().map(r -> r.getName().name()).min(java.util.Comparator.comparingInt(r -> r.equals("ADMIN") ? 0 : r.equals("STAFF") ? 1 : 2)).orElse(null))
                 .createdAt(user.getCreatedAt().toLocalDate())
                 .updatedAt(user.getUpdatedAt().toLocalDate())
                 .build();
@@ -120,7 +123,7 @@ public class UserServiceImpl implements UserService {
                 .dateOfBirth(user.getDateOfBirth())
                 .avatarUrl(user.getAvatarUrl())
                 // Only getting the first role's name as a string for simplicity
-                .role(user.getRoles().isEmpty() ? null : user.getRoles().iterator().next().getName().name())
+                .role(user.getRoles().stream().map(r -> r.getName().name()).min(java.util.Comparator.comparingInt(r -> r.equals("ADMIN") ? 0 : r.equals("STAFF") ? 1 : 2)).orElse(null))
                 .createdAt(user.getCreatedAt().toLocalDate())
                 .updatedAt(user.getUpdatedAt().toLocalDate())
                 .build();
@@ -171,7 +174,7 @@ public class UserServiceImpl implements UserService {
                         .phone(user.getPhone())
                         .dateOfBirth(user.getDateOfBirth())
                         .avatarUrl(user.getAvatarUrl())
-                        .role(user.getRoles().isEmpty() ? null : user.getRoles().iterator().next().getName().name())
+                        .role(user.getRoles().stream().map(r -> r.getName().name()).min(java.util.Comparator.comparingInt(r -> r.equals("ADMIN") ? 0 : r.equals("STAFF") ? 1 : 2)).orElse(null))
                         .createdAt(user.getCreatedAt().toLocalDate())
                         .updatedAt(user.getUpdatedAt().toLocalDate())
                         .build())
@@ -180,6 +183,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void sendEmailOtp(String username, String newEmail) {
+        attemptLimiter.check("send-email", username, 3);
         log.info("Generating email OTP for user: {}", username);
 
         if (userRepository.existsByEmail(newEmail)) {
@@ -190,7 +194,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new ResourceNotFoundException("user.not_found"));
 
         // Generate 6-digit random OTP
-        String otp = String.format("%06d", new Random().nextInt(1000000));
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
 
         user.setVerificationCode(otp);
         user.setVerificationExpiration(java.time.LocalDateTime.now().plusMinutes(5));
@@ -203,8 +207,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public void verifyEmailOtp(String username, String otp, String newEmail) {
+        attemptLimiter.check("verify-email", username, 5);
         log.info("Verifying email OTP for user: {}", username);
-        User user = userRepository.findByUsername(username)
+        User user = userRepository.findByUsernameForUpdate(username)
                 .orElseThrow(() -> new ResourceNotFoundException("user.not_found"));
 
         if (user.getVerificationCode() == null || !user.getVerificationCode().equals(otp)) {

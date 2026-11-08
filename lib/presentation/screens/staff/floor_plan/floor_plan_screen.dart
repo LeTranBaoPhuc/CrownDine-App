@@ -1,3 +1,4 @@
+import '../orders/order_settlement_screen.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -254,7 +255,7 @@ class _FloorPlanScreenState extends ConsumerState<FloorPlanScreen> {
                   table.status == TableStatus.reserved)
                 ListTile(
                     leading: const Icon(Icons.receipt_long),
-                    title: const Text('Xem đơn & hóa đơn tạm tính'),
+                    title: const Text('Xem đơn & thanh toán'),
                     onTap: () => Navigator.pop(context, 'bill')),
               ListTile(
                   leading: const Icon(Icons.event_seat),
@@ -340,44 +341,11 @@ class _FloorPlanScreenState extends ConsumerState<FloorPlanScreen> {
         _message('Bàn chưa có đơn đang phục vụ.');
         return;
       }
-      final quote = await repo.getCheckout(order.id);
-      if (!mounted) return;
-      await showDialog<void>(
-          context: context,
-          builder: (context) => AlertDialog(
-                  title: Text('${table.name} • ${order.code}'),
-                  content: SizedBox(
-                      width: 400,
-                      child: SingleChildScrollView(
-                          child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                            for (final line in order.details)
-                              Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Text(
-                                      '${line.quantity} × ${line.itemName} • ${line.status.displayName}\n${CurrencyFormatter.format(line.totalPrice)}')),
-                            const Divider(),
-                            Text(
-                                'Tiền món: ${CurrencyFormatter.format(quote['totalAmount'])}'),
-                            Text(
-                                'Giảm voucher: ${CurrencyFormatter.format(quote['voucherDiscount'])}'),
-                            Text(
-                                'Cọc món đã trả: ${CurrencyFormatter.format(quote['orderDepositPaidAmount'])}'),
-                            Text(
-                                'Còn thanh toán: ${CurrencyFormatter.format(quote['finalAmount'])}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            const Text(
-                                'Hóa đơn tạm tính. Thu ngân xác nhận thanh toán trước khi hoàn tất đơn/trả bàn.'),
-                          ]))),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text('Đóng'))
-                  ]));
+      await Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (_) => OrderSettlementScreen(orderId: order.id)));
+      if (mounted) await _refresh();
     } catch (error) {
       if (mounted) _message(apiErrorMessage(error));
     } finally {

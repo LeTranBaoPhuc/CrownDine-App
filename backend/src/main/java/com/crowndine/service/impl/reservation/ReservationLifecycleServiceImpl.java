@@ -43,6 +43,8 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     private static final long NO_SHOW_GRACE_MINUTES = 15;
 
     private final ReservationRepository reservationRepository;
+    private final com.crowndine.repository.OrderRepository orderRepository;
+    private final com.crowndine.repository.PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final RestaurantTableRepository tableRepository;
     private final OrderService orderService;
@@ -50,6 +52,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     private final ReservationAvailabilityService reservationAvailabilityService;
     private final ReservationOrderService reservationOrderService;
     private final ApplicationEventPublisher eventPublisher;
+    private final com.crowndine.service.layout.RestaurantTableStateService restaurantTableStateService;
 
     @Override
     @Transactional(rollbackFor = Exception.class, isolation = Isolation.READ_COMMITTED)
@@ -73,7 +76,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     @Transactional(rollbackFor = Exception.class)
     public void checkInReservation(Long reservationId, String username) {
         log.info("Checking in reservation id {} by user {}", reservationId, username);
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("reservation.not_found"));
         getUserByUserName(username);
 
         if (reservation.getStatus() == EReservationStatus.CHECKED_IN) {
@@ -84,8 +87,14 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
             throw new InvalidDataException("reservation.check_in_only_confirmed");
         }
 
+        RestaurantTable table = tableRepository.findByIdForUpdate(reservation.getTable().getId()).orElseThrow();
+        if (table.getStatus() == ETableStatus.UNAVAILABLE || !orderRepository.findByRestaurantTableIdAndStatusIn(table.getId(), java.util.List.of(EOrderStatus.CONFIRMED, EOrderStatus.IN_PROGRESS, EOrderStatus.SERVED)).isEmpty()
+                || !reservationRepository.findByTableIdAndStatusAndCheckedOutAtIsNull(table.getId(), EReservationStatus.CHECKED_IN).isEmpty()) {
+            throw new InvalidDataException("Bàn đang phục vụ khách khác hoặc ngưng hoạt động");
+        }
         validateCheckInTimeWindow(reservation);
 
+        restaurantTableStateService.changeStatus(table.getId(), ETableStatus.OCCUPIED);
         reservation.setStatus(EReservationStatus.CHECKED_IN);
         reservationRepository.save(reservation);
 
@@ -113,7 +122,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     public void cancelReservation(Long reservationId, String username) {
         log.info("Cancelling reservation id {} for user {}", reservationId, username);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("reservation.not_found"));
         User user = getUserByUserName(username);
         validateReservationForUser(reservation, user);
 
@@ -130,7 +139,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     public void cancelReservationByStaff(Long reservationId, String username) {
         log.info("Staff/Admin {} cancelling reservation id {}", username, reservationId);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("reservation.not_found"));
         getUserByUserName(username);
 
         if (reservation.getStatus() != EReservationStatus.PENDING && reservation.getStatus() != EReservationStatus.CONFIRMED) {
@@ -165,7 +174,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
 
     @Override
     public void markReservationNoShow(Long reservationId) {
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("reservation.not_found"));
 
         if (reservation.getStatus() != EReservationStatus.CONFIRMED) {
             return;
@@ -190,7 +199,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     public void completeReservation(Long reservationId, String username) {
         log.info("Staff/Admin {} completing reservation id {}", username, reservationId);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("reservation.not_found"));
         getUserByUserName(username);
 
         if (reservation.getStatus() != EReservationStatus.CHECKED_IN) {
@@ -204,6 +213,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
 
         reservation.setStatus(EReservationStatus.COMPLETED);
         reservation.setCheckedOutAt(LocalDateTime.now());
+        if (reservation.getTable() != null) restaurantTableStateService.changeStatus(reservation.getTable().getId(), ETableStatus.AVAILABLE);
         reservation.setExpiratedAt(null);
         reservationRepository.save(reservation);
 
@@ -215,7 +225,7 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     public ReservationCheckoutResponse updateReservationTable(Long reservationId, ReservationUpdateTableRequest request, String username) {
         log.info("Updating table for reservation id {} to table id {} for user {}", reservationId, request.getTableId(), username);
 
-        Reservation reservation = getReservationById(reservationId);
+        Reservation reservation = reservationRepository.findByIdForUpdate(reservationId).orElseThrow(() -> new ResourceNotFoundException("reservation.not_found"));
         User user = getUserByUserName(username);
         validateReservationForUser(reservation, user);
 
@@ -223,6 +233,10 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
             throw new InvalidDataException("reservation.update_table_only_pending");
         }
 
+        if (reservation.getExpiratedAt() == null || !reservation.getExpiratedAt().isAfter(LocalDateTime.now())
+                || paymentRepository.existsByTargetAndReservationIdAndStatus(com.crowndine.common.enums.EPaymentTarget.RESERVATION, reservationId, com.crowndine.common.enums.EPaymentStatus.PENDING)) {
+            throw new InvalidDataException("Đặt chỗ đã hết hạn hoặc đang thanh toán, không thể đổi bàn");
+        }
         /*
          * Lock bàn đích trước khi check availability để tránh 2 request đổi/chọn cùng 1 bàn trong cùng thời điểm.
          */
@@ -256,6 +270,12 @@ public class ReservationLifecycleServiceImpl implements ReservationLifecycleServ
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void confirmAfterDepositPaid(Reservation reservation) {
+        reservation = reservationRepository.findByIdForUpdate(reservation.getId()).orElseThrow();
+        if (reservation.getStatus() != EReservationStatus.PENDING || reservation.getExpiratedAt() == null
+                || !reservation.getExpiratedAt().isAfter(LocalDateTime.now())) {
+            log.warn("Deposit received after reservation {} closed/expired; keep payment recorded for staff reconciliation", reservation.getId());
+            return;
+        }
         reservation.setStatus(EReservationStatus.CONFIRMED);
         reservation.setExpiratedAt(null);
         reservationRepository.save(reservation);

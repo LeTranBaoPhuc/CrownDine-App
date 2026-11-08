@@ -93,11 +93,6 @@ class OrderNotifier extends StateNotifier<OrderState> {
     await _repo.updateDishCookingStatus(orderId, detailId, nextStatus);
     await loadOrders();
   }
-
-  Future<void> completeOrder(int orderId) async {
-    await _repo.updateOrderStatus(orderId, OrderStatus.completed);
-    await loadOrders();
-  }
 }
 
 final orderProvider = StateNotifierProvider<OrderNotifier, OrderState>((ref) {

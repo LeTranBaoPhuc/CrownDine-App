@@ -19,6 +19,13 @@ import java.util.Optional;
 
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reservation r where r.code = :code")
+    Optional<Reservation> findByCodeForUpdate(@Param("code") String code);
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select r from Reservation r where r.id = :id")
+    Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
+
     Page<Reservation> findByUser_Id(Long userId, Pageable pageable);
 
     List<Reservation> findAllByUser_Id(Long userId);

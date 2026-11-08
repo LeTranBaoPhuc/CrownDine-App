@@ -1,3 +1,4 @@
+import 'auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/item_model.dart';
 import '../data/models/reservation_model.dart';
@@ -48,7 +49,8 @@ class CartNotifier extends StateNotifier<CartState> {
   }
 
   void removeItem(int itemId) {
-    final list = state.items.where((element) => element.item.id != itemId).toList();
+    final list =
+        state.items.where((element) => element.item.id != itemId).toList();
     state = state.copyWith(items: list);
   }
 
@@ -67,5 +69,6 @@ class CartNotifier extends StateNotifier<CartState> {
 }
 
 final cartProvider = StateNotifierProvider<CartNotifier, CartState>((ref) {
+  ref.watch(authProvider.select((state) => state.user?.id));
   return CartNotifier();
 });

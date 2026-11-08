@@ -1,15 +1,12 @@
+import '../customer/customer_main_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../data/models/user_model.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/theme_provider.dart';
-import '../admin/admin_main_screen.dart';
-import '../customer/customer_main_screen.dart';
 import '../settings/server_config_screen.dart';
-import '../staff/staff_main_screen.dart';
 import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
@@ -21,8 +18,8 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _usernameController = TextEditingController(text: 'johncena');
-  final _passwordController = TextEditingController(text: '123456');
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = true;
 
@@ -47,30 +44,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    final success = await ref.read(authProvider.notifier).login(username, password);
+    final success =
+        await ref.read(authProvider.notifier).login(username, password);
     if (success && mounted) {
       _navigateAfterLogin();
     }
   }
 
   void _navigateAfterLogin() {
-    final user = ref.read(authProvider).user;
-    if (user?.role == UserRole.admin) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const AdminMainScreen()),
-      );
-    } else if (user?.role == UserRole.staff) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const StaffMainScreen()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
-      );
-    }
+    Navigator.of(context).pushNamedAndRemoveUntil('/', (_) => false);
   }
 
   Future<void> _submitGoogleLogin() async {
@@ -92,7 +74,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final result = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
               Icon(Icons.security, color: AppColors.primary),
@@ -119,8 +102,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 decoration: InputDecoration(
                   hintText: 'Nhập Google Client ID...',
                   prefixIcon: const Icon(Icons.key, size: 20),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ],
@@ -133,7 +118,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               onPressed: () async {
                 final text = controller.text.trim();
@@ -142,7 +128,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   if (ctx.mounted) Navigator.pop(ctx, true);
                 }
               },
-              child: const Text('Lưu & Đăng nhập', style: TextStyle(color: Colors.white)),
+              child: const Text('Lưu & Đăng nhập',
+                  style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -175,7 +162,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF120F0D) : const Color(0xFFF9F7F5),
+      backgroundColor:
+          isDark ? const Color(0xFF120F0D) : const Color(0xFFF9F7F5),
       body: Stack(
         children: [
           // Ambient background glow decorative elements
@@ -217,7 +205,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 480),
                   child: Column(
@@ -232,38 +221,63 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             onPressed: () {
                               Navigator.pushReplacement(
                                 context,
-                                MaterialPageRoute(builder: (_) => const CustomerMainScreen()),
+                                MaterialPageRoute(
+                                    builder: (_) => const CustomerMainScreen()),
                               );
                             },
-                            icon: const Icon(Icons.arrow_back_ios_new, size: 14),
-                            label: const Text('Xem thực đơn', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                            icon:
+                                const Icon(Icons.arrow_back_ios_new, size: 14),
+                            label: const Text('Xem thực đơn',
+                                style: TextStyle(
+                                    fontSize: 13, fontWeight: FontWeight.w600)),
                             style: TextButton.styleFrom(
-                              foregroundColor: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                              foregroundColor: isDark
+                                  ? AppColors.textLightSecondary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           Row(
                             children: [
                               IconButton(
-                                icon: const Icon(Icons.settings_ethernet, size: 20),
+                                icon: const Icon(Icons.settings_ethernet,
+                                    size: 20),
                                 tooltip: 'Cài đặt IP Backend',
                                 onPressed: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ServerConfigScreen()));
+                                  Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ServerConfigScreen()));
                                 },
                                 style: IconButton.styleFrom(
-                                  backgroundColor: isDark ? const Color(0xFF221D1A) : Colors.white,
-                                  foregroundColor: isDark ? AppColors.textLight : AppColors.textPrimary,
+                                  backgroundColor: isDark
+                                      ? const Color(0xFF221D1A)
+                                      : Colors.white,
+                                  foregroundColor: isDark
+                                      ? AppColors.textLight
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                               const SizedBox(width: 8),
                               IconButton(
-                                icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined, size: 20),
+                                icon: Icon(
+                                    isDark
+                                        ? Icons.light_mode_outlined
+                                        : Icons.dark_mode_outlined,
+                                    size: 20),
                                 tooltip: 'Chế độ giao diện',
                                 onPressed: () {
-                                  ref.read(themeModeProvider.notifier).toggleTheme();
+                                  ref
+                                      .read(themeModeProvider.notifier)
+                                      .toggleTheme();
                                 },
                                 style: IconButton.styleFrom(
-                                  backgroundColor: isDark ? const Color(0xFF221D1A) : Colors.white,
-                                  foregroundColor: isDark ? AppColors.textLight : AppColors.textPrimary,
+                                  backgroundColor: isDark
+                                      ? const Color(0xFF221D1A)
+                                      : Colors.white,
+                                  foregroundColor: isDark
+                                      ? AppColors.textLight
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                             ],
@@ -274,19 +288,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                       // Main Luxury Glass Card
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 28, vertical: 32),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E1916) : Colors.white,
+                          color:
+                              isDark ? const Color(0xFF1E1916) : Colors.white,
                           borderRadius: BorderRadius.circular(28),
                           border: Border.all(
-                            color: isDark ? const Color(0xFF382F28) : const Color(0xFFEDE4DC),
+                            color: isDark
+                                ? const Color(0xFF382F28)
+                                : const Color(0xFFEDE4DC),
                             width: 1.2,
                           ),
                           boxShadow: [
                             BoxShadow(
                               color: isDark
                                   ? Colors.black.withValues(alpha: 0.5)
-                                  : const Color(0xFF8B5E3C).withValues(alpha: 0.1),
+                                  : const Color(0xFF8B5E3C)
+                                      .withValues(alpha: 0.1),
                               blurRadius: 36,
                               offset: const Offset(0, 14),
                             ),
@@ -304,25 +323,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       gradient: const LinearGradient(
-                                        colors: [AppColors.primary, AppColors.gold],
+                                        colors: [
+                                          AppColors.primary,
+                                          AppColors.gold
+                                        ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.35),
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.35),
                                           blurRadius: 18,
                                           offset: const Offset(0, 6),
                                         ),
                                       ],
-                                      border: Border.all(color: Colors.white.withValues(alpha: 0.25), width: 1.5),
+                                      border: Border.all(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.25),
+                                          width: 1.5),
                                     ),
                                     child: Image.asset(
                                       'assets/images/logo.png',
                                       width: 42,
                                       height: 42,
                                       fit: BoxFit.contain,
-                                      errorBuilder: (_, error, stackTrace) => const Icon(
+                                      errorBuilder: (_, error, stackTrace) =>
+                                          const Icon(
                                         Icons.restaurant,
                                         color: Colors.white,
                                         size: 38,
@@ -338,7 +365,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           style: GoogleFonts.playfairDisplay(
                                             fontSize: 30,
                                             fontWeight: FontWeight.w800,
-                                            color: isDark ? Colors.white : AppColors.textPrimary,
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.textPrimary,
                                             letterSpacing: 0.5,
                                           ),
                                         ),
@@ -362,7 +391,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 1.2,
-                                      color: isDark ? AppColors.gold : const Color(0xFFB45309),
+                                      color: isDark
+                                          ? AppColors.gold
+                                          : const Color(0xFFB45309),
                                     ),
                                   ),
                                 ],
@@ -374,20 +405,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF14110F) : const Color(0xFFF3ECE4),
+                                color: isDark
+                                    ? const Color(0xFF14110F)
+                                    : const Color(0xFFF3ECE4),
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Row(
                                 children: [
                                   Expanded(
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 10),
                                       decoration: BoxDecoration(
-                                        color: isDark ? const Color(0xFF2C241F) : Colors.white,
+                                        color: isDark
+                                            ? const Color(0xFF2C241F)
+                                            : Colors.white,
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.08),
+                                            color: Colors.black
+                                                .withValues(alpha: 0.08),
                                             blurRadius: 6,
                                             offset: const Offset(0, 2),
                                           ),
@@ -399,7 +436,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.bold,
-                                            color: isDark ? Colors.white : AppColors.textPrimary,
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.textPrimary,
                                           ),
                                         ),
                                       ),
@@ -411,18 +450,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       onTap: () {
                                         Navigator.push(
                                           context,
-                                          MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const RegisterScreen()),
                                         );
                                       },
                                       child: Center(
                                         child: Padding(
-                                          padding: const EdgeInsets.symmetric(vertical: 10),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 10),
                                           child: Text(
                                             'Đăng ký tài khoản',
                                             style: TextStyle(
                                               fontSize: 14,
                                               fontWeight: FontWeight.w600,
-                                              color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                              color: isDark
+                                                  ? AppColors.textLightSecondary
+                                                  : AppColors.textSecondary,
                                             ),
                                           ),
                                         ),
@@ -454,11 +498,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               obscureText: _obscurePassword,
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                  color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                  _obscurePassword
+                                      ? Icons.visibility_off_outlined
+                                      : Icons.visibility_outlined,
+                                  color: isDark
+                                      ? AppColors.textLightSecondary
+                                      : AppColors.textSecondary,
                                   size: 20,
                                 ),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword),
                               ),
                             ),
 
@@ -476,18 +525,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                       child: Checkbox(
                                         value: _rememberMe,
                                         activeColor: AppColors.primary,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                                        onChanged: (val) => setState(() => _rememberMe = val ?? true),
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(5)),
+                                        onChanged: (val) => setState(
+                                            () => _rememberMe = val ?? true),
                                       ),
                                     ),
                                     const SizedBox(width: 6),
                                     GestureDetector(
-                                      onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                      onTap: () => setState(
+                                          () => _rememberMe = !_rememberMe),
                                       child: Text(
                                         'Ghi nhớ phiên đăng nhập',
                                         style: TextStyle(
                                           fontSize: 12.5,
-                                          color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                          color: isDark
+                                              ? AppColors.textLightSecondary
+                                              : AppColors.textSecondary,
                                         ),
                                       ),
                                     ),
@@ -497,13 +552,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   onPressed: () {
                                     Navigator.push(
                                       context,
-                                      MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              const ForgotPasswordScreen()),
                                     );
                                   },
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: const Text(
                                     'Quên mật khẩu?',
@@ -521,20 +579,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             if (authState.errorMessage != null) ...[
                               const SizedBox(height: 14),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.error.withValues(alpha: 0.12),
+                                  color:
+                                      AppColors.error.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
+                                  border: Border.all(
+                                      color: AppColors.error
+                                          .withValues(alpha: 0.4)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                                    const Icon(Icons.error_outline,
+                                        color: AppColors.error, size: 18),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
                                         authState.errorMessage!,
-                                        style: const TextStyle(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w500),
+                                        style: const TextStyle(
+                                            color: AppColors.error,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500),
                                       ),
                                     ),
                                   ],
@@ -548,34 +614,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               height: 52,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFFFF7A45), Color(0xFFE8551E)],
+                                  colors: [
+                                    Color(0xFFFF7A45),
+                                    Color(0xFFE8551E)
+                                  ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                    color: AppColors.primary
+                                        .withValues(alpha: 0.4),
                                     blurRadius: 16,
                                     offset: const Offset(0, 6),
                                   ),
                                 ],
                               ),
                               child: ElevatedButton(
-                                onPressed: authState.isLoading ? null : _submitLogin,
+                                onPressed:
+                                    authState.isLoading ? null : _submitLogin,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: Colors.transparent,
                                   shadowColor: Colors.transparent,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14)),
                                 ),
                                 child: authState.isLoading
                                     ? const SizedBox(
                                         width: 22,
                                         height: 22,
-                                        child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.5,
+                                            color: Colors.white),
                                       )
                                     : const Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Text(
                                             'Đăng nhập hệ thống',
@@ -587,7 +662,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                             ),
                                           ),
                                           SizedBox(width: 8),
-                                          Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                                          Icon(Icons.arrow_forward,
+                                              color: Colors.white, size: 18),
                                         ],
                                       ),
                               ),
@@ -597,20 +673,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             // Divider Hoặc tiếp tục với
                             Row(
                               children: [
-                                Expanded(child: Divider(color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4))),
+                                Expanded(
+                                    child: Divider(
+                                        color: isDark
+                                            ? const Color(0xFF332B24)
+                                            : const Color(0xFFE6DDD4))),
                                 Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 14),
                                   child: Text(
                                     'HOẶC TIẾP TỤC VỚI',
                                     style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.bold,
                                       letterSpacing: 0.8,
-                                      color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                      color: isDark
+                                          ? AppColors.textLightSecondary
+                                          : AppColors.textSecondary,
                                     ),
                                   ),
                                 ),
-                                Expanded(child: Divider(color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4))),
+                                Expanded(
+                                    child: Divider(
+                                        color: isDark
+                                            ? const Color(0xFF332B24)
+                                            : const Color(0xFFE6DDD4))),
                               ],
                             ),
                             const SizedBox(height: 18),
@@ -619,15 +706,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Container(
                               height: 50,
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF1E1915) : Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF1E1915)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: isDark ? const Color(0xFF3D322A) : const Color(0xFFE0D7CE),
+                                  color: isDark
+                                      ? const Color(0xFF3D322A)
+                                      : const Color(0xFFE0D7CE),
                                   width: 1.2,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.04),
+                                    color: Colors.black
+                                        .withValues(alpha: isDark ? 0.2 : 0.04),
                                     blurRadius: 10,
                                     offset: const Offset(0, 3),
                                   ),
@@ -637,10 +729,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 color: Colors.transparent,
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(14),
-                                  onTap: authState.isLoading ? null : _submitGoogleLogin,
+                                  onTap: authState.isLoading
+                                      ? null
+                                      : _submitGoogleLogin,
                                   child: Center(
                                     child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         _buildGoogleLogo(),
                                         const SizedBox(width: 12),
@@ -649,7 +744,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           style: TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
-                                            color: isDark ? Colors.white : const Color(0xFF2D241E),
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF2D241E),
                                             letterSpacing: 0.2,
                                           ),
                                         ),
@@ -665,10 +762,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF16120F) : const Color(0xFFF9F6F2),
+                                color: isDark
+                                    ? const Color(0xFF16120F)
+                                    : const Color(0xFFF9F6F2),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: isDark ? const Color(0xFF332B24) : const Color(0xFFE6DDD4),
+                                  color: isDark
+                                      ? const Color(0xFF332B24)
+                                      : const Color(0xFFE6DDD4),
                                 ),
                               ),
                               child: Column(
@@ -676,7 +777,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 children: [
                                   Row(
                                     children: [
-                                      const Icon(Icons.flash_on, color: AppColors.gold, size: 16),
+                                      const Icon(Icons.flash_on,
+                                          color: AppColors.gold, size: 16),
                                       const SizedBox(width: 6),
                                       Text(
                                         'TÀI KHOẢN MẪU HỆ THỐNG',
@@ -684,7 +786,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
                                           letterSpacing: 0.8,
-                                          color: isDark ? AppColors.gold : const Color(0xFFB45309),
+                                          color: isDark
+                                              ? AppColors.gold
+                                              : const Color(0xFFB45309),
                                         ),
                                       ),
                                       const Spacer(),
@@ -693,7 +797,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                          color: isDark
+                                              ? AppColors.textLightSecondary
+                                              : AppColors.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -745,7 +851,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         '© 2026 CrownDine Fine Dining System. All rights reserved.',
                         style: TextStyle(
                           fontSize: 11.5,
-                          color: isDark ? const Color(0xFF706760) : const Color(0xFF9E9790),
+                          color: isDark
+                              ? const Color(0xFF706760)
+                              : const Color(0xFF9E9790),
                         ),
                       ),
                     ],
@@ -798,7 +906,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: TextStyle(
-                color: isDark ? const Color(0xFF6E645D) : const Color(0xFFA69D95),
+                color:
+                    isDark ? const Color(0xFF6E645D) : const Color(0xFFA69D95),
                 fontSize: 13.5,
               ),
               prefixIcon: Icon(
@@ -808,7 +917,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               suffixIcon: suffixIcon,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
         ),

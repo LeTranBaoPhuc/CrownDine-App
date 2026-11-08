@@ -86,6 +86,22 @@ class OrderRepository {
     return data;
   }
 
+  Future<Map<String, dynamic>?> latestPayment(int orderId) async {
+    final data = _data(await _dio.get('payments/orders/$orderId/latest'));
+    if (data == null) return null;
+    if (data is! Map<String, dynamic> ||
+        data['target'] != 'ORDER' ||
+        data['code'] is! int) {
+      throw const FormatException('Giao dịch không hợp lệ.');
+    }
+    return data;
+  }
+
+  Future<void> createSettlement(String orderCode, String method) async {
+    _data(await _dio.post('payments/create',
+        data: {'orderCode': orderCode, 'method': method}));
+  }
+
   Future<void> updateDishCookingStatus(
       int orderId, int detailId, DishCookingStatus status) async {
     _data(await _dio.patch(ApiEndpoints.orderDetailStatus(detailId),

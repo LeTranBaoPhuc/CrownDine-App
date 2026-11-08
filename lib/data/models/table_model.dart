@@ -92,7 +92,12 @@ class TableModel {
           ? (json['deposit'] as num).toDouble()
           : double.tryParse('${json['deposit']}') ?? 0,
       status: TableStatus.fromString(json['status']),
-      shape: json['shape'] ?? 'RECTANGLE',
+      shape: switch (json['shape']) {
+        'CIRCLE' => 'ROUND',
+        'RECT' => 'RECTANGLE',
+        final String value => value,
+        _ => 'RECTANGLE'
+      },
       floorId: json['floorId'] is int ? json['floorId'] : 1,
       floorName: json['floorName'],
       areaName: json['areaName'],
