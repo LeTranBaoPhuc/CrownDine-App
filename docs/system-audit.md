@@ -67,8 +67,8 @@ V3 giữ nguyên thông tin CANCELLED/EXPIRED/REFUNDED lịch sử. Không suy �
 
 ## Bằng chứng kiểm tra
 
-- Backend: **53 test** qua, gồm phân quyền HTTP thực, STOMP, mapping/migration, tiền cọc/tất toán, webhook lặp/sai tiền, vòng đời đặt bàn, chỉnh món và OTP limiter.
-- Flutter: **60 test** qua, gồm refresh đồng thời/đăng xuất, combo API, trạng thái pending không báo thanh toán thành công, biểu mẫu lỗi và luồng đặt bàn/voucher/bàn ăn.
+- Backend: **55 test** qua, gồm phân quyền HTTP thực (cả khách chưa đăng nhập xem bàn/ưu đãi), STOMP, mapping/migration, tiền cọc/tất toán, webhook lặp/sai tiền, vòng đời đặt bàn, chỉnh món và OTP limiter.
+- Flutter: **62 test** qua, gồm refresh đồng thời/đăng xuất, combo API, trạng thái pending không báo thanh toán thành công, biểu mẫu lỗi và luồng đặt bàn/voucher/bàn ăn; trang chủ dùng endpoint ưu đãi công khai và giữ trạng thái lỗi để thử lại.
 - `flutter analyze --no-pub --no-fatal-infos`: không error/warning; còn các lint info, phần lớn liên quan API Flutter deprecated và dấu ngoặc điều kiện.
 - `flutter build web --no-pub`: thành công; bản debug đang phục vụ tại cổng 5175.
 - Runtime MySQL: Flyway V1–V4 thành công, Hibernate `ddl-auto=validate` qua, backend khởi động, API floors/tables/available truy vấn được dữ liệu thật.
@@ -88,3 +88,7 @@ Không coi bộ unit/widget test hoặc bản web chạy được là bằng ch�
 ### Sự cố kết nối khi chạy thử
 
 Nếu console báo `ERR_CONNECTION_REFUSED` ở mọi API `8081`, kiểm tra tiến trình backend trước khi sửa giao diện. Trong lần chạy thử, DevTools đã thấy 445 file bị xóa khỏi classpath, tự restart giữa lúc thư mục build đang được làm mới, rồi khởi động thiếu profile `dev` và báo thiếu `jwt.access-key`. Lệnh chạy JAR ở trên loại bỏ sự phụ thuộc đó. Các dòng `enable_copy.js` thuộc extension trình duyệt; DDC tải module là log khởi động Flutter web.
+
+Nếu backend trả `401 Unauthorized` khi khách xem bàn: trước đây giao diện cho phép xem trước nhưng API bàn yêu cầu đăng nhập. Đã mở GET chính xác `/api/restaurant-tables` và `/api/restaurant-tables/available` (chỉ metadata bàn, không có thông tin khách/đơn); sửa trạng thái vẫn chỉ STAFF/ADMIN và tạo đặt chỗ vẫn cần đăng nhập. Trang chủ chuyển sang `/api/vouchers/public`, chỉ trả voucher không cấp riêng và không yêu cầu đổi điểm. Không mở danh sách voucher quản trị hoặc ví cá nhân cho khách. Khi API ưu đãi lỗi, trang chủ có nút thử lại.
+
+Đã kiểm tra runtime bằng request không có token: floors 200 (2 tầng), tables/available 200 (50 bàn trong khung giờ thử), public vouchers 200; CORS cho web 5175 đúng. Danh sách ưu đãi khớp bộ lọc đối chiếu từ dữ liệu quản trị; tham số phân trang sai trả 400. Khách gọi API riêng tư/sửa bàn/tạo đặt chỗ trả 401, tài khoản USER sửa bàn trả 403.

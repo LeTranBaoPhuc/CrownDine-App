@@ -29,6 +29,15 @@ class AdminVoucherRepository {
         'type':
             type == AdminVoucherType.percentage ? 'PERCENTAGE' : 'FIXED_AMOUNT',
     }));
+    return _page(raw);
+  }
+
+  Future<AdminVoucherPage> listPublic({int page = 1, int size = 20}) async {
+    return _page(_data(await _dio.get('${ApiEndpoints.vouchers}/public',
+        queryParameters: {'page': page, 'size': size})));
+  }
+
+  AdminVoucherPage _page(dynamic raw) {
     if (raw is! Map ||
         raw['data'] is! List ||
         raw['page'] is! int ||

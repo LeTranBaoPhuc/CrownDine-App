@@ -90,6 +90,17 @@ public class VoucherServiceImpl implements VoucherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<VoucherResponse> getPublicVouchers(int page, int size) {
+        Page<Voucher> vouchers = voucherRepository.findPublicVouchers(
+                PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "id")));
+        return PageResponse.<VoucherResponse>builder()
+                .page(page).pageSize(size)
+                .totalPages(vouchers.getTotalPages()).totalItems(vouchers.getTotalElements())
+                .data(vouchers.stream().map(this::toResponse).toList()).build();
+    }
+
+    @Override
     public Voucher getVoucherByCode(String code) {
         String normalizedCode = code.trim().toUpperCase(Locale.ROOT);
         return voucherRepository.findByCode(normalizedCode).orElseThrow(() -> new ResourceNotFoundException("Voucher not found"));

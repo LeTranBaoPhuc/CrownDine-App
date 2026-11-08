@@ -10,6 +10,7 @@ import com.crowndine.service.voucher.UserVoucherService;
 import com.crowndine.service.voucher.VoucherService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Max;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,14 @@ public class ApiVoucherController {
                 .message("Get vouchers successfully")
                 .data(voucherService.getVouchers(search, type, page, size))
                 .build();
+    }
+
+    @GetMapping("/public")
+    public ApiResponse getPublicVouchers(
+            @Min(1) @RequestParam(defaultValue = "1") int page,
+            @Min(1) @Max(100) @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.builder().status(200).message("Get public vouchers successfully")
+                .data(voucherService.getPublicVouchers(page, size)).build();
     }
 
     @GetMapping("/{id}")

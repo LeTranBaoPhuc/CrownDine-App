@@ -31,7 +31,7 @@ class HttpAuthorizationTest {
         @Bean Endpoints endpoints() { return new Endpoints(); }
     }
     @RestController static class Endpoints {
-        @RequestMapping({"/api/orders", "/api/orders/1/status", "/api/reservations/all", "/api/ai/admin-chat", "/api/vouchers/validate", "/api/vouchers/1/exchange", "/api/user-vouchers/my", "/api/shifts", "/actuator/env"})
+        @RequestMapping({"/api/orders", "/api/orders/1/status", "/api/reservations/all", "/api/ai/admin-chat", "/api/vouchers/validate", "/api/vouchers/1/exchange", "/api/user-vouchers/my", "/api/shifts", "/actuator/env", "/api/restaurant-tables", "/api/restaurant-tables/available", "/api/restaurant-tables/1", "/api/vouchers/public", "/api/vouchers", "/api/vouchers/1", "/api/vouchers/1/assignments", "/api/reservations"})
         public String endpoint() { return "ok"; }
     }
     @Autowired WebApplicationContext context;
@@ -40,6 +40,20 @@ class HttpAuthorizationTest {
     @Test void anonymousCannotUsePrivateEndpoints() throws Exception {
         mvc.perform(get("/api/orders")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/ai/admin-chat")).andExpect(status().isUnauthorized());
+    }
+    @Test void guestsCanBrowseTablesAndPublicPromotions() throws Exception {
+        for (String path : new String[]{"/api/restaurant-tables", "/api/restaurant-tables/available", "/api/vouchers/public"}) {
+            mvc.perform(get(path)).andExpect(status().isOk());
+        }
+    }
+    @Test void publicBrowsingDoesNotExposeVoucherManagementOrAllowMutations() throws Exception {
+        for (String path : new String[]{"/api/vouchers", "/api/vouchers/1", "/api/vouchers/1/assignments", "/api/user-vouchers/my"}) {
+            mvc.perform(get(path)).andExpect(status().isUnauthorized());
+        }
+        mvc.perform(patch("/api/restaurant-tables/1")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/restaurant-tables")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/vouchers/public")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/reservations")).andExpect(status().isUnauthorized());
     }
     @Test void customerCannotReadGlobalOrdersOrReservationsOrChangeServingAndShifts() throws Exception {
         for (String path : new String[]{"/api/orders", "/api/reservations/all", "/actuator/env"}) mvc.perform(get(path).with(user("alice").authorities(() -> "USER"))).andExpect(status().isForbidden());

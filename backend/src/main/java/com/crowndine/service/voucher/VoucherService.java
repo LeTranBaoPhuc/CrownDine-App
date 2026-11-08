@@ -11,6 +11,8 @@ public interface VoucherService {
 
     PageResponse<VoucherResponse> getVouchers(String search, EVoucherType type, int page, int size);
 
+    PageResponse<VoucherResponse> getPublicVouchers(int page, int size);
+
     VoucherResponse getVoucherById(Long id);
 
     Voucher getVoucherByCode(String code);
