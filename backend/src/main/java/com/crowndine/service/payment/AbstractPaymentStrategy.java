@@ -14,7 +14,6 @@ public abstract class AbstractPaymentStrategy implements PaymentStrategy {
     protected final PaymentPreparationService paymentPreparationService;
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public String createPaymentLink(PaymentRequest request, String username) {
         validateRequest(request);
         PreparedPayment prepared = paymentPreparationService.prepare(request, username, getMethod(), getInitialStatus());

@@ -39,19 +39,12 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
   final NotificationRepository _repo;
   final Ref _ref;
 
-  NotificationNotifier(this._repo, this._ref) : super(const NotificationState()) {
+  NotificationNotifier(this._repo, this._ref)
+      : super(const NotificationState()) {
     final authState = _ref.read(authProvider);
     if (authState.isAuthenticated) {
       loadNotifications();
     }
-
-    _ref.listen<AuthState>(authProvider, (previous, next) {
-      if (next.isAuthenticated && !(previous?.isAuthenticated ?? false)) {
-        loadNotifications();
-      } else if (!next.isAuthenticated && (previous?.isAuthenticated ?? false)) {
-        state = const NotificationState();
-      }
-    });
   }
 
   Future<void> loadNotifications() async {
@@ -68,6 +61,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         _repo.getUnreadCount(),
       ]);
 
+      if (!mounted) return;
       final notifs = results[0] as List<NotificationModel>;
       final unread = results[1] as int;
 
@@ -77,6 +71,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         unreadCount: unread,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Không thể tải thông báo: $e',
@@ -90,7 +85,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 
     try {
       final unread = await _repo.getUnreadCount();
-      state = state.copyWith(unreadCount: unread);
+      if (mounted) state = state.copyWith(unreadCount: unread);
     } catch (_) {}
   }
 
@@ -145,8 +140,9 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
   }
 }
 
-final notificationProvider = StateNotifierProvider<NotificationNotifier, NotificationState>((ref) {
+final notificationProvider =
+    StateNotifierProvider<NotificationNotifier, NotificationState>((ref) {
+  ref.watch(authProvider.select((state) => state.user?.id));
   final repo = ref.watch(notificationRepositoryProvider);
   return NotificationNotifier(repo, ref);
 });
-

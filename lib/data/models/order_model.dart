@@ -4,6 +4,7 @@ enum OrderStatus {
   preOrder,
   confirmed,
   inProgress,
+  served,
   completed,
   cancelled;
 
@@ -13,6 +14,8 @@ enum OrderStatus {
         return OrderStatus.confirmed;
       case 'IN_PROGRESS':
         return OrderStatus.inProgress;
+      case 'SERVED':
+        return OrderStatus.served;
       case 'COMPLETED':
         return OrderStatus.completed;
       case 'CANCELLED':
@@ -31,6 +34,8 @@ enum OrderStatus {
         return 'Đã xác nhận';
       case OrderStatus.inProgress:
         return 'Đang phục vụ';
+      case OrderStatus.served:
+        return 'Đã phục vụ món';
       case OrderStatus.completed:
         return 'Đã thanh toán';
       case OrderStatus.cancelled:
@@ -103,12 +108,19 @@ class OrderDetailModel {
     return OrderDetailModel(
       id: json['id'] ?? 0,
       item: json['item'] != null ? ItemModel.fromJson(json['item']) : null,
-      itemName: json['item']?['name'] ?? json['itemName'] ?? 'Món ăn',
+      itemName: json['item']?['name'] ??
+          json['combo']?['name'] ??
+          json['itemName'] ??
+          'Món ăn',
       quantity: json['quantity'] ?? 1,
-      totalPrice: (json['totalPrice'] is num) ? (json['totalPrice'] as num).toDouble() : 0.0,
+      totalPrice: (json['totalPrice'] is num)
+          ? (json['totalPrice'] as num).toDouble()
+          : 0.0,
       status: DishCookingStatus.fromString(json['status']),
       note: json['note'],
-      orderTime: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      orderTime: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
     );
   }
 }
@@ -118,6 +130,7 @@ class OrderModel {
   final String code;
   final String guestName;
   final String? tableName;
+  final int? tableId;
   final OrderStatus status;
   final double totalPrice;
   final double discountPrice;
@@ -130,6 +143,7 @@ class OrderModel {
     required this.code,
     required this.guestName,
     this.tableName,
+    this.tableId,
     required this.status,
     required this.totalPrice,
     this.discountPrice = 0.0,
@@ -145,12 +159,21 @@ class OrderModel {
       code: json['code'] ?? '',
       guestName: json['guestName'] ?? 'Khách vãng lai',
       tableName: json['tableName'],
+      tableId: json['tableId'] as int?,
       status: OrderStatus.fromString(json['status']),
-      totalPrice: (json['totalPrice'] is num) ? (json['totalPrice'] as num).toDouble() : 0.0,
-      discountPrice: (json['discountPrice'] is num) ? (json['discountPrice'] as num).toDouble() : 0.0,
-      finalPrice: (json['finalPrice'] is num) ? (json['finalPrice'] as num).toDouble() : 0.0,
+      totalPrice: (json['totalPrice'] is num)
+          ? (json['totalPrice'] as num).toDouble()
+          : 0.0,
+      discountPrice: (json['discountPrice'] is num)
+          ? (json['discountPrice'] as num).toDouble()
+          : 0.0,
+      finalPrice: (json['finalPrice'] is num)
+          ? (json['finalPrice'] as num).toDouble()
+          : 0.0,
       details: rawDetails.map((e) => OrderDetailModel.fromJson(e)).toList(),
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt']) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'])
+          : null,
     );
   }
 }

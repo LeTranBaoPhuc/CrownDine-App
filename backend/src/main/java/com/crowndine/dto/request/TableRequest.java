@@ -11,11 +11,15 @@ import java.math.BigDecimal;
 @Setter
 public class TableRequest {
 
+    @jakarta.validation.constraints.NotBlank
     private String name;
+    @jakarta.validation.constraints.NotNull
+    @jakarta.validation.constraints.Min(1)
     private Integer capacity;
     private ETableShape shape;
     private ETableStatus status; // optional
 
+    @jakarta.validation.constraints.DecimalMin("0.0")
     private BigDecimal deposit;
     private Integer width;
     private Integer height;

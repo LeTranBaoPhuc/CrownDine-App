@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -98,6 +99,20 @@ class _ReservationPaymentPanelState
         .read(reservationCheckoutProvider(widget.reservationId).notifier)
         .startPayment();
     if (!mounted || url == null) return;
+    if (kIsWeb) {
+      await Clipboard.setData(ClipboardData(text: url.toString()));
+      if (!mounted) return;
+      setState(() => _notice =
+          'Đã sao chép link PayOS. Mở ở tab mới để thanh toán, sau đó quay lại kiểm tra kết quả.');
+      await ref
+          .read(reservationCheckoutProvider(widget.reservationId).notifier)
+          .refresh();
+      return;
+    }
+    await ref
+        .read(reservationCheckoutProvider(widget.reservationId).notifier)
+        .refresh();
+    if (!mounted) return;
     final callback = await Navigator.of(context).push<PayOSCallback>(
       MaterialPageRoute(builder: (_) => PayOSPaymentScreen(checkoutUrl: url)),
     );
@@ -135,7 +150,7 @@ class _ReservationPaymentPanelState
         ref.read(reservationCheckoutProvider(widget.reservationId).notifier);
     final checkout = state.checkout;
     final busy = state.busy || _verifying;
-    final supported = !kIsWeb &&
+    final supported = kIsWeb ||
         [TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS]
             .contains(defaultTargetPlatform);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -267,7 +282,7 @@ class _ReservationPaymentPanelState
                     : _pay,
             icon: const Icon(Icons.payment),
             label: Text(state.paymentStarted
-                ? 'Mở lại PayOS'
+                ? (kIsWeb ? 'Sao chép link PayOS' : 'Mở lại PayOS')
                 : 'Thanh toán cọc qua PayOS'),
           ),
           if (state.paymentCode != null)

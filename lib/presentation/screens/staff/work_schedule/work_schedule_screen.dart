@@ -10,7 +10,12 @@ import 'widgets/work_schedule_header.dart';
 import 'widgets/work_schedule_matrix_table.dart';
 
 class WorkScheduleScreen extends ConsumerStatefulWidget {
-  const WorkScheduleScreen({super.key});
+  final bool showAppBar;
+
+  const WorkScheduleScreen({
+    super.key,
+    this.showAppBar = true,
+  });
 
   @override
   ConsumerState<WorkScheduleScreen> createState() => _WorkScheduleScreenState();
@@ -29,32 +34,34 @@ class _WorkScheduleScreenState extends ConsumerState<WorkScheduleScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-      appBar: CrownAppBar(
-        title: 'Lịch làm việc',
-        showCart: false,
-        actions: [
-          // Toggle View Mode (Table / Agenda)
-          IconButton(
-            icon: Icon(
-              scheduleState.viewMode.isTable
-                  ? Icons.view_agenda_outlined
-                  : Icons.grid_view_outlined,
-              size: 22,
-            ),
-            tooltip: scheduleState.viewMode.isTable
-                ? 'Chuyển sang xem danh sách (Agenda)'
-                : 'Chuyển sang xem bảng ma trận tuần',
-            onPressed: () => scheduleNotifier.toggleViewMode(),
-          ),
+      appBar: widget.showAppBar
+          ? CrownAppBar(
+              title: authState.isAdmin ? 'Phân ca làm việc' : 'Xem ca làm việc',
+              showCart: false,
+              actions: [
+                // Toggle View Mode (Table / Agenda)
+                IconButton(
+                  icon: Icon(
+                    scheduleState.viewMode.isTable
+                        ? Icons.view_agenda_outlined
+                        : Icons.grid_view_outlined,
+                    size: 22,
+                  ),
+                  tooltip: scheduleState.viewMode.isTable
+                      ? 'Chuyển sang xem danh sách (Agenda)'
+                      : 'Chuyển sang xem bảng ma trận tuần',
+                  onPressed: () => scheduleNotifier.toggleViewMode(),
+                ),
 
-          // Refresh button
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 22),
-            tooltip: 'Tải lại dữ liệu',
-            onPressed: () => scheduleNotifier.fetchSchedules(),
-          ),
-        ],
-      ),
+                // Refresh button
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 22),
+                  tooltip: 'Tải lại dữ liệu',
+                  onPressed: () => scheduleNotifier.fetchSchedules(),
+                ),
+              ],
+            )
+          : null,
       body: LayoutBuilder(
         builder: (context, constraints) {
           // Auto switch to agenda mode for small mobile screens on first load
@@ -79,8 +86,8 @@ class _WorkScheduleScreenState extends ConsumerState<WorkScheduleScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 1. Pending Approval Banner (if any)
-                      if (scheduleState.pendingShiftsInWeek > 0) ...[
+                      // 1. Pending Approval Banner (for Admin only)
+                      if (authState.isAdmin && scheduleState.pendingShiftsInWeek > 0) ...[
                         _buildPendingBanner(
                           context,
                           scheduleState.pendingShiftsInWeek,
@@ -116,7 +123,7 @@ class _WorkScheduleScreenState extends ConsumerState<WorkScheduleScreen> {
           );
         },
       ),
-      floatingActionButton: (authState.isAdmin || authState.isStaff)
+      floatingActionButton: authState.isAdmin
           ? FloatingActionButton.extended(
               onPressed: () => AddScheduleDialog.show(context),
               backgroundColor: AppColors.primary,
@@ -124,7 +131,7 @@ class _WorkScheduleScreenState extends ConsumerState<WorkScheduleScreen> {
               elevation: 4,
               icon: const Icon(Icons.more_time_rounded),
               label: const Text(
-                'Phân ca / Đăng ký',
+                'Phân ca làm việc',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             )

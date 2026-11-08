@@ -4,6 +4,8 @@ import com.crowndine.common.enums.EOrderStatus;
 import com.crowndine.dto.request.OrderApplyVoucherRequest;
 import com.crowndine.dto.request.OrderItemBatchRequest;
 import com.crowndine.dto.request.OrderRequest;
+import com.crowndine.dto.request.TableOrderItemsRequest;
+import com.crowndine.service.impl.order.TableOrderService;
 import com.crowndine.dto.response.ApiResponse;
 import com.crowndine.service.order.OrderStatusService;
 import com.crowndine.service.order.OrderService;
@@ -29,8 +31,25 @@ public class ApiOrderController {
     private final OrderService orderService;
     private final OrderStatusService orderStatusService;
     private final OrderVoucherService orderVoucherService;
+    private final TableOrderService tableOrderService;
+
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
+    @GetMapping("/tables/{tableId}/active")
+    public ApiResponse getActiveTableOrder(@Min(1) @PathVariable Long tableId) {
+        return ApiResponse.builder().status(200).message("Active table order")
+                .data(tableOrderService.activeOrder(tableId)).build();
+    }
+
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
+    @PostMapping("/tables/{tableId}/details")
+    public ApiResponse addTableItems(@Min(1) @PathVariable Long tableId,
+                                    @Valid @RequestBody TableOrderItemsRequest request, Principal principal) {
+        return ApiResponse.builder().status(200).message("Items sent to kitchen")
+                .data(tableOrderService.addItems(tableId, request, principal.getName())).build();
+    }
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     public ApiResponse getAllOrders(@RequestParam(required = false) LocalDate fromDate,
                                     @RequestParam(required = false) LocalDate toDate,
                                     @RequestParam(required = false) EOrderStatus status,
@@ -78,6 +97,7 @@ public class ApiOrderController {
     @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     @PutMapping("/{id}")
     public ApiResponse updateOrder(@Min(1) @PathVariable Long id, @Valid @RequestBody OrderItemBatchRequest request, Principal principal) {
+        orderService.appendItemsToOrder(id, request, principal.getName());
         return ApiResponse.builder()
                 .status(200)
                 .message("Successfully updated order + order details")
@@ -116,6 +136,7 @@ public class ApiOrderController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     public ApiResponse updateOrderStatus(@Min(1) @PathVariable Long id, 
                                          @RequestParam EOrderStatus status,
                                          @RequestParam(required = false) String cancelReason,

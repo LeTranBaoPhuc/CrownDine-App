@@ -21,6 +21,15 @@ import java.util.Map;
 public class CashService extends AbstractPaymentStrategy {
     private final OrderPaymentService orderPaymentService;
 
+    @Override
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
+    public String createPaymentLink(PaymentRequest request, String username) {
+        if (!com.crowndine.security.ResourceAccess.isStaff()) {
+            throw new org.springframework.security.access.AccessDeniedException("Chỉ nhân viên được xác nhận đã thu tiền mặt");
+        }
+        return super.createPaymentLink(request, username);
+    }
+
     public CashService(PaymentPreparationService paymentPreparationService, OrderPaymentService orderPaymentService) {
         super(paymentPreparationService);
         this.orderPaymentService = orderPaymentService;

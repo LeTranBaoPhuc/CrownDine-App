@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class AreaRequest {
 
+    @jakarta.validation.constraints.NotBlank
     private String name;
     private String description;
 }

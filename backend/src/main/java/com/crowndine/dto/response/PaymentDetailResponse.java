@@ -33,6 +33,8 @@ public class PaymentDetailResponse {
     private String orderCode;
 
     private String reservationCode;
+    private com.crowndine.common.enums.EReservationStatus reservationStatus;
+    private String checkoutUrl;
 
     private String username;
 

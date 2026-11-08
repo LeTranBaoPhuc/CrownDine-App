@@ -185,6 +185,13 @@ class AttendanceHeader extends ConsumerWidget {
               ),
             ),
           ),
+
+          // 4. Reload Button
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            tooltip: 'Tải lại dữ liệu chấm công',
+            onPressed: notifier.fetchData,
+          ),
         ],
       ),
     );

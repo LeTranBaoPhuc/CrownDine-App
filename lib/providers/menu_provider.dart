@@ -4,15 +4,19 @@ import '../data/models/category_model.dart';
 import '../data/models/item_model.dart';
 import '../data/repositories/menu_repository.dart';
 
-final menuRepositoryProvider = Provider<MenuRepository>((ref) => MenuRepository());
+final menuRepositoryProvider =
+    Provider<MenuRepository>((ref) => MenuRepository());
 
 class MenuState {
   final List<CategoryModel> categories;
   final List<ItemModel> allItems;
-  final int selectedCategoryId; // 0 = 'Tất cả', -99 = 'Set Menu Combo', >0 = Category ID
+  final int
+      selectedCategoryId; // 0 = 'Tất cả', -99 = 'Set Menu Combo', >0 = Category ID
   final String searchQuery;
-  final String sortBy; // 'default' | 'price_asc' | 'price_desc' | 'rating_desc' | 'name_asc'
-  final String priceFilter; // 'all' | 'under_100k' | '100k_300k' | '300k_1m' | 'over_1m'
+  final String
+      sortBy; // 'default' | 'price_asc' | 'price_desc' | 'rating_desc' | 'name_asc'
+  final String
+      priceFilter; // 'all' | 'under_100k' | '100k_300k' | '300k_1m' | 'over_1m'
   final bool onlyAvailable;
   final bool onlyDiscount;
   final bool isLoading;
@@ -61,10 +65,14 @@ class MenuState {
         items = items.where((i) => i.displayPrice < 100000).toList();
         break;
       case '100k_300k':
-        items = items.where((i) => i.displayPrice >= 100000 && i.displayPrice <= 300000).toList();
+        items = items
+            .where((i) => i.displayPrice >= 100000 && i.displayPrice <= 300000)
+            .toList();
         break;
       case '300k_1m':
-        items = items.where((i) => i.displayPrice > 300000 && i.displayPrice <= 1000000).toList();
+        items = items
+            .where((i) => i.displayPrice > 300000 && i.displayPrice <= 1000000)
+            .toList();
         break;
       case 'over_1m':
         items = items.where((i) => i.displayPrice > 1000000).toList();
@@ -76,7 +84,8 @@ class MenuState {
       final q = searchQuery.toLowerCase().trim();
       items = items
           .where((i) =>
-              i.name.toLowerCase().contains(q) || i.description.toLowerCase().contains(q))
+              i.name.toLowerCase().contains(q) ||
+              i.description.toLowerCase().contains(q))
           .toList();
     }
 
@@ -306,7 +315,9 @@ class MenuNotifier extends StateNotifier<MenuState> {
       categoryId: categoryId,
       categoryName: categoryName,
     );
-    final updatedList = state.allItems.map((i) => i.id == id ? updated : i).toList();
+    final updatedList = state.allItems
+        .map((i) => !i.isCombo && i.id == id ? updated : i)
+        .toList();
     state = state.copyWith(allItems: updatedList);
     return updated;
   }
@@ -314,7 +325,8 @@ class MenuNotifier extends StateNotifier<MenuState> {
   /// Xóa món ăn (Admin)
   Future<void> deleteItem(int id) async {
     await _repo.deleteItem(id);
-    final updatedList = state.allItems.where((i) => i.id != id).toList();
+    final updatedList =
+        state.allItems.where((i) => i.isCombo || i.id != id).toList();
     state = state.copyWith(allItems: updatedList);
   }
 
@@ -339,7 +351,10 @@ class MenuNotifier extends StateNotifier<MenuState> {
       isCombo: item.isCombo,
     );
     final previousList = state.allItems;
-    final updatedList = state.allItems.map((i) => i.id == item.id ? optimisticItem : i).toList();
+    final updatedList = state.allItems
+        .map((i) =>
+            i.id == item.id && i.isCombo == item.isCombo ? optimisticItem : i)
+        .toList();
     state = state.copyWith(allItems: updatedList);
 
     try {

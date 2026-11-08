@@ -62,6 +62,7 @@ public class PayOSService extends AbstractPaymentStrategy {
     @Override
     protected String doCreatePayment(PreparedPayment prepared) {
         Payment payment = prepared.payment();
+        if (payment.getCheckoutUrl() != null) return payment.getCheckoutUrl();
         BigDecimal amountToPay = prepared.amount();
         String description = prepared.description();
 
@@ -84,12 +85,26 @@ public class PayOSService extends AbstractPaymentStrategy {
 
         try {
             CreatePaymentLinkResponse data = payOS.paymentRequests().create(paymentData);
+            payment.setCheckoutUrl(data.getCheckoutUrl());
+            paymentRepository.updateCheckoutUrl(payment.getCode(), data.getCheckoutUrl());
             log.info("Created payment link successfully");
             return data.getCheckoutUrl();
         } catch (Exception ex) {
-            payment.setStatus(EPaymentStatus.FAILED);
-            paymentRepository.save(payment);
-
+            // Recover the same code after a lost create response; never allocate another intent.
+            try {
+                var existing = payOS.paymentRequests().get(payment.getCode());
+                if (payment.getCode().equals(existing.getOrderCode()) && existing.getId() != null
+                        && existing.getId().matches("[A-Za-z0-9_-]+")
+                        && existing.getAmount() != null && payment.getAmount().compareTo(BigDecimal.valueOf(existing.getAmount())) == 0) {
+                    String recoveredUrl = "https://pay.payos.vn/web/" + existing.getId();
+                    payment.setCheckoutUrl(recoveredUrl);
+                    paymentRepository.updateCheckoutUrl(payment.getCode(), recoveredUrl);
+                    return recoveredUrl;
+                }
+            } catch (Exception lookupError) {
+                log.warn("Cannot recover pending PayOS link {} yet", payment.getCode());
+            }
+            // Keep the committed intent/code: a timeout may have created a real link.
             log.error("Payment link could not be created, message={}", ex.getMessage(), ex);
             throw new InvalidDataException("Cannot create PayOS payment link", ex);
         }
@@ -102,8 +117,13 @@ public class PayOSService extends AbstractPaymentStrategy {
         Long orderCode = data.getOrderCode();
         log.info("Processing PAYOS webhook for orderCode: {}", orderCode);
         try {
-            Payment payment = paymentRepository.findByCode(orderCode).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
-            if (payment.getStatus() == EPaymentStatus.SUCCESS) {
+            Payment payment = paymentRepository.findByCodeForUpdate(orderCode).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+            if (!"00".equals(data.getCode()) || data.getAmount() == null
+                    || payment.getAmount().compareTo(BigDecimal.valueOf(data.getAmount())) != 0
+                    || payment.getMethod() != EPaymentMethod.PAYOS) {
+                throw new InvalidDataException("Webhook không khớp giao dịch thành công/số tiền/phương thức");
+            }
+            if (payment.getStatus() == EPaymentStatus.SUCCESS || payment.getStatus() == EPaymentStatus.REFUNDED) {
                 log.info("Payment code {} already marked as success, skipping duplicate webhook", orderCode);
                 return;
             }
@@ -118,7 +138,29 @@ public class PayOSService extends AbstractPaymentStrategy {
             log.info("Payment id {} saved with status={}", payment.getId(), payment.getStatus());
         } catch (Exception e) {
             log.error("Error while handling PayOS webhook: {}", e.getMessage(), e);
+            throw e;
         }
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public Payment reconcile(Long code) {
+        Payment payment = paymentRepository.findByCodeForUpdate(code).orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+        if (payment.getMethod() != EPaymentMethod.PAYOS || payment.getStatus() != EPaymentStatus.PENDING) return payment;
+        vn.payos.model.v2.paymentRequests.PaymentLink link;
+        try { link = payOS.paymentRequests().get(code); }
+        catch (Exception networkError) { return payment; }
+        if (!code.equals(link.getOrderCode()) || link.getAmount() == null
+                || payment.getAmount().compareTo(BigDecimal.valueOf(link.getAmount())) != 0) {
+            throw new InvalidDataException("PayOS trả về giao dịch không khớp");
+        }
+        if (link.getStatus() == vn.payos.model.v2.paymentRequests.PaymentLinkStatus.CANCELLED) {
+            payment.setStatus(EPaymentStatus.FAILED);
+        } else if (link.getStatus() == vn.payos.model.v2.paymentRequests.PaymentLinkStatus.PAID
+                && link.getAmountPaid() != null && link.getAmountPaid() >= payment.getAmount().longValueExact()) {
+            payment.setStatus(EPaymentStatus.SUCCESS);
+            handlePaymentSuccess(payment);
+        }
+        return paymentRepository.save(payment);
     }
 
     private void handlePaymentSuccess(Payment payment) {

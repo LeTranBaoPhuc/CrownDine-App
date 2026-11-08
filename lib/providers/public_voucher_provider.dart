@@ -6,12 +6,9 @@ final adminVoucherRepositoryProvider = Provider<AdminVoucherRepository>((ref) {
   return AdminVoucherRepository();
 });
 
-final publicVouchersProvider = FutureProvider.autoDispose<List<AdminVoucherModel>>((ref) async {
+final publicVouchersProvider =
+    FutureProvider.autoDispose<List<AdminVoucherModel>>((ref) async {
   final repo = ref.watch(adminVoucherRepositoryProvider);
-  try {
-    final page = await repo.list(page: 1, size: 20);
-    return page.items;
-  } catch (e) {
-    return [];
-  }
+  final page = await repo.listPublic();
+  return page.items;
 });

@@ -58,6 +58,12 @@ class ReservationCheckoutRepository {
     return uri;
   }
 
+  Future<Map<String, dynamic>?> latestPayment(int reservationId) async {
+    final data =
+        _data(await _dio.get('payments/reservations/$reservationId/latest'));
+    return data == null ? null : Map<String, dynamic>.from(data);
+  }
+
   Future<ReservationPaymentResult> getPayment(String code) async {
     if (!RegExp(r'^\d+$').hasMatch(code)) {
       throw const FormatException('Mã thanh toán không hợp lệ.');

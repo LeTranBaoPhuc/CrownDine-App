@@ -10,6 +10,9 @@ String paymentLabel(String value) => switch (value) {
       'PENDING' => 'Đang chờ',
       'SUCCESS' => 'Thành công',
       'FAILED' => 'Thất bại',
+      'CANCELLED' => 'Đã hủy',
+      'EXPIRED' => 'Hết hạn',
+      'REFUNDED' => 'Đã hoàn tiền',
       'PAYOS' => 'PayOS',
       'MOMO' => 'MoMo',
       'CASH' => 'Tiền mặt',
@@ -320,6 +323,19 @@ class _AdminPaymentDetailScreenState extends State<AdminPaymentDetailScreen> {
                   ]),
                 ),
               ),
+              if (payment.status == 'SUCCESS' &&
+                  payment.target == 'RESERVATION' &&
+                  payment.reservationStatus != null &&
+                  !['CONFIRMED', 'CHECKED_IN', 'COMPLETED']
+                      .contains(payment.reservationStatus))
+                const Card(
+                    child: ListTile(
+                        leading: Icon(Icons.warning_amber),
+                        title: Text('Cần đối soát tiền cọc'),
+                        subtitle: Text(
+                            'Đã nhận tiền nhưng đặt chỗ chưa được xác nhận hoặc đã hủy. Kiểm tra với khách và PayOS trước khi xử lý hoàn tiền.'))),
+              if (payment.reservationStatus != null)
+                _line('Trạng thái đặt chỗ', payment.reservationStatus),
               _line('Mã PayOS', '${payment.code}'),
               _line('Mã giao dịch ngân hàng', payment.transactionCode),
               _line('Khách hàng', payment.username),
@@ -402,7 +418,17 @@ class _PaymentFilterSheetState extends State<_PaymentFilterSheet> {
           child: ListView(shrinkWrap: true, children: [
             Text('Lọc giao dịch',
                 style: Theme.of(context).textTheme.titleLarge),
-            _dropdown('Trạng thái', _status, ['PENDING', 'SUCCESS', 'FAILED'],
+            _dropdown(
+                'Trạng thái',
+                _status,
+                [
+                  'PENDING',
+                  'SUCCESS',
+                  'FAILED',
+                  'CANCELLED',
+                  'EXPIRED',
+                  'REFUNDED'
+                ],
                 (value) => setState(() => _status = value)),
             _dropdown(
                 'Phương thức',

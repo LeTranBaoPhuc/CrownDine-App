@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../providers/cart_provider.dart';
 import 'home/home_screen.dart';
 import 'menu/menu_screen.dart';
 import 'profile/profile_screen.dart';

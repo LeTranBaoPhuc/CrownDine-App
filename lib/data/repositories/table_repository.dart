@@ -1,53 +1,66 @@
-import '../../core/config/api_config.dart';
+import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
-import '../mock/mock_data.dart';
 import '../models/table_model.dart';
 
 class TableRepository {
-  final ApiClient _client = ApiClient.instance;
+  final Dio _dio;
+  TableRepository({Dio? dio}) : _dio = dio ?? ApiClient.instance.dio;
+
+  dynamic _data(Response<dynamic> response) {
+    final body = response.data;
+    if (body is! Map || body['status'] is! num || body['status'] >= 400) {
+      throw const FormatException('Phản hồi bàn ăn không hợp lệ.');
+    }
+    return body['data'];
+  }
 
   Future<List<FloorModel>> getFloors() async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-
-    try {
-      final response = await _client.dio.get(ApiEndpoints.layoutFloors);
-      if (response.statusCode == 200 && response.data != null) {
-        final list = (response.data['data'] as List?) ?? (response.data as List?);
-        if (list != null && list.isNotEmpty) {
-          return list.map((e) => FloorModel.fromJson(e)).toList();
-        }
-      }
-    } catch (e) {
-      if (!useMock) rethrow;
-    }
-
-    return MockData.floors;
+    final data = _data(await _dio.get(ApiEndpoints.layoutFloors));
+    if (data is! List) throw const FormatException('Thiếu danh sách tầng.');
+    return data
+        .map((e) => FloorModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 
   Future<List<TableModel>> getTables({int? floorId}) async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
+    final data = _data(await _dio.get(ApiEndpoints.restaurantTables));
+    if (data is! List) throw const FormatException('Thiếu danh sách bàn.');
+    final tables = data
+        .map((e) => TableModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+    return floorId == null
+        ? tables
+        : tables.where((t) => t.floorId == floorId).toList();
+  }
 
-    try {
-      final response = await _client.dio.get(ApiEndpoints.restaurantTables);
+  Future<List<TableModel>> getAvailableTables(
+      {required String date,
+      required String startTime,
+      required int guestNumber}) async {
+    final data = _data(await _dio
+        .get('${ApiEndpoints.restaurantTables}/available', queryParameters: {
+      'date': date,
+      'startTime': startTime,
+      'guestNumber': guestNumber
+    }));
+    if (data is! List)
+      throw const FormatException('Thiếu danh sách bàn trống.');
+    return data
+        .map((e) => TableModel.fromJson(
+            {...Map<String, dynamic>.from(e), 'status': 'AVAILABLE'}))
+        .toList();
+  }
 
-      if (response.statusCode == 200 && response.data != null) {
-        final list = (response.data['data'] as List?) ?? (response.data as List?);
-        if (list != null && list.isNotEmpty) {
-          var tables = list.map((e) => TableModel.fromJson(Map<String, dynamic>.from(e))).toList();
-          if (floorId != null) {
-            tables = tables.where((t) => t.floorId == floorId).toList();
-          }
-          return tables;
-        }
-      }
-    } catch (e) {
-      if (!useMock) rethrow;
+  Future<TableModel> updateStatus(int tableId, TableStatus status) async {
+    final data = _data(await _dio.patch(
+        '${ApiEndpoints.restaurantTables}/$tableId',
+        queryParameters: {'status': status.name.toUpperCase()}));
+    if (data is! Map<String, dynamic> ||
+        data['id'] != tableId ||
+        data['status'] != status.name.toUpperCase()) {
+      throw const FormatException('Máy chủ chưa xác nhận trạng thái bàn.');
     }
-
-    if (floorId != null) {
-      return MockData.tables.where((t) => t.floorId == floorId).toList();
-    }
-    return MockData.tables;
+    return TableModel.fromJson(data);
   }
 }

@@ -7,6 +7,7 @@ import lombok.Setter;
 @Setter
 public class FloorRequest {
 
+    @jakarta.validation.constraints.NotBlank
     private String name;
     private Integer floorNumber;
     private String description;

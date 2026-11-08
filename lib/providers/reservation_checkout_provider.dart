@@ -44,13 +44,17 @@ class ReservationCheckoutState {
       this.paymentCode,
       this.payment});
 
-  bool get paid => payment?.status == 'SUCCESS';
+  bool get paid =>
+      payment?.status == 'SUCCESS' &&
+      ['CONFIRMED', 'CHECKED_IN', 'COMPLETED']
+          .contains(payment?.reservationStatus);
   bool get paymentStarted =>
       paymentUrl != null || paymentCode != null || paymentUncertain;
 
   ReservationCheckoutState copyWith(
           {ReservationCheckoutModel? checkout,
           bool clearCheckout = false,
+          bool clearPayment = false,
           bool? busy,
           bool? paymentUncertain,
           String? error,
@@ -65,9 +69,9 @@ class ReservationCheckoutState {
         paymentUncertain: paymentUncertain ?? this.paymentUncertain,
         error: error,
         voucherCode: clearVoucher ? null : voucherCode ?? this.voucherCode,
-        paymentUrl: paymentUrl ?? this.paymentUrl,
-        paymentCode: paymentCode ?? this.paymentCode,
-        payment: payment ?? this.payment,
+        paymentUrl: clearPayment ? null : paymentUrl ?? this.paymentUrl,
+        paymentCode: clearPayment ? null : paymentCode ?? this.paymentCode,
+        payment: clearPayment ? null : payment ?? this.payment,
       );
 }
 
@@ -87,7 +91,21 @@ class ReservationCheckoutNotifier
     state = state.copyWith(busy: true);
     try {
       final checkout = await _repo.getCheckout(reservationId);
-      final saved = await _store?.read(reservationId);
+      final latest = await _repo.latestPayment(reservationId);
+      var saved = await _store?.read(reservationId);
+      if (latest != null) {
+        if (latest['reservationCode'] != checkout.reservationCode ||
+            latest['target'] != 'RESERVATION')
+          throw const FormatException('Giao dịch không khớp đặt bàn.');
+        saved = {
+          'reservationCode': checkout.reservationCode,
+          'depositAmount': latest['amount'],
+          'url': latest['checkoutUrl'],
+          'code': '${latest['code']}',
+          'uncertain': false
+        };
+        await _store?.save(reservationId, saved);
+      }
       if (!mounted) return;
       if (saved != null) {
         if (saved['reservationCode'] != checkout.reservationCode) {
@@ -242,7 +260,8 @@ class ReservationCheckoutNotifier
       if (!mounted) return;
       if (result.code != code ||
           result.reservationCode != state.checkout?.reservationCode ||
-          result.target != 'RESERVATION') {
+          result.target != 'RESERVATION' ||
+          result.amount != state.checkout?.depositAmount) {
         throw StateError('Giao dịch không khớp với đặt bàn này.');
       }
       await _store?.save(reservationId, {
@@ -253,13 +272,29 @@ class ReservationCheckoutNotifier
         'uncertain': false,
       });
       if (!mounted) return;
+      if (['FAILED', 'CANCELLED', 'EXPIRED'].contains(result.status)) {
+        await _store?.remove(reservationId);
+        if (mounted)
+          state = state.copyWith(
+              clearPayment: true,
+              paymentUncertain: false,
+              busy: false,
+              error:
+                  'Giao dịch đã hủy/thất bại. Bạn có thể tạo giao dịch mới khi đặt bàn còn hạn.');
+        return;
+      }
       state = state.copyWith(
+          paymentUncertain: false,
           paymentCode: code,
           payment: result,
           busy: false,
-          error: result.status == 'FAILED'
-              ? 'Thanh toán chưa thành công. Vui lòng kiểm tra lại giao dịch.'
-              : null);
+          error: result.status == 'SUCCESS' &&
+                  !['CONFIRMED', 'CHECKED_IN', 'COMPLETED']
+                      .contains(result.reservationStatus)
+              ? 'Đã nhận tiền nhưng đặt chỗ đã hết hạn/hủy. Vui lòng liên hệ nhà hàng để đối soát; không thanh toán thêm.'
+              : ['FAILED', 'CANCELLED', 'EXPIRED'].contains(result.status)
+                  ? 'Thanh toán chưa thành công. Vui lòng kiểm tra lại giao dịch.'
+                  : null);
     } catch (error) {
       if (mounted) {
         state = state.copyWith(busy: false, error: checkoutError(error));

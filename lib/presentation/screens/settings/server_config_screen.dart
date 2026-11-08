@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../core/config/api_config.dart';
 import '../../../core/network/api_client.dart';
@@ -14,7 +15,6 @@ class ServerConfigScreen extends StatefulWidget {
 class _ServerConfigScreenState extends State<ServerConfigScreen> {
   final _urlController = TextEditingController();
   final _googleClientIdController = TextEditingController();
-  bool _mockFallback = true;
   bool _isTesting = false;
   String? _testMessage;
   bool _testSuccess = false;
@@ -34,20 +34,18 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
 
   Future<void> _loadConfig() async {
     final url = await ApiConfig.getBaseUrl();
-    final fallback = await ApiConfig.isMockFallbackEnabled();
     final googleClientId = await ApiConfig.getGoogleClientId();
     setState(() {
       _urlController.text = url;
-      _mockFallback = fallback;
       _googleClientIdController.text = googleClientId;
     });
   }
 
   Future<void> _saveConfig() async {
     final url = _urlController.text.trim();
-    if (url.isNotEmpty) {
+    try {
+      ApiConfig.normalizeBaseUrl(url);
       await ApiClient.instance.updateBaseUrl(url);
-      await ApiConfig.setMockFallbackEnabled(_mockFallback);
       await ApiConfig.setGoogleClientId(_googleClientIdController.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -58,6 +56,10 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
         );
         Navigator.pop(context);
       }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
@@ -68,16 +70,23 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
     });
 
     try {
-      final res = await ApiClient.instance.dio.get(
-        'categories',
-        queryParameters: {},
-      );
+      final url = ApiConfig.normalizeBaseUrl(_urlController.text);
+      final res = await Dio(BaseOptions(
+              connectTimeout: const Duration(seconds: 8),
+              receiveTimeout: const Duration(seconds: 8)))
+          .get('${url}categories');
+      if (res.data is! Map || res.data['data'] is! List)
+        throw const FormatException(
+            'Máy chủ trả về dữ liệu không đúng API CrownDine');
+      if (!mounted) return;
       setState(() {
         _isTesting = false;
         _testSuccess = res.statusCode == 200;
-        _testMessage = 'Kết nối thành công tới Backend Spring Boot! (${res.statusCode})';
+        _testMessage =
+            'Kết nối thành công tới Backend Spring Boot! (${res.statusCode})';
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isTesting = false;
         _testSuccess = false;
@@ -164,19 +173,6 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
             ),
             const SizedBox(height: 24),
 
-            Material(
-              color: Colors.transparent,
-              child: SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Tự động dùng Mock Data khi offline', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Giữ ứng dụng luôn hoạt động mượt mà ngay cả khi backend Spring Boot chưa bật.'),
-                value: _mockFallback,
-                activeColor: AppColors.primary,
-                onChanged: (val) {
-                  setState(() => _mockFallback = val);
-                },
-              ),
-            ),
             const SizedBox(height: 20),
 
             const Text(
@@ -185,7 +181,7 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Lưu trữ bảo mật cục bộ trên máy, hoàn toàn không đẩy lên Git.',
+              'Dùng Web Client ID trùng với cấu hình Google của máy chủ.',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 8),
@@ -216,7 +212,9 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _testSuccess ? AppColors.successContainer : AppColors.errorContainer,
+                  color: _testSuccess
+                      ? AppColors.successContainer
+                      : AppColors.errorContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -231,7 +229,9 @@ class _ServerConfigScreenState extends State<ServerConfigScreen> {
                         _testMessage!,
                         style: TextStyle(
                           fontSize: 13,
-                          color: _testSuccess ? AppColors.success : AppColors.error,
+                          color: _testSuccess
+                              ? AppColors.success
+                              : AppColors.error,
                           fontWeight: FontWeight.w600,
                         ),
                       ),

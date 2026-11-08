@@ -119,12 +119,13 @@ class ReservationNotifier extends StateNotifier<ReservationFormState> {
     state = state.copyWith(
       selectedDate: date ?? state.selectedDate,
       selectedTime: time ?? state.selectedTime,
+      selectedTable: () => null,
     );
   }
 
   void setGuests(int guests) {
     if (state.isSubmitting || state.backendReservationId != null) return;
-    state = state.copyWith(guestNumber: guests);
+    state = state.copyWith(guestNumber: guests, selectedTable: () => null);
   }
 
   void selectTable(TableModel table) {

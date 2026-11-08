@@ -28,6 +28,9 @@ Map<String, dynamic> quote(
 
 class FakeCheckoutRepository extends ReservationCheckoutRepository {
   FakeCheckoutRepository() : super(dio: Dio());
+  @override
+  Future<Map<String, dynamic>?> latestPayment(int reservationId) async => null;
+
   Map<String, dynamic> response = quote();
   int creates = 0;
   int applies = 0;

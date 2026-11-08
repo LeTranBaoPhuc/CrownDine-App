@@ -98,11 +98,13 @@ class ReservationDetailSheet extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: statusColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: statusColor.withValues(alpha: 0.3)),
+                            border: Border.all(
+                                color: statusColor.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             reservation.status.displayName,
@@ -120,7 +122,9 @@ class ReservationDetailSheet extends ConsumerWidget {
                       'Chi tiết đơn đặt bàn',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.textLightSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -143,33 +147,44 @@ class ReservationDetailSheet extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 1. Customer Information Card
-                  _buildSectionHeader(Icons.person_outline, 'Thông tin khách hàng', isDark),
+                  _buildSectionHeader(
+                      Icons.person_outline, 'Thông tin khách hàng', isDark),
                   const SizedBox(height: 10),
                   _buildInfoCard(
                     isDark,
                     children: [
-                      _buildInfoRow('Họ và tên:', reservation.displayName, isBold: true),
+                      _buildInfoRow('Họ và tên:', reservation.displayName,
+                          isBold: true),
                       const SizedBox(height: 8),
-                      _buildInfoRow('Số điện thoại:', reservation.displayPhone.isNotEmpty ? reservation.displayPhone : 'Chưa cập nhật'),
-                      if (reservation.email != null && reservation.email!.isNotEmpty) ...[
+                      _buildInfoRow(
+                          'Số điện thoại:',
+                          reservation.displayPhone.isNotEmpty
+                              ? reservation.displayPhone
+                              : 'Chưa cập nhật'),
+                      if (reservation.email != null &&
+                          reservation.email!.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         _buildInfoRow('Email:', reservation.email!),
                       ],
                       const SizedBox(height: 8),
-                      _buildInfoRow('Số khách:', '${reservation.guestNumber} người', isHighlight: true),
+                      _buildInfoRow(
+                          'Số khách:', '${reservation.guestNumber} người',
+                          isHighlight: true),
                     ],
                   ),
                   const SizedBox(height: 20),
 
                   // 2. Booking Time & Table
-                  _buildSectionHeader(Icons.calendar_today_outlined, 'Thời gian & Bàn phục vụ', isDark),
+                  _buildSectionHeader(Icons.calendar_today_outlined,
+                      'Thời gian & Bàn phục vụ', isDark),
                   const SizedBox(height: 10),
                   _buildInfoCard(
                     isDark,
                     children: [
                       _buildInfoRow('Ngày đặt:', reservation.date),
                       const SizedBox(height: 8),
-                      _buildInfoRow('Khung giờ:', reservation.displayTimeRange, isBold: true),
+                      _buildInfoRow('Khung giờ:', reservation.displayTimeRange,
+                          isBold: true),
                       const SizedBox(height: 8),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
@@ -178,7 +193,8 @@ class ReservationDetailSheet extends ConsumerWidget {
                             width: 100,
                             child: Text(
                               'Bàn phục vụ:',
-                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                  fontSize: 13, color: AppColors.textSecondary),
                             ),
                           ),
                           Expanded(
@@ -195,12 +211,15 @@ class ReservationDetailSheet extends ConsumerWidget {
                           if (reservation.canCancel)
                             TextButton.icon(
                               style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
                                 visualDensity: VisualDensity.compact,
                               ),
                               icon: const Icon(Icons.swap_horiz, size: 16),
-                              label: const Text('Đổi bàn', style: TextStyle(fontSize: 12)),
-                              onPressed: () => _showChangeTableDialog(context, ref, reservation),
+                              label: const Text('Đổi bàn',
+                                  style: TextStyle(fontSize: 12)),
+                              onPressed: () => _showChangeTableDialog(
+                                  context, ref, reservation),
                             ),
                         ],
                       ),
@@ -214,8 +233,10 @@ class ReservationDetailSheet extends ConsumerWidget {
                   const SizedBox(height: 20),
 
                   // 3. Notes Section (if any)
-                  if (reservation.note != null && reservation.note!.trim().isNotEmpty) ...[
-                    _buildSectionHeader(Icons.notes, 'Ghi chú của khách', isDark),
+                  if (reservation.note != null &&
+                      reservation.note!.trim().isNotEmpty) ...[
+                    _buildSectionHeader(
+                        Icons.notes, 'Ghi chú của khách', isDark),
                     const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
@@ -223,14 +244,17 @@ class ReservationDetailSheet extends ConsumerWidget {
                       decoration: BoxDecoration(
                         color: AppColors.warning.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.3)),
                       ),
                       child: Text(
                         reservation.note!,
                         style: TextStyle(
                           fontSize: 13,
                           fontStyle: FontStyle.italic,
-                          color: isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E),
+                          color: isDark
+                              ? const Color(0xFFFDE68A)
+                              : const Color(0xFF92400E),
                           height: 1.4,
                         ),
                       ),
@@ -240,21 +264,27 @@ class ReservationDetailSheet extends ConsumerWidget {
 
                   // 4. Pre-ordered Food Details
                   if (reservation.orderDetails.isNotEmpty) ...[
-                    _buildSectionHeader(Icons.restaurant_menu, 'Món ăn đặt trước', isDark),
+                    _buildSectionHeader(
+                        Icons.restaurant_menu, 'Món ăn đặt trước', isDark),
                     const SizedBox(height: 10),
                     Container(
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : AppColors.lightSurface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                          color: isDark
+                              ? AppColors.darkBorder
+                              : AppColors.lightBorder,
                         ),
                       ),
                       child: Column(
                         children: [
                           ...reservation.orderDetails.map((item) {
                             return Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 10),
                               child: Row(
                                 children: [
                                   Container(
@@ -262,10 +292,14 @@ class ReservationDetailSheet extends ConsumerWidget {
                                     height: 26,
                                     alignment: Alignment.center,
                                     decoration: BoxDecoration(
-                                      color: isDark ? AppColors.darkCard : Colors.white,
+                                      color: isDark
+                                          ? AppColors.darkCard
+                                          : Colors.white,
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
-                                        color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                        color: isDark
+                                            ? AppColors.darkBorder
+                                            : AppColors.lightBorder,
                                       ),
                                     ),
                                     child: Text(
@@ -280,20 +314,26 @@ class ReservationDetailSheet extends ConsumerWidget {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           item.name,
                                           style: TextStyle(
                                             fontSize: 13,
                                             fontWeight: FontWeight.w600,
-                                            color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                                            color: isDark
+                                                ? AppColors.textLight
+                                                : AppColors.textPrimary,
                                           ),
                                         ),
-                                        if (item.note != null && item.note!.isNotEmpty)
+                                        if (item.note != null &&
+                                            item.note!.isNotEmpty)
                                           Text(
                                             item.note!,
-                                            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                            style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.textSecondary),
                                           ),
                                       ],
                                     ),
@@ -317,11 +357,18 @@ class ReservationDetailSheet extends ConsumerWidget {
                               children: [
                                 const Text(
                                   'Tạm tính món ăn:',
-                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.textSecondary),
                                 ),
                                 Text(
-                                  CurrencyFormatter.format(reservation.itemsTotal),
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                  CurrencyFormatter.format(
+                                      reservation.itemsTotal),
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary),
                                 ),
                               ],
                             ),
@@ -333,15 +380,18 @@ class ReservationDetailSheet extends ConsumerWidget {
                   ],
 
                   // 5. Financial Breakdown Card
-                  _buildSectionHeader(Icons.receipt_outlined, 'Chi phí & Đặt cọc', isDark),
+                  _buildSectionHeader(
+                      Icons.receipt_outlined, 'Chi phí & Đặt cọc', isDark),
                   const SizedBox(height: 10),
                   _buildInfoCard(
                     isDark,
                     children: [
-                      _buildInfoRow('Tiền cọc giữ bàn:', CurrencyFormatter.format(reservation.tableDeposit)),
+                      _buildInfoRow('Tiền cọc giữ bàn:',
+                          CurrencyFormatter.format(reservation.tableDeposit)),
                       if (reservation.itemsTotal > 0) ...[
                         const SizedBox(height: 6),
-                        _buildInfoRow('Tiền món đặt trước:', CurrencyFormatter.format(reservation.itemsTotal)),
+                        _buildInfoRow('Tiền món đặt trước:',
+                            CurrencyFormatter.format(reservation.itemsTotal)),
                       ],
                       const Divider(height: 16),
                       Row(
@@ -349,7 +399,8 @@ class ReservationDetailSheet extends ConsumerWidget {
                         children: [
                           const Text(
                             'Tổng số tiền thanh toán:',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                           Text(
                             CurrencyFormatter.format(reservation.finalAmount),
@@ -376,7 +427,8 @@ class ReservationDetailSheet extends ConsumerWidget {
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.info_outline, size: 18, color: Color(0xFF2563EB)),
+                        Icon(Icons.info_outline,
+                            size: 18, color: Color(0xFF2563EB)),
                         SizedBox(width: 8),
                         Expanded(
                           child: Column(
@@ -432,32 +484,38 @@ class ReservationDetailSheet extends ConsumerWidget {
                         foregroundColor: AppColors.error,
                         side: const BorderSide(color: AppColors.error),
                         padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () {
                         Navigator.pop(context);
                         _showCancelConfirm(context, notifier, reservation);
                       },
-                      child: const Text('Hủy đặt bàn', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text('Hủy đặt bàn',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(width: 12),
                 ],
-
                 if (reservation.canCheckIn)
                   Expanded(
                     flex: 2,
                     child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check_circle_outline, color: Colors.white),
+                      icon: const Icon(Icons.check_circle_outline,
+                          color: Colors.white),
                       label: const Text(
                         'Check-in Nhận bàn',
-                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            fontSize: 15),
                       ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () async {
                         Navigator.pop(context);
@@ -465,25 +523,81 @@ class ReservationDetailSheet extends ConsumerWidget {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text(success ? 'Check-in thành công cho khách!' : 'Check-in thất bại'),
-                              backgroundColor: success ? AppColors.success : AppColors.error,
+                              content: Text(success
+                                  ? 'Check-in thành công cho khách!'
+                                  : 'Check-in thất bại'),
+                              backgroundColor:
+                                  success ? AppColors.success : AppColors.error,
                             ),
                           );
                         }
                       },
                     ),
                   ),
-
-                if (!reservation.canCheckIn && !reservation.canCancel)
+                if (reservation.status == ReservationStatus.checkedIn)
+                  Expanded(
+                      child: FilledButton.icon(
+                          icon: const Icon(Icons.check_circle_outline),
+                          label: const Text('Hoàn tất / Trả bàn'),
+                          onPressed: ref
+                                  .watch(staffReservationProvider)
+                                  .isActionLoading
+                              ? null
+                              : () async {
+                                  final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (ctx) => AlertDialog(
+                                              title: const Text(
+                                                  'Hoàn tất lượt dùng bàn'),
+                                              content: const Text(
+                                                  'Chỉ hoàn tất khi khách không gọi món hoặc đơn đã thanh toán. Đơn chưa trả tiền cần tất toán tại Sơ đồ bàn.'),
+                                              actions: [
+                                                TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            ctx, false),
+                                                    child:
+                                                        const Text('Quay lại')),
+                                                FilledButton(
+                                                    onPressed: () =>
+                                                        Navigator.pop(
+                                                            ctx, true),
+                                                    child:
+                                                        const Text('Hoàn tất'))
+                                              ]));
+                                  if (confirm != true) return;
+                                  final ok =
+                                      await notifier.complete(reservation.id);
+                                  ref.read(tableProvider.notifier).loadLayout();
+                                  if (!context.mounted) return;
+                                  if (ok) {
+                                    Navigator.pop(context);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                            content: Text(ref
+                                                    .read(
+                                                        staffReservationProvider)
+                                                    .errorMessage ??
+                                                'Chưa thể trả bàn')));
+                                  }
+                                })),
+                if (!reservation.canCheckIn &&
+                    !reservation.canCancel &&
+                    reservation.status != ReservationStatus.checkedIn)
                   Expanded(
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Đóng', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                      child: const Text('Đóng',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                     ),
                   ),
               ],
@@ -529,7 +643,8 @@ class ReservationDetailSheet extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {bool isBold = false, bool isHighlight = false}) {
+  Widget _buildInfoRow(String label, String value,
+      {bool isBold = false, bool isHighlight = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -541,7 +656,8 @@ class ReservationDetailSheet extends ConsumerWidget {
           value,
           style: TextStyle(
             fontSize: 13,
-            fontWeight: (isBold || isHighlight) ? FontWeight.bold : FontWeight.w500,
+            fontWeight:
+                (isBold || isHighlight) ? FontWeight.bold : FontWeight.w500,
             color: isHighlight ? AppColors.primary : null,
           ),
         ),
@@ -575,16 +691,21 @@ class ReservationDetailSheet extends ConsumerWidget {
                 dense: true,
                 leading: Icon(
                   Icons.table_restaurant,
-                  color: isCurrent ? AppColors.primary : AppColors.textSecondary,
+                  color:
+                      isCurrent ? AppColors.primary : AppColors.textSecondary,
                 ),
                 title: Text(
                   '${t.name} (${t.capacity} chỗ)',
-                  style: TextStyle(fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal),
+                  style: TextStyle(
+                      fontWeight:
+                          isCurrent ? FontWeight.bold : FontWeight.normal),
                 ),
                 subtitle: Text('Tầng ${t.floorId} • ${t.areaName}'),
                 trailing: isCurrent
                     ? const Chip(
-                        label: Text('Hiện tại', style: TextStyle(fontSize: 10, color: Colors.white)),
+                        label: Text('Hiện tại',
+                            style:
+                                TextStyle(fontSize: 10, color: Colors.white)),
                         backgroundColor: AppColors.primary,
                         visualDensity: VisualDensity.compact,
                       )
@@ -611,7 +732,9 @@ class ReservationDetailSheet extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success ? 'Đã đổi sang ${selectedTable.name}!' : 'Đổi bàn thất bại'),
+            content: Text(success
+                ? 'Đã đổi sang ${selectedTable.name}!'
+                : 'Đổi bàn thất bại'),
             backgroundColor: success ? AppColors.success : AppColors.error,
           ),
         );
@@ -628,13 +751,17 @@ class ReservationDetailSheet extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Xác nhận hủy đặt bàn'),
-        content: Text('Hủy đơn đặt bàn #${res.code} của khách "${res.displayName}"?'),
+        content: Text(
+            'Hủy đơn đặt bàn #${res.code} của khách "${res.displayName}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Quay lại')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Quay lại')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xác nhận hủy', style: TextStyle(color: Colors.white)),
+            child: const Text('Xác nhận hủy',
+                style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -645,7 +772,8 @@ class ReservationDetailSheet extends ConsumerWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(success ? 'Đã hủy đơn đặt bàn thành công' : 'Hủy thất bại'),
+            content: Text(
+                success ? 'Đã hủy đơn đặt bàn thành công' : 'Hủy thất bại'),
             backgroundColor: success ? AppColors.success : AppColors.error,
           ),
         );
@@ -653,4 +781,3 @@ class ReservationDetailSheet extends ConsumerWidget {
     }
   }
 }
-

@@ -16,13 +16,14 @@ services:
       DATABASE_PORT: 3306
       DATABASE_USERNAME: user
       DATABASE_PASSWORD: 123456
+      DATABASE_NAME: crowndine-app
 
   mysql:
     image: mysql:8.0
     container_name: crowndine_db
     restart: always
     environment:
-      MYSQL_DATABASE: crowndine
+      MYSQL_DATABASE: crowndine-app
       MYSQL_USER: user
       MYSQL_PASSWORD: 123456
       MYSQL_ROOT_PASSWORD: 1234567

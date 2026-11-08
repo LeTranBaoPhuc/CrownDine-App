@@ -37,14 +37,15 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
         String token = extractAccessToken(request.getURI());
         if (StringUtils.isBlank(token)) {
             log.debug("WebSocket handshake missing access_token query param. Source={}", describeRequestSource(request));
-            return true;
+            response.setStatusCode(HttpStatus.UNAUTHORIZED);
+            return false;
         }
 
         try {
             String username = jwtService.extractUsername(token, ETokenType.ACCESS_TOKEN);
             UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-            if (!jwtService.isTokenValid(token, ETokenType.ACCESS_TOKEN, userDetails)) {
+            if (!userDetails.isEnabled() || !jwtService.isTokenValid(token, ETokenType.ACCESS_TOKEN, userDetails)) {
                 log.warn("WebSocket handshake token invalid for user {}", username);
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);
                 return false;

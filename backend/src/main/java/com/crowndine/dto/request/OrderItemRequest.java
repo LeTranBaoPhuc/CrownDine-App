@@ -2,6 +2,7 @@ package com.crowndine.dto.request;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 import lombok.Getter;
 
 @Getter
@@ -16,4 +17,9 @@ public class OrderItemRequest {
     private Integer quantity;
 
     private String note;
+
+    @AssertTrue(message = "Chọn đúng một món ăn hoặc combo")
+    public boolean isExactlyOneProduct() {
+        return (itemId == null) != (comboId == null);
+    }
 }

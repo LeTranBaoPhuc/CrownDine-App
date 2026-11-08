@@ -4,6 +4,7 @@ import com.crowndine.common.enums.EOrderStatus;
 import com.crowndine.common.enums.ETableStatus;
 import com.crowndine.dto.response.UpdateStatusOrderResponse;
 import com.crowndine.exception.ResourceNotFoundException;
+import com.crowndine.exception.InvalidDataException;
 import com.crowndine.model.Order;
 import com.crowndine.repository.OrderRepository;
 import com.crowndine.service.layout.RestaurantTableStateService;
@@ -22,6 +23,8 @@ public class OrderStatusServiceImpl implements OrderStatusService {
     private static final String ORDER_NOT_FOUND_MESSAGE = "Order not found";
 
     private final OrderRepository orderRepository;
+    private final com.crowndine.repository.PaymentRepository paymentRepository;
+    private final com.crowndine.repository.ReservationRepository reservationRepository;
     private final RestaurantTableStateService restaurantTableStateService;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -32,8 +35,26 @@ public class OrderStatusServiceImpl implements OrderStatusService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public UpdateStatusOrderResponse updateOrderStatus(Long orderId, EOrderStatus status, String cancelReason) {
-        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
+        Order order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
+        if (status == EOrderStatus.COMPLETED) {
+            throw new InvalidDataException("Hãy xác nhận thu tiền qua chức năng thanh toán để hoàn tất đơn");
+        }
+        if (order.getStatus().isFinal()) {
+            throw new InvalidDataException("Không thể thay đổi đơn đã kết thúc");
+        }
+        if (status == EOrderStatus.PRE_ORDER || status == EOrderStatus.CONFIRMED) {
+            throw new InvalidDataException("Không thể đưa đơn về trạng thái trước đó");
+        }
+        if (status == EOrderStatus.CANCELLED && (order.getReservation() != null
+                || paymentRepository.existsByTargetAndOrderIdAndStatus(com.crowndine.common.enums.EPaymentTarget.ORDER, orderId, com.crowndine.common.enums.EPaymentStatus.PENDING))) {
+            throw new InvalidDataException("Đơn gắn đặt chỗ hoặc đang thanh toán không thể hủy tại đây");
+        }
+        if ((status == EOrderStatus.IN_PROGRESS && order.getStatus() != EOrderStatus.CONFIRMED)
+                || (status == EOrderStatus.SERVED && order.getStatus() != EOrderStatus.IN_PROGRESS)) {
+            throw new InvalidDataException("Trạng thái đơn không đúng trình tự phục vụ");
+        }
         Order updatedOrder = transitionOrderStatus(order, status, cancelReason);
         return buildStatusResponse(updatedOrder);
     }
@@ -63,12 +84,20 @@ public class OrderStatusServiceImpl implements OrderStatusService {
         Long tableId = order.getRestaurantTable().getId();
         switch (order.getStatus()) {
             case CONFIRMED, IN_PROGRESS -> restaurantTableStateService.changeStatus(tableId, ETableStatus.OCCUPIED);
-            case COMPLETED, CANCELLED -> restaurantTableStateService.changeStatus(tableId, ETableStatus.AVAILABLE);
+            case COMPLETED, CANCELLED -> {
+                boolean anotherOrder = orderRepository.findByRestaurantTableIdAndStatusIn(tableId, java.util.List.of(EOrderStatus.CONFIRMED, EOrderStatus.IN_PROGRESS, EOrderStatus.SERVED)).stream()
+                        .anyMatch(active -> !active.getId().equals(order.getId()));
+                boolean guestPresent = reservationRepository.findByTableIdAndStatusAndCheckedOutAtIsNull(tableId, com.crowndine.common.enums.EReservationStatus.CHECKED_IN).stream()
+                        .anyMatch(r -> statusIsCancellation(order) || order.getReservation() == null || !r.getId().equals(order.getReservation().getId()));
+                if (!anotherOrder && !guestPresent) restaurantTableStateService.changeStatus(tableId, ETableStatus.AVAILABLE);
+            }
             case PRE_ORDER, SERVED -> {
                 // PRE_ORDER reserve is handled by reservation scheduler; SERVED keeps current table state.
             }
         }
     }
+
+    private boolean statusIsCancellation(Order order) { return order.getStatus() == EOrderStatus.CANCELLED; }
 
     private void publishOrderStatus(Order order) {
         messagingTemplate.convertAndSend("/topic/orders", buildStatusResponse(order));

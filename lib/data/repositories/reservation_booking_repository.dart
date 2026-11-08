@@ -22,7 +22,7 @@ class ReservationBookingRepository {
   }
 
   Future<void> verifyTable(TableModel selected) async {
-    final response = await _dio.get('layout/tables');
+    final response = await _dio.get('restaurant-tables');
     final body = response.data;
     final data = body is Map ? body['data'] : null;
     if (data is! List) {

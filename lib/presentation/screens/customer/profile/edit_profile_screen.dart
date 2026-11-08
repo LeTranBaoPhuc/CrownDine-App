@@ -1,3 +1,5 @@
+import 'package:image_picker/image_picker.dart';
+import '../../../../core/network/api_error.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -28,6 +30,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       _firstNameController.text = user.firstName ?? '';
       _lastNameController.text = user.lastName ?? '';
       _phoneController.text = user.phone ?? '';
+      _gender = user.gender ?? 'MALE';
+      _selectedDob = DateTime.tryParse(user.dateOfBirth ?? '');
+      if (_selectedDob == null && user.dateOfBirth != null) {
+        try {
+          _selectedDob =
+              DateFormat('dd/MM/yyyy').parseStrict(user.dateOfBirth!);
+        } catch (_) {}
+      }
     }
   }
 
@@ -61,9 +71,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       return;
     }
 
+    if (_selectedDob == null) {
+      _showSnackbar('Vui lòng chọn ngày sinh.', isError: true);
+      return;
+    }
     final dobString = _selectedDob != null
         ? DateFormat('dd/MM/yyyy').format(_selectedDob!)
-        : '01/01/2000';
+        : '';
 
     setState(() => _isLoading = true);
     try {
@@ -79,6 +93,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       // Refresh current profile in provider
       await ref.read(authProvider.notifier).checkAuthStatus();
 
+      if (!mounted) return;
       setState(() => _isLoading = false);
       _showSnackbar('Cập nhật hồ sơ thành công!');
 
@@ -88,9 +103,117 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         });
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-      _showSnackbar(e.toString().replaceFirst('Exception: ', ''), isError: true);
+      _showSnackbar(e.toString().replaceFirst('Exception: ', ''),
+          isError: true);
     }
+  }
+
+  Future<void> _changeAvatar() async {
+    if (_isLoading) return;
+    try {
+      final image = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 85,
+          requestFullMetadata: false);
+      if (image == null || !mounted) return;
+      final bytes = await image.readAsBytes();
+      if (bytes.length > 5 * 1024 * 1024)
+        throw StateError('Vui lòng chọn ảnh nhỏ hơn 5 MB.');
+      setState(() => _isLoading = true);
+      await ref.read(authRepositoryProvider).uploadAvatar(bytes, image.name);
+      await ref.read(authProvider.notifier).refreshProfile();
+      if (mounted) _showSnackbar('Đã cập nhật ảnh đại diện.');
+    } catch (e) {
+      if (mounted) _showSnackbar(apiErrorMessage(e), isError: true);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _changeEmail() async {
+    final email = TextEditingController();
+    final otp = TextEditingController();
+    bool sent = false, busy = false;
+    String? error;
+    await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => StatefulBuilder(
+            builder: (context, update) => AlertDialog(
+                  title: const Text('Đổi email'),
+                  content: SingleChildScrollView(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    TextField(
+                        controller: email,
+                        enabled: !sent && !busy,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration:
+                            const InputDecoration(labelText: 'Email mới')),
+                    if (sent) ...[
+                      const SizedBox(height: 12),
+                      const Text(
+                          'Nhập mã OTP đã gửi về email hiện tại. Mã có hiệu lực 5 phút.'),
+                      TextField(
+                          controller: otp,
+                          keyboardType: TextInputType.number,
+                          maxLength: 6,
+                          decoration:
+                              const InputDecoration(labelText: 'Mã OTP'))
+                    ],
+                    if (busy) const LinearProgressIndicator(),
+                    if (error != null)
+                      Text(error!,
+                          style: TextStyle(
+                              color: Theme.of(context).colorScheme.error)),
+                  ])),
+                  actions: [
+                    TextButton(
+                        onPressed: busy ? null : () => Navigator.pop(context),
+                        child: const Text('Đóng')),
+                    FilledButton(
+                        onPressed: busy
+                            ? null
+                            : () async {
+                                if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                                    .hasMatch(email.text.trim())) {
+                                  update(() => error = 'Email không hợp lệ.');
+                                  return;
+                                }
+                                update(() {
+                                  busy = true;
+                                  error = null;
+                                });
+                                try {
+                                  final repo = ref.read(authRepositoryProvider);
+                                  if (!sent) {
+                                    await repo.sendEmailOtp(email.text.trim());
+                                    if (context.mounted)
+                                      update(() => sent = true);
+                                  } else {
+                                    await repo.verifyEmailOtp(
+                                        email.text.trim(), otp.text.trim());
+                                    await ref
+                                        .read(authProvider.notifier)
+                                        .refreshProfile();
+                                    if (context.mounted) Navigator.pop(context);
+                                  }
+                                } catch (e) {
+                                  if (context.mounted)
+                                    update(() => error = apiErrorMessage(e));
+                                } finally {
+                                  if (context.mounted)
+                                    update(() => busy = false);
+                                }
+                              },
+                        child: Text(sent ? 'Xác nhận đổi email' : 'Gửi mã OTP'))
+                  ],
+                )));
+    email.dispose();
+    otp.dispose();
   }
 
   void _showSnackbar(String msg, {bool isError = false}) {
@@ -110,7 +233,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chỉnh sửa hồ sơ cá nhân', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        title: const Text('Chỉnh sửa hồ sơ cá nhân',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
         elevation: 0.5,
       ),
       body: SingleChildScrollView(
@@ -125,7 +249,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 children: [
                   ClipOval(
                     child: Image.network(
-                      user?.avatarUrl ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
+                      user?.avatarUrl ??
+                          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
                       width: 90,
                       height: 90,
                       fit: BoxFit.cover,
@@ -133,7 +258,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         width: 90,
                         height: 90,
                         color: AppColors.primary.withOpacity(0.15),
-                        child: const Icon(Icons.person, size: 50, color: AppColors.primary),
+                        child: const Icon(Icons.person,
+                            size: 50, color: AppColors.primary),
                       ),
                     ),
                   ),
@@ -143,7 +269,8 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                       color: AppColors.primary,
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                    child: const Icon(Icons.camera_alt,
+                        color: Colors.white, size: 16),
                   ),
                 ],
               ),
@@ -152,15 +279,27 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
             Center(
               child: Text(
                 user?.username ?? '',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style:
+                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ),
             Center(
               child: Text(
                 user?.email ?? '',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
               ),
             ),
+            Wrap(alignment: WrapAlignment.center, spacing: 8, children: [
+              TextButton.icon(
+                  onPressed: _isLoading ? null : _changeAvatar,
+                  icon: const Icon(Icons.add_a_photo_outlined),
+                  label: const Text('Đổi ảnh')),
+              TextButton.icon(
+                  onPressed: _isLoading ? null : _changeEmail,
+                  icon: const Icon(Icons.email_outlined),
+                  label: const Text('Đổi email')),
+            ]),
             const SizedBox(height: 24),
 
             // Form container
@@ -169,7 +308,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               decoration: BoxDecoration(
                 color: isDark ? AppColors.darkCard : Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                border: Border.all(
+                    color:
+                        isDark ? AppColors.darkBorder : AppColors.lightBorder),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -180,13 +321,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Họ & tên đệm', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            const Text('Họ & tên đệm',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(height: 6),
                             TextField(
                               controller: _lastNameController,
                               decoration: InputDecoration(
                                 hintText: 'Nguyễn Văn',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             ),
                           ],
@@ -197,13 +341,16 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Tên', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                            const Text('Tên',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 13)),
                             const SizedBox(height: 6),
                             TextField(
                               controller: _firstNameController,
                               decoration: InputDecoration(
                                 hintText: 'An',
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(10)),
                               ),
                             ),
                           ],
@@ -212,8 +359,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  const Text('Số điện thoại liên hệ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text('Số điện thoại liên hệ',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: _phoneController,
@@ -221,12 +369,14 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     decoration: InputDecoration(
                       hintText: '0912345678',
                       prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
                     ),
                   ),
                   const SizedBox(height: 16),
-
-                  const Text('Giới tính', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text('Giới tính',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 6),
                   Row(
                     children: [
@@ -236,32 +386,39 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  const Text('Ngày sinh', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                  const Text('Ngày sinh',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                   const SizedBox(height: 6),
                   InkWell(
                     onTap: _selectDateOfBirth,
                     borderRadius: BorderRadius.circular(10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.withOpacity(0.35)),
+                        border:
+                            Border.all(color: Colors.grey.withOpacity(0.35)),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_month_outlined, size: 20, color: AppColors.primary),
+                          const Icon(Icons.calendar_month_outlined,
+                              size: 20, color: AppColors.primary),
                           const SizedBox(width: 10),
                           Text(
                             _selectedDob != null
                                 ? DateFormat('dd/MM/yyyy').format(_selectedDob!)
                                 : 'Chọn ngày sinh (dd/MM/yyyy)',
                             style: TextStyle(
-                              color: _selectedDob != null ? null : AppColors.textSecondary,
+                              color: _selectedDob != null
+                                  ? null
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           const Spacer(),
-                          const Icon(Icons.arrow_drop_down, color: AppColors.textSecondary),
+                          const Icon(Icons.arrow_drop_down,
+                              color: AppColors.textSecondary),
                         ],
                       ),
                     ),
@@ -276,13 +433,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               height: 48,
               child: ElevatedButton.icon(
                 icon: _isLoading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save_outlined, size: 20),
-                label: const Text('Lưu thông tin hồ sơ', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                label: const Text('Lưu thông tin hồ sơ',
+                    style:
+                        TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _isLoading ? null : _handleSave,
               ),
@@ -302,9 +466,12 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+            color: isSelected
+                ? AppColors.primary.withOpacity(0.12)
+                : Colors.transparent,
             border: Border.all(
-              color: isSelected ? AppColors.primary : Colors.grey.withOpacity(0.3),
+              color:
+                  isSelected ? AppColors.primary : Colors.grey.withOpacity(0.3),
               width: isSelected ? 1.5 : 1,
             ),
             borderRadius: BorderRadius.circular(10),

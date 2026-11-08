@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -44,6 +45,7 @@ public class ApiRestaurantTableController {
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('STAFF', 'ADMIN')")
     public ApiResponse updateStatusTable(@Min(1) @PathVariable Long id, @RequestParam ETableStatus status) {
         return ApiResponse.builder()
                 .status(200)

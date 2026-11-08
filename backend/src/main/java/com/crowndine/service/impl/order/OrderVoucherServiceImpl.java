@@ -6,6 +6,7 @@ import com.crowndine.dto.response.VoucherValidateResponse;
 import com.crowndine.exception.InvalidDataException;
 import com.crowndine.exception.ResourceNotFoundException;
 import com.crowndine.model.Order;
+import com.crowndine.security.ResourceAccess;
 import com.crowndine.model.User;
 import com.crowndine.model.UserVoucher;
 import com.crowndine.model.Voucher;
@@ -34,6 +35,7 @@ public class OrderVoucherServiceImpl implements OrderVoucherService {
     private static final String ORDER_NOT_FOUND_MESSAGE = "order.not_found";
 
     private final OrderRepository orderRepository;
+    private final com.crowndine.repository.PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final UserVoucherRepository userVoucherRepository;
     private final CalculationService calculationService;
@@ -43,13 +45,14 @@ public class OrderVoucherServiceImpl implements OrderVoucherService {
     @Override
     @Transactional(readOnly = true)
     public VoucherValidateResponse validateVoucherForOrder(Long orderId, String code, String username) {
+        if (username != null) ResourceAccess.requireOwnerOrStaff(getOrderById(orderId).getUser(), username);
         return validateVoucherForOrderInternal(orderId, code, username);
     }
 
     private VoucherValidateResponse validateVoucherForOrderInternal(Long orderId, String code, String username) {
         Order order = getOrderById(orderId);
 
-        if (order.getUser() != null && username != null && !order.getUser().getUsername().equals(username)) {
+        if (order.getUser() != null && username != null && !order.getUser().getUsername().equals(username) && !ResourceAccess.isStaff()) {
             throw new InvalidDataException("order.voucher.order_not_owned_by_user");
         }
 
@@ -112,7 +115,9 @@ public class OrderVoucherServiceImpl implements OrderVoucherService {
     public OrderApplyVoucherResponse applyVoucher(Long orderId, String code, String username) {
         log.info("Applying voucher to order {}", orderId);
 
-        Order order = getOrderById(orderId);
+        Order order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
+        if (username != null) ResourceAccess.requireOwnerOrStaff(order.getUser(), username);
+        ensureQuoteEditable(order);
 
         if (order.getStatus().isFinal()) {
             throw new InvalidDataException("order.voucher.cannot_apply_to_final_order");
@@ -131,7 +136,11 @@ public class OrderVoucherServiceImpl implements OrderVoucherService {
         validateVoucherForOrderInternal(orderId, code, customerUsername);
         Voucher voucher = voucherService.getVoucherByCode(code);
 
-        detachVoucherFromPreviousOrders(order, voucher);
+        if (order.getUser() != null) userRepository.findByUsernameForUpdate(order.getUser().getUsername()).orElseThrow();
+        if (order.getUser() != null && !orderRepository.findActiveOrdersUsingVoucherByUserId(
+                order.getUser().getId(), voucher.getId(), order.getId(), List.of(EOrderStatus.COMPLETED, EOrderStatus.CANCELLED)).isEmpty()) {
+            throw new InvalidDataException("Voucher đang gắn với đơn khác. Hãy hoàn tất hoặc gỡ voucher ở đơn đó trước");
+        }
 
         order.setVoucher(voucher);
         applyPricing(order);
@@ -147,7 +156,9 @@ public class OrderVoucherServiceImpl implements OrderVoucherService {
     public OrderApplyVoucherResponse removeVoucher(Long orderId, String username) {
         log.info("Removing voucher from order {}", orderId);
 
-        Order order = getOrderById(orderId);
+        Order order = orderRepository.findByIdForUpdate(orderId).orElseThrow(() -> new ResourceNotFoundException(ORDER_NOT_FOUND_MESSAGE));
+        if (username != null) ResourceAccess.requireOwnerOrStaff(order.getUser(), username);
+        ensureQuoteEditable(order);
 
         if (order.getStatus().isFinal()) {
             throw new InvalidDataException("order.voucher.cannot_remove_from_final_order");
@@ -167,33 +178,14 @@ public class OrderVoucherServiceImpl implements OrderVoucherService {
         return buildResponse(updatedOrder);
     }
 
-    private void detachVoucherFromPreviousOrders(Order currentOrder, Voucher voucher) {
-        if (voucher == null || currentOrder.getUser() == null) {
-            return;
+    private void ensureQuoteEditable(Order order) {
+        if (paymentRepository.existsByTargetAndOrderIdAndStatus(com.crowndine.common.enums.EPaymentTarget.ORDER, order.getId(), com.crowndine.common.enums.EPaymentStatus.PENDING)
+                || (order.getReservation() != null && paymentRepository.existsByTargetAndReservationIdAndStatus(com.crowndine.common.enums.EPaymentTarget.RESERVATION, order.getReservation().getId(), com.crowndine.common.enums.EPaymentStatus.PENDING))) {
+            throw new InvalidDataException("Đang có giao dịch thanh toán, không thể thay đổi voucher");
         }
-
-        List<EOrderStatus> finalStatuses = List.of(EOrderStatus.COMPLETED, EOrderStatus.CANCELLED);
-        List<Order> previousOrders = orderRepository.findActiveOrdersUsingVoucherByUserId(
-                currentOrder.getUser().getId(),
-                voucher.getId(),
-                currentOrder.getId(),
-                finalStatuses
-        );
-
-        if (previousOrders.isEmpty()) {
-            return;
+        if (order.getReservation() != null && order.getReservation().getStatus() != com.crowndine.common.enums.EReservationStatus.PENDING) {
+            throw new InvalidDataException("Không thể thay đổi voucher sau khi đã thanh toán cọc");
         }
-
-        previousOrders.forEach(previousOrder -> {
-            previousOrder.setVoucher(null);
-            recalculateOrderPricing(previousOrder);
-            orderRepository.save(previousOrder);
-            log.info("Detached voucher {} from previous order {}", voucher.getCode(), previousOrder.getId());
-        });
-    }
-
-    private void recalculateOrderPricing(Order order) {
-        applyPricing(order);
     }
 
     private void applyPricing(Order order) {

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
 import java.security.Principal;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @Validated
@@ -25,6 +26,7 @@ public class ApiAIChatBotController {
     private final AIAdminChatService aiAdminChatService;
 
     @PostMapping(value = "/chat", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasAuthority('ADMIN')")
     public Flux<String> chat(@Valid @RequestBody AIChatRequest request, Principal principal) {
         return aiAdminChatService.chatStream(principal.getName(), request.getMessage());
     }

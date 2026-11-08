@@ -27,6 +27,7 @@ import java.util.List;
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
+    private final PayOSService payOSService;
 
     @Override
     public PageResponse<PaymentSummaryResponse> getPayments(PaymentFilterRequest request, int page, int size) {
@@ -62,7 +63,21 @@ public class PaymentServiceImpl implements PaymentService {
             throw new InvalidDataException("Bạn không có quyền xem thanh toán này");
         }
 
-        return toDetailResponse(payment);
+        return toDetailResponse(payOSService.reconcile(payment.getCode()));
+    }
+
+    @Override
+    public PaymentDetailResponse latestForOrder(Long id) {
+        if (!com.crowndine.security.ResourceAccess.isStaff()) throw new org.springframework.security.access.AccessDeniedException("Chỉ nhân viên được xem giao dịch đơn");
+        return paymentRepository.findFirstByOrderIdOrderByIdDesc(id).map(p -> toDetailResponse(payOSService.reconcile(p.getCode()))).orElse(null);
+    }
+
+    @Override
+    public PaymentDetailResponse latestForReservation(Long id, String username) {
+        var payment = paymentRepository.findFirstByReservationIdOrderByIdDesc(id).orElse(null);
+        if (payment == null) return null;
+        if (!canAccessPayment(payment, username)) throw new org.springframework.security.access.AccessDeniedException("Không có quyền xem giao dịch");
+        return toDetailResponse(payOSService.reconcile(payment.getCode()));
     }
 
     private PaymentSummaryResponse toSummaryResponse(Payment payment) {
@@ -97,6 +112,8 @@ public class PaymentServiceImpl implements PaymentService {
         response.setSource(payment.getSource());
         response.setOrderCode(payment.getOrder() != null ? payment.getOrder().getCode() : null);
         response.setReservationCode(payment.getReservation() != null ? payment.getReservation().getCode() : null);
+        response.setReservationStatus(payment.getReservation() != null ? payment.getReservation().getStatus() : null);
+        response.setCheckoutUrl(payment.getCheckoutUrl());
         response.setUsername(payment.getUser() != null ? payment.getUser().getUsername() : null);
         response.setCreatedAt(payment.getCreatedAt());
         response.setUpdatedAt(payment.getUpdatedAt());
@@ -104,11 +121,13 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private boolean canAccessPayment(Payment payment, String username) {
+        if (payment.getReservation() != null && payment.getReservation().getUser() != null
+                && username.equals(payment.getReservation().getUser().getUsername())) return true;
         if (payment.getUser() != null && username.equals(payment.getUser().getUsername())) {
             return true;
         }
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication != null && authentication.getAuthorities().stream().anyMatch(authority -> "ADMIN".equals(authority.getAuthority()));
+        return com.crowndine.security.ResourceAccess.isStaff();
     }
 }
