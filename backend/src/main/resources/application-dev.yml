@@ -41,7 +41,7 @@ spring:
   ai:
     google:
       genai:
-        api-key: ${GEMINI_API_KEY}
+        api-key: ${GEMINI_API_KEY:}
         chat:
           options:
             model: gemini-2.5-flash
@@ -94,6 +94,12 @@ payos:
 #Google
 google:
   client-id: ${GOOGLE_CLIENT_ID:}
+
+gemini:
+  api:
+    keys: ${GEMINI_API_KEYS:}
+    url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent}
+  model: ${GEMINI_MODEL:models/gemini-2.0-flash-001}
 
 openrouter:
   api:
