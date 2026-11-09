@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'chat/chat_screen.dart';
 import 'home/home_screen.dart';
 import 'menu/menu_screen.dart';
 import 'profile/profile_screen.dart';
@@ -46,6 +47,45 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
         index: _currentIndex,
         children: screens,
       ),
+      // Nút nổi Trợ lý CrownDine chỉ hiển thị ở Trang chủ để không che nút thao tác ở màn hình Đặt bàn
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton.extended(
+              heroTag: 'customer_ai_chat_fab',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CustomerChatScreen()),
+                );
+              },
+              backgroundColor: AppColors.primary,
+              elevation: 4,
+              icon: Container(
+                width: 26,
+                height: 26,
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.support_agent_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              label: const Text(
+                'Trợ lý CrownDine',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            )
+          : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCard : Colors.white,
