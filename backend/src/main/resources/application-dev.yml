@@ -95,6 +95,12 @@ payos:
 google:
   client-id: ${GOOGLE_CLIENT_ID:}
 
+openai:
+  api:
+    key: ${OPENAI_API_KEY:}
+    url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
+  model: ${OPENAI_MODEL:gpt-6-luna}
+
 gemini:
   api:
     keys: ${GEMINI_API_KEYS:}

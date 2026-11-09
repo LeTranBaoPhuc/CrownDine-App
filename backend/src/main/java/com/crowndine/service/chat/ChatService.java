@@ -11,6 +11,7 @@ import com.crowndine.repository.ChatConversationRepository;
 import com.crowndine.repository.ChatMessageRepository;
 import com.crowndine.repository.UserRepository;
 import com.crowndine.service.gemini.GeminiAIService;
+import com.crowndine.service.openai.OpenAIService;
 import com.crowndine.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,7 @@ public class ChatService {
     private final ChatConversationRepository conversationRepository;
     private final ChatMessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final OpenAIService openAIService;
     private final GeminiAIService geminiAIService;
     private final TransactionTemplate transactionTemplate;
     private final ChatContextService contextService;
@@ -414,9 +416,10 @@ public class ChatService {
             }
 
             // 2. Call AI API OUTSIDE of any transaction
-            log.info("Calling Gemini AI for conversation: {}", conversationId);
-            String aiResponse = geminiAIService.generateContent(aiMessages, "google/gemini-2.0-flash-001");
-            log.info("Gemini AI response received");
+            String activeModel = openAIService.getDefaultModel();
+            log.info("Calling OpenAI ({}) for conversation: {}", activeModel, conversationId);
+            String aiResponse = openAIService.generateContent(aiMessages, activeModel);
+            log.info("OpenAI response received");
 
             // Cleaning and formatting (still outside transaction)
             String cleanedResponse = cleanText(aiResponse);
@@ -424,6 +427,7 @@ public class ChatService {
 
             // 3. Save results in a short transaction
             final String finalResponse = cleanedResponse;
+            final String modelUsed = activeModel;
             transactionTemplate.execute(status -> {
                 try {
                     ChatConversation conv = conversationRepository.findById(conversationId)
@@ -433,7 +437,7 @@ public class ChatService {
                     assistantMessage.setConversation(conv);
                     assistantMessage.setRole("assistant");
                     assistantMessage.setContent(finalResponse);
-                    assistantMessage.setModel("google/gemini-2.0-flash-001");
+                    assistantMessage.setModel(modelUsed);
                     messageRepository.save(assistantMessage);
 
                     conv.setUpdatedAt(LocalDateTime.now());

@@ -23,3 +23,4 @@ CREATE TABLE IF NOT EXISTS `chat_messages` (
     KEY `idx_chat_messages_conversation_id` (`conversation_id`),
     CONSTRAINT `fk_chat_messages_conversation_id` FOREIGN KEY (`conversation_id`) REFERENCES `chat_conversations` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
