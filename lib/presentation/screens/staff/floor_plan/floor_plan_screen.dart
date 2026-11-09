@@ -331,13 +331,13 @@ class FloorPlanScreen extends ConsumerWidget {
               ),
               const Text('Chọn món ăn hoặc đồ uống cần thêm. Món sẽ chuyển trực tiếp vào Bếp KDS.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const Divider(height: 20),
-              Builder(
-                builder: (context) {
-                  final menuState = ref.watch(menuProvider);
-                  final availableItems = menuState.allItems.isNotEmpty ? menuState.allItems : MockData.items;
+              Expanded(
+                child: Builder(
+                  builder: (context) {
+                    final menuState = ref.watch(menuProvider);
+                    final availableItems = menuState.allItems.isNotEmpty ? menuState.allItems : MockData.items;
 
-                  return Expanded(
-                    child: ListView.separated(
+                    return ListView.separated(
                       itemCount: availableItems.length,
                       separatorBuilder: (_, __) => const Divider(height: 1),
                       itemBuilder: (ctx, idx) {
@@ -387,18 +387,14 @@ class FloorPlanScreen extends ConsumerWidget {
                           ),
                         );
                       },
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-                );
-              },
-            ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 }
