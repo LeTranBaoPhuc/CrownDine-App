@@ -47,42 +47,45 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
         index: _currentIndex,
         children: screens,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'customer_ai_chat_fab',
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CustomerChatScreen()),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        elevation: 4,
-        icon: Container(
-          width: 26,
-          height: 26,
-          padding: const EdgeInsets.all(3),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: Image.asset(
-            'assets/images/logo.png',
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.support_agent_rounded,
-              size: 16,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        label: const Text(
-          'Trợ lý CrownDine',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-        ),
-      ),
+      // Chỉ hiển thị nút nổi hỗ trợ ở Trang chủ để không che các nút thao tác (như Đặt bàn, Thanh toán)
+      floatingActionButton: _currentIndex == 0
+          ? FloatingActionButton.extended(
+              heroTag: 'customer_ai_chat_fab',
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CustomerChatScreen()),
+                );
+              },
+              backgroundColor: AppColors.primary,
+              elevation: 4,
+              icon: Container(
+                width: 26,
+                height: 26,
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.support_agent_rounded,
+                    size: 16,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              label: const Text(
+                'Trợ lý CrownDine',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+              ),
+            )
+          : null,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCard : Colors.white,
