@@ -101,16 +101,6 @@ openai:
     url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
   model: ${OPENAI_MODEL:gpt-6-luna}
 
-gemini:
-  api:
-    keys: ${GEMINI_API_KEYS:}
-    url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent}
-  model: ${GEMINI_MODEL:models/gemini-2.0-flash-001}
-
-openrouter:
-  api:
-    key: ${OPENROUTER_API_KEY:}
-
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:*,http://127.0.0.1:*,https://*.vercel.app}

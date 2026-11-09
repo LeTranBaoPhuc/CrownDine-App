@@ -88,15 +88,11 @@ payos:
 google:
   client-id: ${GOOGLE_CLIENT_ID}
 
-gemini:
+openai:
   api:
-    keys: ${GEMINI_API_KEYS}
-    url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent}
-  model: ${GEMINI_MODEL:models/gemini-2.0-flash-001}
-
-openrouter:
-  api:
-    key: ${OPENROUTER_API_KEY}
+    key: ${OPENAI_API_KEY}
+    url: ${OPENAI_API_URL:https://api.openai.com/v1/chat/completions}
+  model: ${OPENAI_MODEL:gpt-6-luna}
 
 app:
   frontend-url: ${FRONTEND_BASE_URL:https://crown-dine.vercel.app}

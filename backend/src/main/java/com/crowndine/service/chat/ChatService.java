@@ -10,7 +10,6 @@ import com.crowndine.model.User;
 import com.crowndine.repository.ChatConversationRepository;
 import com.crowndine.repository.ChatMessageRepository;
 import com.crowndine.repository.UserRepository;
-import com.crowndine.service.gemini.GeminiAIService;
 import com.crowndine.service.openai.OpenAIService;
 import com.crowndine.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -45,7 +44,6 @@ public class ChatService {
     private final ChatMessageRepository messageRepository;
     private final UserRepository userRepository;
     private final OpenAIService openAIService;
-    private final GeminiAIService geminiAIService;
     private final TransactionTemplate transactionTemplate;
     private final ChatContextService contextService;
     

@@ -101,3 +101,4 @@ public class OpenAIService {
         throw new IllegalStateException("OpenAI returned response with no choices");
     }
 }
+
