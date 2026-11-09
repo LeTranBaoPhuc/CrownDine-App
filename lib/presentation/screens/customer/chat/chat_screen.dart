@@ -11,16 +11,22 @@ class CustomerChatScreen extends ConsumerStatefulWidget {
   ConsumerState<CustomerChatScreen> createState() => _CustomerChatScreenState();
 }
 
+class _QuickPromptItem {
+  final IconData icon;
+  final String text;
+  const _QuickPromptItem(this.icon, this.text);
+}
+
 class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
 
-  final List<String> _quickPrompts = [
-    '🍽️ Cho tôi xem thực đơn hôm nay',
-    '📅 Đặt bàn 4 người vào tối mai',
-    '🥩 Gợi ý các món bò và combo đặc sắc',
-    '🕒 Giờ mở cửa và chính sách đặt bàn',
+  final List<_QuickPromptItem> _quickPrompts = const [
+    _QuickPromptItem(Icons.restaurant_menu_rounded, 'Xem thực đơn hôm nay'),
+    _QuickPromptItem(Icons.table_restaurant_rounded, 'Đặt bàn 4 người vào tối mai'),
+    _QuickPromptItem(Icons.auto_awesome_rounded, 'Gợi ý các món bò và combo đặc sắc'),
+    _QuickPromptItem(Icons.access_time_rounded, 'Giờ mở cửa và chính sách đặt bàn'),
   ];
 
   @override
@@ -262,78 +268,89 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF9FAFB),
-      appBar: AppBar(
-        backgroundColor: isDark ? AppColors.darkCard : Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildBrandAvatar(size: 36),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+          ),
+          child: SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
                 children: [
-                  Text(
-                    'Trợ lý CrownDine',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  _buildBrandAvatar(size: 36),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trợ lý CrownDine',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: const BoxDecoration(
+                                color: AppColors.success,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Trực tuyến',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.success,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Trực tuyến',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  IconButton(
+                    tooltip: 'Tạo cuộc trò chuyện mới',
+                    icon: const Icon(Icons.add_comment_rounded, size: 20),
+                    onPressed: () {
+                      ref.read(chatProvider.notifier).startNewConversation();
+                    },
+                  ),
+                  IconButton(
+                    tooltip: 'Lịch sử trò chuyện',
+                    icon: const Icon(Icons.history_rounded, size: 22),
+                    onPressed: () => _showHistorySheet(context, chatState),
                   ),
                 ],
               ),
             ),
-          ],
+          ),
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Tạo cuộc trò chuyện mới',
-            icon: const Icon(Icons.add_comment_rounded, size: 20),
-            onPressed: () {
-              ref.read(chatProvider.notifier).startNewConversation();
-            },
-          ),
-          IconButton(
-            tooltip: 'Lịch sử trò chuyện',
-            icon: const Icon(Icons.history_rounded, size: 22),
-            onPressed: () => _showHistorySheet(context, chatState),
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: Column(
         children: [
@@ -432,7 +449,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
             runSpacing: 8,
             children: _quickPrompts.map((prompt) {
               return InkWell(
-                onTap: () => _handleSendMessage(prompt),
+                onTap: () => _handleSendMessage(prompt.text),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -452,13 +469,20 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                       ),
                     ],
                   ),
-                  child: Text(
-                    prompt,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? AppColors.textLight : AppColors.textPrimary,
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(prompt.icon, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Text(
+                        prompt.text,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -558,43 +582,49 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
             padding: const EdgeInsets.only(right: 8, top: 2),
             child: _buildBrandAvatar(size: 30),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : Colors.white,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(18),
-                topRight: Radius.circular(18),
-                bottomLeft: Radius.circular(4),
-                bottomRight: Radius.circular(18),
-              ),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.06),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.primary,
-                  ),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkCard : Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  topRight: Radius.circular(18),
+                  bottomLeft: Radius.circular(4),
+                  bottomRight: Radius.circular(18),
                 ),
-                const SizedBox(width: 10),
-                Text(
-                  'CrownDine đang soạn tin nhắn...',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                    color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
-                  ),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.black.withValues(alpha: 0.06),
                 ),
-              ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      'CrownDine đang soạn tin nhắn...',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
