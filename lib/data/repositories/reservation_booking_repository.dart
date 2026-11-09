@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
-import '../../core/network/api_endpoints.dart';
 import '../models/reservation_model.dart';
 import '../models/table_model.dart';
 
@@ -23,7 +22,7 @@ class ReservationBookingRepository {
   }
 
   Future<void> verifyTable(TableModel selected) async {
-    final response = await _dio.get(ApiEndpoints.restaurantTables);
+    final response = await _dio.get('restaurant-tables');
     final body = response.data;
     final data = body is Map ? body['data'] : null;
     if (data is! List) {

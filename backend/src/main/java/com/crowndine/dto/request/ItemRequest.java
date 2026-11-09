@@ -16,8 +16,10 @@ public class ItemRequest {
     private String imageUrl;
 
     @NotNull(message = "Giá không được để trống")
+    @jakarta.validation.constraints.DecimalMin("0.0")
     private BigDecimal price;
 
+    @jakarta.validation.constraints.DecimalMin("0.0")
     private BigDecimal priceAfterDiscount;
 
     @NotNull(message = "Status không được để trống")

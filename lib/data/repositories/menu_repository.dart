@@ -1,15 +1,18 @@
+import 'package:dio/dio.dart';
+import '../../core/network/api_response.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../models/category_model.dart';
 import '../models/item_model.dart';
 
 class MenuRepository {
-  final ApiClient _client = ApiClient.instance;
+  final Dio _dio;
+  MenuRepository({Dio? dio}) : _dio = dio ?? ApiClient.instance.dio;
 
   /// Lấy danh sách danh mục (kèm mục 'Tất cả' và 'Set Menu Combo')
   Future<List<CategoryModel>> getCategories() async {
     try {
-      final response = await _client.dio.get(ApiEndpoints.categories);
+      final response = await _dio.get(ApiEndpoints.categories);
       if (response.statusCode == 200 && response.data != null) {
         final list =
             (response.data['data'] as List?) ?? (response.data as List?);
@@ -73,7 +76,7 @@ class MenuRepository {
     }
 
     try {
-      final response = await _client.dio.get(
+      final response = await _dio.get(
         ApiEndpoints.itemsList,
         queryParameters: queryParams,
       );
@@ -121,7 +124,7 @@ class MenuRepository {
   /// Lấy danh sách Combo từ /api/combos
   Future<List<ItemModel>> _getCombos({String? search}) async {
     try {
-      final response = await _client.dio.get(ApiEndpoints.combos);
+      final response = await _dio.get(ApiEndpoints.combos);
       if (response.statusCode == 200 && response.data != null) {
         final list =
             (response.data['data'] as List?) ?? (response.data as List?);
@@ -159,7 +162,7 @@ class MenuRepository {
     String? categoryName,
   }) async {
     try {
-      final response = await _client.dio.post(
+      final response = await _dio.post(
         ApiEndpoints.items,
         data: {
           'name': name,
@@ -201,7 +204,7 @@ class MenuRepository {
     String? categoryName,
   }) async {
     try {
-      final response = await _client.dio.put(
+      final response = await _dio.put(
         ApiEndpoints.itemById(id),
         data: {
           'name': name,
@@ -233,7 +236,7 @@ class MenuRepository {
   /// Xóa món ăn (Admin)
   Future<bool> deleteItem(int id) async {
     try {
-      final response = await _client.dio.delete(ApiEndpoints.itemById(id));
+      final response = await _dio.delete(ApiEndpoints.itemById(id));
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       rethrow;
@@ -242,10 +245,29 @@ class MenuRepository {
 
   /// Cập nhật trạng thái món ăn (AVAILABLE / UNAVAILABLE)
   Future<bool> updateItemStatus(ItemModel item, String newStatus) async {
+    if (item.isCombo) {
+      final raw = responseData(await _dio.get('combos/${item.id}'));
+      if (raw is! Map || raw['id'] != item.id || raw['items'] is! List)
+        throw const FormatException('Không tải được chi tiết combo.');
+      final data = {
+        for (final key in [
+          'name',
+          'description',
+          'imageUrl',
+          'price',
+          'priceAfterDiscount',
+          'items'
+        ])
+          key: raw[key],
+        'status': newStatus
+      };
+      responseData(await _dio.put('combos/${item.id}', data: data));
+      return true;
+    }
     try {
       // 1. Thử gọi PATCH /api/items/{id}/status nếu có
       try {
-        final patchRes = await _client.dio.patch(
+        final patchRes = await _dio.patch(
           ApiEndpoints.itemStatus(item.id),
           queryParameters: {'status': newStatus.toUpperCase()},
           data: {'status': newStatus.toUpperCase()},
@@ -256,7 +278,7 @@ class MenuRepository {
       } catch (_) {}
 
       // 2. Gọi PUT /api/items/{id} chuẩn của ApiItemController
-      final putRes = await _client.dio.put(
+      final putRes = await _dio.put(
         ApiEndpoints.itemById(item.id),
         data: {
           'name': item.name,

@@ -273,7 +273,13 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  error: (_, __) => const SizedBox.shrink(),
+                  error: (_, __) => Center(
+                    child: TextButton.icon(
+                      onPressed: () => ref.invalidate(publicVouchersProvider),
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Chưa tải được ưu đãi. Thử lại'),
+                    ),
+                  ),
                   data: (vouchers) {
                     if (vouchers.isEmpty) {
                       return Padding(

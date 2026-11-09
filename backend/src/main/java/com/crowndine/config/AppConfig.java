@@ -59,11 +59,12 @@ public class AppConfig {
                         .accessDeniedHandler(accessDeniedHandler))
                 .authorizeHttpRequests(request -> request
                         // 1. Công khai (Public endpoints)
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/combos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/layout/**", "/api/restaurant-tables/**", "/api/restaurant-tables").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/layout/**", "/api/restaurant-tables/**", "/api/restaurant-tables", "/api/vouchers/public").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/feedbacks/**").permitAll()
                         .requestMatchers("/api/feedbacks/items/**").permitAll()
                         .requestMatchers("/api/payments/payos-ipn").permitAll()
@@ -71,6 +72,12 @@ public class AppConfig {
                         .requestMatchers("/ws-restaurant/**").permitAll()
                         .requestMatchers("/api/ai/**").permitAll()
                         .requestMatchers("/api/chat/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/vouchers/validate", "/api/vouchers/*/exchange").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/user-vouchers/my").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/shifts/**").hasAnyAuthority("STAFF", "ADMIN")
+                        .requestMatchers("/api/shifts/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/orders", "/api/reservations/all").hasAnyAuthority("STAFF", "ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/orders/*/status").hasAnyAuthority("STAFF", "ADMIN")
 
                         // 2. Quyền Quản trị viên (ADMIN only)
                         .requestMatchers("/api/dashboard/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
@@ -116,7 +123,7 @@ public class AppConfig {
     @Bean
     public WebSecurityCustomizer ignoreResources() {
         return webSecurity -> webSecurity.ignoring()
-                .requestMatchers("/actuator/**", "/v3/**", "/webjars/**", "/swagger-ui*/*swagger-initializer.js",
+                .requestMatchers("/v3/**", "/webjars/**", "/swagger-ui*/*swagger-initializer.js",
                         "/swagger-ui*/**");
     }
 

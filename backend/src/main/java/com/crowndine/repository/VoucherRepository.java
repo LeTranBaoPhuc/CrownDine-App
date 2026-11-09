@@ -13,6 +13,14 @@ import java.util.Optional;
 
 @Repository
 public interface VoucherRepository extends JpaRepository<Voucher, Long> {
+    // Assigned vouchers and point rewards belong to the customer's private wallet.
+    @Query("""
+            select v from Voucher v
+            where v.userVouchers is empty
+              and (v.pointsRequired is null or v.pointsRequired = 0)
+            """)
+    Page<Voucher> findPublicVouchers(Pageable pageable);
+
     Optional<Voucher> findByCode(String code);
 
     Optional<Voucher> findByName(String name);

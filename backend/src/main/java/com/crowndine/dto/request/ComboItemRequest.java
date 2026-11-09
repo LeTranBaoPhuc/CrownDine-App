@@ -14,5 +14,6 @@ public class ComboItemRequest {
     private Long itemId;
 
     @NotNull(message = "Số lượng không được null")
+    @jakarta.validation.constraints.Min(1)
     private Integer quantity;
 }

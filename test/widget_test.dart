@@ -1,5 +1,11 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:crowndine/core/network/api_client.dart';
+import 'package:crowndine/data/models/table_model.dart';
+import 'package:crowndine/data/repositories/table_repository.dart';
+import 'package:crowndine/providers/table_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,12 +18,73 @@ import 'package:crowndine/presentation/screens/staff/staff_main_screen.dart';
 import 'package:crowndine/presentation/widgets/crown_app_bar.dart';
 
 const List<int> _kTransparentImage = <int>[
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49,
-  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
-  0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44,
-  0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D,
-  0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
-  0x60, 0x82,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0A,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
 ];
 
 class _MockHttpOverrides extends HttpOverrides {
@@ -31,9 +98,11 @@ class _FakeHttpClient extends Fake implements HttpClient {
   @override
   Duration idleTimeout = const Duration(seconds: 15);
   @override
-  Future<HttpClientRequest> getUrl(Uri url) => Future.value(_FakeHttpClientRequest());
+  Future<HttpClientRequest> getUrl(Uri url) =>
+      Future.value(_FakeHttpClientRequest());
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) => Future.value(_FakeHttpClientRequest());
+  Future<HttpClientRequest> openUrl(String method, Uri url) =>
+      Future.value(_FakeHttpClientRequest());
 }
 
 class _FakeHttpClientRequest extends Fake implements HttpClientRequest {
@@ -51,7 +120,8 @@ class _FakeHttpClientResponse extends Fake implements HttpClientResponse {
   @override
   int get contentLength => _kTransparentImage.length;
   @override
-  HttpClientResponseCompressionState get compressionState => HttpClientResponseCompressionState.notCompressed;
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
   @override
   StreamSubscription<List<int>> listen(void Function(List<int> event)? onData,
       {Function? onError, void Function()? onDone, bool? cancelOnError}) {
@@ -64,9 +134,40 @@ class _FakeHttpClientResponse extends Fake implements HttpClientResponse {
   }
 }
 
+class _FloorRepository extends TableRepository {
+  @override
+  Future<List<FloorModel>> getFloors() async => [
+        FloorModel(id: 1, name: 'Tầng 1 (Đại sảnh)'),
+        FloorModel(id: 2, name: 'Tầng 2 (Phòng VIP)')
+      ];
+  @override
+  Future<List<TableModel>> getTables({int? floorId}) async => [];
+}
+
 void main() {
   setUpAll(() {
     HttpOverrides.global = _MockHttpOverrides();
+  });
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    final dio = ApiClient.instance.dio;
+    // Resolve API calls before HTTP instead of feeding PNG bytes into JSON parsers.
+    dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      final paged = {'page': 1, 'totalPages': 0, 'totalItems': 0, 'data': []};
+      final dynamic data = switch (options.path) {
+        'items/list' || 'vouchers' || 'reservations/all' || 'orders' => paged,
+        _ => <dynamic>[],
+      };
+      handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {'status': 200, 'data': data}));
+    }));
+  });
+
+  tearDown(() {
+    ApiClient.instance.dio.interceptors.removeLast();
   });
 
   testWidgets('CrownAppBar build smoke test', (WidgetTester tester) async {
@@ -88,7 +189,8 @@ void main() {
     expect(find.text('Admin View'), findsOneWidget);
   });
 
-  testWidgets('ProfileScreen theme test (Light & Dark)', (WidgetTester tester) async {
+  testWidgets('ProfileScreen theme test (Light & Dark)',
+      (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
@@ -103,12 +205,17 @@ void main() {
     expect(find.text('Tài khoản CrownDine'), findsOneWidget);
     expect(find.text('ĐIỂM TÍCH LŨY THÀNH VIÊN'), findsOneWidget);
     expect(find.text('Lịch sử đặt bàn'), findsOneWidget);
-    expect(find.text('Quản trị viên (Admin Portal)'), findsOneWidget);
+    expect(find.text('Khách ghé thăm'), findsOneWidget);
+    expect(find.text('Quản trị viên (Admin Portal)'), findsNothing);
   });
 
-  testWidgets('Staff FloorPlanScreen build smoke test', (WidgetTester tester) async {
+  testWidgets('Staff FloorPlanScreen build smoke test',
+      (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [
+          tableRepositoryProvider.overrideWithValue(_FloorRepository())
+        ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,
           home: const Scaffold(
@@ -135,6 +242,8 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
+
     expect(find.text('Trang chủ'), findsOneWidget);
     expect(find.text('Thực đơn'), findsOneWidget);
     expect(find.text('Đặt bàn'), findsOneWidget);
@@ -151,6 +260,8 @@ void main() {
       ),
     );
 
+    await tester.pumpAndSettle();
+
     expect(find.text('Sơ đồ bàn'), findsOneWidget);
     expect(find.text('Đơn gọi món'), findsOneWidget);
     expect(find.text('Bếp KDS'), findsOneWidget);
@@ -165,6 +276,8 @@ void main() {
         ),
       ),
     );
+
+    await tester.pumpAndSettle();
 
     expect(find.text('Tổng quan'), findsOneWidget);
     expect(find.text('Món ăn'), findsOneWidget);

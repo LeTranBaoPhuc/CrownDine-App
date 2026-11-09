@@ -1,3 +1,4 @@
+import '../../../../core/utils/date_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -16,6 +17,15 @@ class Step2TableMapView extends ConsumerWidget {
     final tableNotifier = ref.read(tableProvider.notifier);
     final resState = ref.watch(reservationProvider);
     final resNotifier = ref.read(reservationProvider.notifier);
+    final slot = (
+      date: DateFormatter.toApiDate(resState.selectedDate),
+      time: resState.selectedTime,
+      guests: resState.guestNumber
+    );
+    final available = ref.watch(availableTablesProvider(slot));
+    final availableTables = (available.asData?.value ?? <TableModel>[])
+        .where((t) => t.floorId == tableState.selectedFloorId)
+        .toList();
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -35,7 +45,8 @@ class Step2TableMapView extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 'Phù hợp cho ${resState.guestNumber} khách vào lúc ${resState.selectedTime}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
 
@@ -43,10 +54,13 @@ class Step2TableMapView extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkBackground : AppColors.lightSurface,
+                  color: isDark
+                      ? AppColors.darkBackground
+                      : AppColors.lightSurface,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    color:
+                        isDark ? AppColors.darkBorder : AppColors.lightBorder,
                   ),
                 ),
                 child: Row(
@@ -59,7 +73,9 @@ class Step2TableMapView extends ConsumerWidget {
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: isSelected ? AppColors.primary : Colors.transparent,
+                            color: isSelected
+                                ? AppColors.primary
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(9),
                             boxShadow: isSelected
                                 ? [
@@ -73,13 +89,15 @@ class Step2TableMapView extends ConsumerWidget {
                           ),
                           child: Center(
                             child: Text(
-                              f.id == 1 ? 'Tầng 1 (Đại sảnh)' : 'Tầng 2 (VIP & Ban công)',
+                              f.name,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
                                     ? Colors.white
-                                    : (isDark ? Colors.white70 : AppColors.textPrimary),
+                                    : (isDark
+                                        ? Colors.white70
+                                        : AppColors.textPrimary),
                               ),
                             ),
                           ),
@@ -95,9 +113,11 @@ class Step2TableMapView extends ConsumerWidget {
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _LegendItem(color: AppColors.tableAvailable, label: 'Còn trống'),
+                  _LegendItem(
+                      color: AppColors.tableAvailable, label: 'Còn trống'),
                   _LegendItem(color: AppColors.tableReserved, label: 'Đã đặt'),
-                  _LegendItem(color: AppColors.tableOccupied, label: 'Đang dùng'),
+                  _LegendItem(
+                      color: AppColors.tableOccupied, label: 'Đang dùng'),
                   _LegendItem(color: AppColors.primary, label: 'Đang chọn'),
                 ],
               ),
@@ -109,40 +129,58 @@ class Step2TableMapView extends ConsumerWidget {
 
         // Tables Grid
         Expanded(
-          child: tableState.isLoading
+          child: available.isLoading || tableState.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 1.15,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                  ),
-                  itemCount: tableState.floorTables.length,
-                  itemBuilder: (context, index) {
-                    final table = tableState.floorTables[index];
-                    final isSelected = resState.selectedTable?.id == table.id;
+              : available.hasError || tableState.errorMessage != null
+                  ? Center(
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                      const Text('Không tải được bàn trống cho khung giờ này.'),
+                      TextButton(
+                          onPressed: () {
+                            ref.invalidate(availableTablesProvider(slot));
+                            tableNotifier.loadLayout();
+                          },
+                          child: const Text('Thử lại'))
+                    ]))
+                  : availableTables.isEmpty
+                      ? const Center(
+                          child: Text(
+                              'Không còn bàn phù hợp trong khung giờ này.'))
+                      : GridView.builder(
+                          padding: const EdgeInsets.all(16),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 1.15,
+                            crossAxisSpacing: 14,
+                            mainAxisSpacing: 14,
+                          ),
+                          itemCount: availableTables.length,
+                          itemBuilder: (context, index) {
+                            final table = availableTables[index];
+                            final isSelected =
+                                resState.selectedTable?.id == table.id;
 
-                    return TableWidget(
-                      table: table,
-                      isSelected: isSelected,
-                      onTap: () {
-                        if (table.status == TableStatus.available) {
-                          resNotifier.selectTable(table);
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('${table.name} hiện ${table.status.displayName.toLowerCase()}! Vui lòng chọn bàn khác.'),
-                              backgroundColor: AppColors.warning,
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
+                            return TableWidget(
+                              table: table,
+                              isSelected: isSelected,
+                              onTap: () {
+                                if (table.status == TableStatus.available) {
+                                  resNotifier.selectTable(table);
+                                } else {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                          '${table.name} hiện ${table.status.displayName.toLowerCase()}! Vui lòng chọn bàn khác.'),
+                                      backgroundColor: AppColors.warning,
+                                      duration: const Duration(seconds: 1),
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
         ),
 
         // Selected Table Notification Banner
@@ -161,11 +199,13 @@ class Step2TableMapView extends ConsumerWidget {
                     children: [
                       Text(
                         'Đã chọn: ${resState.selectedTable!.name}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14),
                       ),
                       Text(
                         'Cọc bàn: ${CurrencyFormatter.format(resState.selectedTable!.deposit)} • Sức chứa ${resState.selectedTable!.capacity} người',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -195,7 +235,9 @@ class _LegendItem extends StatelessWidget {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(label,
+            style:
+                const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ],
     );
   }

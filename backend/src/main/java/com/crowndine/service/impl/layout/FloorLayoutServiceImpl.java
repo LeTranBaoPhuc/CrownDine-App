@@ -106,6 +106,14 @@ public class FloorLayoutServiceImpl implements FloorLayoutService {
     private TableLayoutResponse mapTable(RestaurantTable table) {
 
         TableLayoutResponse dto = new TableLayoutResponse();
+        if (table.getArea() != null) {
+            dto.setAreaId(table.getArea().getId());
+            dto.setAreaName(table.getArea().getName());
+            if (table.getArea().getFloor() != null) {
+                dto.setFloorId(table.getArea().getFloor().getId());
+                dto.setFloorName(table.getArea().getFloor().getName());
+            }
+        }
         dto.setId(table.getId());
         dto.setName(table.getName());
         dto.setShape(table.getShape());
@@ -128,6 +136,7 @@ public class FloorLayoutServiceImpl implements FloorLayoutService {
         AreaLayoutResponse dto = new AreaLayoutResponse();
         dto.setAreaId(area.getId());
         dto.setAreaName(area.getName());
+        dto.setDescription(area.getDescription());
         dto.setX(area.getX());
         dto.setY(area.getY());
         dto.setWidth(area.getWidth());

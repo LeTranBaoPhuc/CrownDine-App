@@ -40,6 +40,7 @@ public interface OrderService {
     void mapCustomerToOrder(Long orderId, Long customerId);
 
     Order getOrder(Long id);
+    OrderResponse getOrderResponse(Long id);
 
     List<OrderResponse> getKitchenOrders();
 

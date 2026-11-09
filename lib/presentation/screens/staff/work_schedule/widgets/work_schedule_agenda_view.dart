@@ -55,8 +55,7 @@ class WorkScheduleAgendaView extends ConsumerWidget {
         final date = weekDays[index];
         final dateStr = DateFormatter.toApiDate(date);
         final isToday = dateStr == todayStr;
-        final dayName = dayNames[date.weekday];
-        final fullDateStr = '$dayName, ${DateFormat('dd/MM/yyyy').format(date)}';
+        final fullDateStr = DateFormatter.formatVietnameseDate(date);
         final shifts = scheduleState.getShiftsForDay(dateStr);
 
         return Container(
@@ -159,10 +158,10 @@ class WorkScheduleAgendaView extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    if (authState.isAdmin || authState.isStaff)
+                    if (authState.isAdmin)
                       IconButton(
                         icon: const Icon(Icons.add_circle_outline_rounded, size: 20, color: AppColors.primary),
-                        tooltip: 'Thêm ca trực ngày này',
+                        tooltip: 'Phân ca trực ngày này',
                         visualDensity: VisualDensity.compact,
                         onPressed: () {
                           AddScheduleDialog.show(context, initialDate: dateStr);

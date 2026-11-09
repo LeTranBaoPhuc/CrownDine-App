@@ -52,6 +52,7 @@ public class VoucherServiceImpl implements VoucherService {
         voucher.setMaxDiscountValue(request.getMaxDiscountValue());
         voucher.setMinValue(request.getMinValue());
         voucher.setDescription(request.getDescription());
+        voucher.setPointsRequired(request.getPointsRequired());
 
         validateVoucherBusinessRules(voucher);
 
@@ -89,6 +90,17 @@ public class VoucherServiceImpl implements VoucherService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PageResponse<VoucherResponse> getPublicVouchers(int page, int size) {
+        Page<Voucher> vouchers = voucherRepository.findPublicVouchers(
+                PageRequest.of(page - 1, size, Sort.by(Sort.Direction.DESC, "id")));
+        return PageResponse.<VoucherResponse>builder()
+                .page(page).pageSize(size)
+                .totalPages(vouchers.getTotalPages()).totalItems(vouchers.getTotalElements())
+                .data(vouchers.stream().map(this::toResponse).toList()).build();
+    }
+
+    @Override
     public Voucher getVoucherByCode(String code) {
         String normalizedCode = code.trim().toUpperCase(Locale.ROOT);
         return voucherRepository.findByCode(normalizedCode).orElseThrow(() -> new ResourceNotFoundException("Voucher not found"));
@@ -117,11 +129,22 @@ public class VoucherServiceImpl implements VoucherService {
         voucher.setMaxDiscountValue(request.getMaxDiscountValue());
         voucher.setMinValue(request.getMinValue());
         voucher.setDescription(request.getDescription());
+        voucher.setPointsRequired(request.getPointsRequired());
 
         validateVoucherBusinessRules(voucher);
 
         Voucher updatedVoucher = voucherRepository.save(voucher);
         return toResponse(updatedVoucher);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteVoucher(Long id) {
+        Voucher voucher = getVoucher(id);
+        if (!voucher.getOrders().isEmpty() || !voucher.getUserVouchers().isEmpty()) {
+            throw new InvalidDataException("Không thể xóa voucher đã cấp hoặc đã sử dụng");
+        }
+        voucherRepository.delete(voucher);
     }
 
     private Voucher getVoucher(Long id) {
@@ -157,7 +180,7 @@ public class VoucherServiceImpl implements VoucherService {
         }
 
         if (voucher.getMinValue() != null
-                && voucher.getMinValue().compareTo(BigDecimal.ZERO) <= 0) {
+                && voucher.getMinValue().compareTo(BigDecimal.ZERO) < 0) {
             throw new InvalidDataException("Giá trị đơn tối thiểu phải lớn hơn 0");
         }
     }

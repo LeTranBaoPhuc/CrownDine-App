@@ -11,6 +11,9 @@ import com.crowndine.model.Reservation;
 import com.crowndine.model.RestaurantTable;
 import com.crowndine.model.User;
 import com.crowndine.repository.PaymentRepository;
+import com.crowndine.repository.ReservationRepository;
+import com.crowndine.repository.OrderRepository;
+import com.crowndine.security.ResourceAccess;
 import com.crowndine.service.CalculationService;
 import com.crowndine.service.order.OrderService;
 import com.crowndine.service.payment.PaymentPreparationService;
@@ -37,6 +40,9 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
     private final OrderService orderService;
     private final UserService userService;
     private final CalculationService calculationService;
+    private final ReservationRepository reservationRepository;
+    private final OrderRepository orderRepository;
+    private final com.crowndine.service.order.OrderVoucherService orderVoucherService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -45,16 +51,39 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
 
         User user = userService.getUserByUserName(username);
 
+        if (hasReservation) {
+            var reservation = reservationRepository.findByCodeForUpdate(request.getReservationCode())
+                    .orElseThrow(() -> new InvalidDataException("Không tìm thấy đặt bàn"));
+            ResourceAccess.requireOwnerOrStaff(reservation.getUser(), username);
+            validateReservationForPayment(reservation);
+            if (reservation.getOrder() != null) orderRepository.findByIdForUpdate(reservation.getOrder().getId()).orElseThrow();
+            var pending = paymentRepository.findFirstByTargetAndReservationIdAndStatusOrderByIdDesc(
+                    EPaymentTarget.RESERVATION, reservation.getId(), EPaymentStatus.PENDING);
+            if (pending.isPresent()) return new PreparedPayment(pending.get(), pending.get().getAmount(), "Thanh toán đặt cọc bàn");
+        } else {
+            if (!ResourceAccess.isStaff()) throw new org.springframework.security.access.AccessDeniedException("Chỉ nhân viên được thu tiền đơn hàng");
+            var order = orderRepository.findByCodeForUpdate(request.getOrderCode())
+                    .orElseThrow(() -> new InvalidDataException("Không tìm thấy đơn hàng"));
+            validateOrderForPayment(order);
+            var pending = paymentRepository.findFirstByTargetAndOrderIdAndStatusOrderByIdDesc(
+                    EPaymentTarget.ORDER, order.getId(), EPaymentStatus.PENDING);
+            if (pending.isPresent()) {
+                if (method != pending.get().getMethod()) throw new InvalidDataException("Đơn đang có giao dịch PayOS, hãy kiểm tra giao dịch trước khi thu tiền lần nữa");
+                return new PreparedPayment(pending.get(), pending.get().getAmount(), "Thanh toán đơn hàng");
+            }
+        }
+
         Payment payment = initPayment(user, method, initialStatus);
         PreparedPayment preparedPayment = hasReservation ? prepareReservationPayment(request, payment) : prepareOrderPayment(request, payment);
 
-        validatePositiveAmount(preparedPayment.amount());
-        preparedPayment.payment().setAmount(preparedPayment.amount());
+        BigDecimal payable = preparedPayment.amount().setScale(0, RoundingMode.HALF_UP);
+        if (!(method == EPaymentMethod.CASH && !hasReservation && payable.signum() == 0)) validatePositiveAmount(payable);
+        preparedPayment.payment().setAmount(payable);
 
         Payment savedPayment = paymentRepository.save(preparedPayment.payment());
         log.info("Payment id {} saved with status={}, target={}", savedPayment.getId(), savedPayment.getStatus(), savedPayment.getTarget());
 
-        return new PreparedPayment(savedPayment, preparedPayment.amount(), preparedPayment.description());
+        return new PreparedPayment(savedPayment, payable, preparedPayment.description());
     }
 
     private Payment initPayment(User user, EPaymentMethod method, EPaymentStatus initialStatus) {
@@ -85,6 +114,7 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
                     reservation.getId(), finalOrderPrice);
         }
         BigDecimal tableDeposit = calculateTableDeposit(reservation);
+        payment.setTableDepositAmount(tableDeposit);
         log.info("Reservation {} table {} deposit amount: {}", reservation.getId(), reservation.getTable().getId(), tableDeposit);
         BigDecimal amountToPay = calculationService.calculateDepositPayment(finalOrderPrice, tableDeposit);
         log.info("Reservation {} deposit payment amount calculated from final order price {} and table deposit {}: {}",
@@ -111,8 +141,13 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
                     EPaymentTarget.RESERVATION, order.getReservation().getId(), EPaymentStatus.SUCCESS);
 
             if (hasSuccessfulReservationDeposit) {
-                BigDecimal orderDepositPaid = calculateOrderDepositPaid(order);
-                amountToPay = amountToPay.subtract(orderDepositPaid);
+                var previousDeposits = paymentRepository.findByTargetAndReservationIdAndStatus(EPaymentTarget.RESERVATION, order.getReservation().getId(), EPaymentStatus.SUCCESS);
+                if (previousDeposits.stream().anyMatch(p -> p.getTableDepositAmount() == null)) throw new InvalidDataException("Cọc cũ thiếu số tiền giữ bàn. Cần đối soát dữ liệu trước khi tất toán");
+                BigDecimal orderDepositPaid = paymentRepository.findByTargetAndReservationIdAndStatus(
+                        EPaymentTarget.RESERVATION, order.getReservation().getId(), EPaymentStatus.SUCCESS).stream()
+                        .map(p -> p.getAmount().subtract(p.getTableDepositAmount() == null ? BigDecimal.ZERO : p.getTableDepositAmount()).max(BigDecimal.ZERO))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                amountToPay = amountToPay.subtract(orderDepositPaid).max(BigDecimal.ZERO);
                 log.info("Order {} settlement subtracts only order deposit {} from final price {}. Table deposit is retained by the restaurant. Remaining amount to collect: {}",
                         order.getId(), orderDepositPaid, order.getFinalPrice(), amountToPay);
             } else {
@@ -152,14 +187,6 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
         return calculationService.calculateTableDeposit(table != null ? table.getBaseDeposit() : null);
     }
 
-    private BigDecimal calculateOrderDepositPaid(Order order) {
-        BigDecimal finalOrderPrice = getReservationOrderFinalPrice(order);
-        BigDecimal orderDepositPaid = finalOrderPrice.multiply(new BigDecimal("0.20")).setScale(2, RoundingMode.HALF_UP);
-        log.info("Calculated paid order deposit for order {} as 20% of final price {}: {}",
-                order.getId(), finalOrderPrice, orderDepositPaid);
-        return orderDepositPaid;
-    }
-
     private void validatePositiveAmount(BigDecimal amountToPay) {
         if (amountToPay == null || amountToPay.compareTo(BigDecimal.ZERO) <= 0) {
             throw new InvalidDataException("Số tiền thanh toán phải lớn hơn 0");
@@ -167,6 +194,9 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
     }
 
     private void validateReservationForPayment(Reservation reservation) {
+        if (reservation.getExpiratedAt() == null || !reservation.getExpiratedAt().isAfter(java.time.LocalDateTime.now())) {
+            throw new InvalidDataException("Đặt bàn đã hết thời gian giữ chỗ");
+        }
         if (reservation.getStatus().isFinal() || reservation.getStatus() == EReservationStatus.CHECKED_IN || reservation.getStatus() == EReservationStatus.CONFIRMED) {
             throw new InvalidDataException("Trạng thái đặt bàn hiện tại không thể tạo thanh toán");
         }
@@ -179,6 +209,21 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
     }
 
     private void validateOrderForPayment(Order order) {
+        if (order.getOrderDetails().stream().anyMatch(d -> d.getStatus() == EOrderDetailStatus.PENDING || d.getStatus() == EOrderDetailStatus.COOKING)) {
+            throw new InvalidDataException("Hãy phục vụ xong các món trước khi tất toán đơn");
+        }
+        for (OrderDetail detail : order.getOrderDetails()) {
+            if (detail.getStatus() == EOrderDetailStatus.READY) {
+                detail.setStatus(EOrderDetailStatus.SERVED);
+            }
+        }
+        if (order.getOrderDetails().stream().anyMatch(d -> d.getStatus() != EOrderDetailStatus.SERVED && d.getStatus() != EOrderDetailStatus.CANCELLED)) {
+            throw new InvalidDataException("Hãy phục vụ xong các món trước khi tất toán đơn");
+        }
+        if (order.getVoucher() != null && order.getReservation() == null) {
+            orderVoucherService.validateVoucherForOrder(order.getId(), order.getVoucher().getCode(), order.getUser() == null ? null : order.getUser().getUsername());
+        }
+        if (order.getStatus() == EOrderStatus.PRE_ORDER) throw new InvalidDataException("Đơn chưa nhận bàn, không thể tất toán");
         if (order.getStatus().isFinal()) {
             throw new InvalidDataException("Trạng thái đơn hàng hiện tại không thể tạo thanh toán");
         }
@@ -189,7 +234,7 @@ public class PaymentPreparationServiceImpl implements PaymentPreparationService 
             throw new InvalidDataException("Đơn hàng này đã được thanh toán");
         }
 
-        if (order.getFinalPrice() == null || order.getFinalPrice().compareTo(BigDecimal.ZERO) <= 0) {
+        if (order.getFinalPrice() == null || order.getFinalPrice().compareTo(BigDecimal.ZERO) < 0) {
             throw new InvalidDataException("Đơn hàng không có số tiền hợp lệ để thanh toán");
         }
     }

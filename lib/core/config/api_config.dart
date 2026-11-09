@@ -10,6 +10,8 @@ class ApiConfig {
   static const String _keyGoogleClientId = 'crowndine_google_client_id';
 
   static String get defaultBaseUrl {
+    const configured = String.fromEnvironment('API_BASE_URL');
+    if (configured.isNotEmpty) return normalizeBaseUrl(configured);
     if (kIsWeb) {
       return 'http://localhost:8080/api/';
     }
@@ -28,16 +30,27 @@ class ApiConfig {
 
   static Future<void> setBaseUrl(String url) async {
     final prefs = await SharedPreferences.getInstance();
-    String formatted = url.trim();
-    if (!formatted.endsWith('/')) {
-      formatted = '$formatted/';
-    }
+    final formatted = normalizeBaseUrl(url);
     await prefs.setString(_keyBaseUrl, formatted);
+  }
+
+  static String normalizeBaseUrl(String input) {
+    final url = Uri.tryParse(input.trim());
+    if (url == null ||
+        !['http', 'https'].contains(url.scheme) ||
+        url.host.isEmpty ||
+        url.userInfo.isNotEmpty ||
+        url.hasQuery ||
+        url.hasFragment) {
+      throw const FormatException('URL phải có dạng http(s)://máy-chủ/api/');
+    }
+    final value = url.toString();
+    return value.endsWith('/') ? value : '$value/';
   }
 
   static Future<bool> isMockFallbackEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyUseMockFallback) ?? true;
+    return prefs.getBool(_keyUseMockFallback) ?? false;
   }
 
   static Future<void> setMockFallbackEnabled(bool enabled) async {
@@ -47,7 +60,8 @@ class ApiConfig {
 
   /// Lấy Google Client ID an toàn (ưu tiên --dart-define, SharedPreferences, rồi đến local config.json)
   static Future<String> getGoogleClientId() async {
-    const fromEnv = String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
+    const fromEnv =
+        String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
     if (fromEnv.isNotEmpty) return fromEnv;
 
     final prefs = await SharedPreferences.getInstance();
@@ -59,7 +73,8 @@ class ApiConfig {
         final origin = Uri.base.origin;
         final res = await Dio().get('$origin/config.json');
         if (res.statusCode == 200 && res.data != null) {
-          final dynamic data = res.data is String ? jsonDecode(res.data) : res.data;
+          final dynamic data =
+              res.data is String ? jsonDecode(res.data) : res.data;
           final id = data['googleClientId']?.toString() ?? '';
           if (id.isNotEmpty) {
             await setGoogleClientId(id);

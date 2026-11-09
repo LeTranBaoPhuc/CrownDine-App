@@ -1,121 +1,120 @@
-import '../../core/config/api_config.dart';
+import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
-import '../mock/mock_data.dart';
 import '../models/order_model.dart';
+import '../models/item_model.dart';
+
+class TableOrderLine {
+  final ItemModel item;
+  final int quantity;
+  final String? note;
+  const TableOrderLine({required this.item, required this.quantity, this.note});
+  Map<String, dynamic> toJson() => {
+        item.isCombo ? 'comboId' : 'itemId': item.id,
+        'quantity': quantity,
+        if (note != null && note!.trim().isNotEmpty) 'note': note!.trim(),
+      };
+}
 
 class OrderRepository {
-  final ApiClient _client = ApiClient.instance;
+  final Dio _dio;
+  OrderRepository({Dio? dio}) : _dio = dio ?? ApiClient.instance.dio;
 
-  Future<List<OrderModel>> getAllOrders() async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-
-    try {
-      dynamic responseData;
-      try {
-        final res = await _client.dio.get(ApiEndpoints.ordersKitchen);
-        if (res.statusCode == 200 && res.data != null) {
-          responseData = res.data['data'] ?? res.data;
-        }
-      } catch (_) {}
-
-      if (responseData == null) {
-        final res = await _client.dio.get(ApiEndpoints.orders);
-        if (res.statusCode == 200 && res.data != null) {
-          final pageData = res.data['data'] ?? res.data;
-          responseData = (pageData is Map)
-              ? (pageData['items'] ?? pageData['content'])
-              : pageData;
-        }
-      }
-
-      if (responseData is List && responseData.isNotEmpty) {
-        return responseData
-            .map((e) => OrderModel.fromJson(Map<String, dynamic>.from(e)))
-            .toList();
-      }
-    } catch (e) {
-      if (!useMock) rethrow;
+  dynamic _data(Response<dynamic> response) {
+    final body = response.data;
+    if (body is! Map || body['status'] is! num || body['status'] >= 400) {
+      throw const FormatException('Phản hồi đơn hàng không hợp lệ.');
     }
-
-    return MockData.sampleOrders;
+    return body['data'];
   }
 
-  Future<void> updateDishCookingStatus(int orderId, int detailId, DishCookingStatus status) async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-    final statusStr = status == DishCookingStatus.ready ? 'READY' : status.name.toUpperCase();
+  Future<List<OrderModel>> getAllOrders() async {
+    // KDS must not fall back to unrelated historical orders or mock tickets.
+    final data = _data(await _dio.get(ApiEndpoints.ordersKitchen));
+    if (data is! List) throw const FormatException('Thiếu danh sách đơn bếp.');
+    return data
+        .map((e) => OrderModel.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
 
-    try {
-      await _client.dio.patch(
-        ApiEndpoints.orderDetailStatus(detailId),
-        data: {'status': statusStr},
-        queryParameters: {'status': statusStr},
-      );
-    } catch (e) {
-      if (!useMock) rethrow;
+  Future<OrderModel?> getActiveTableOrder(int tableId) async {
+    final data = _data(await _dio.get('orders/tables/$tableId/active'));
+    if (data == null) return null;
+    if (data is! Map<String, dynamic> ||
+        data['tableId'] != tableId ||
+        data['id'] is! int ||
+        data['id'] <= 0 ||
+        !['CONFIRMED', 'IN_PROGRESS', 'SERVED'].contains(data['status'])) {
+      throw const FormatException('Đơn phục vụ không khớp bàn.');
     }
+    return OrderModel.fromJson(data);
+  }
 
-    // Update in local mock
-    for (final o in MockData.sampleOrders) {
-      if (o.id == orderId) {
-        final idx = o.details.indexWhere((d) => d.id == detailId);
-        if (idx != -1) {
-          final old = o.details[idx];
-          o.details[idx] = OrderDetailModel(
-            id: old.id,
-            item: old.item,
-            itemName: old.itemName,
-            quantity: old.quantity,
-            totalPrice: old.totalPrice,
-            status: status,
-            note: old.note,
-            orderTime: old.orderTime,
-          );
-        }
-      }
+  Future<OrderModel> addItemsAtTable(int tableId, List<TableOrderLine> lines,
+      {int? expectedOrderId}) async {
+    if (lines.isEmpty ||
+        lines.any((line) => line.quantity < 1 || !line.item.isAvailable)) {
+      throw StateError('Chọn món còn phục vụ và số lượng hợp lệ.');
     }
+    final data = _data(await _dio.post('orders/tables/$tableId/details', data: {
+      'expectedOrderId': expectedOrderId,
+      'items': lines.map((line) => line.toJson()).toList(),
+    }));
+    if (data is! Map<String, dynamic> ||
+        data['tableId'] != tableId ||
+        data['id'] is! int ||
+        data['id'] <= 0 ||
+        (expectedOrderId != null && data['id'] != expectedOrderId) ||
+        !['CONFIRMED', 'IN_PROGRESS', 'SERVED'].contains(data['status'])) {
+      throw const FormatException('Máy chủ chưa xác nhận đơn gọi món của bàn.');
+    }
+    return OrderModel.fromJson(data);
+  }
+
+  Future<Map<String, dynamic>> getCheckout(int orderId) async {
+    final data = _data(await _dio.get('orders/$orderId/checkout'));
+    if (data is! Map<String, dynamic> ||
+        data['orderId'] != orderId ||
+        [
+          'totalAmount',
+          'voucherDiscount',
+          'orderDepositPaidAmount',
+          'finalAmount'
+        ].any((key) => data[key] is! num)) {
+      throw const FormatException('Không đọc được hóa đơn từ máy chủ.');
+    }
+    return data;
+  }
+
+  Future<Map<String, dynamic>?> latestPayment(int orderId) async {
+    final data = _data(await _dio.get('payments/orders/$orderId/latest'));
+    if (data == null) return null;
+    if (data is! Map<String, dynamic> ||
+        data['target'] != 'ORDER' ||
+        data['code'] is! int) {
+      throw const FormatException('Giao dịch không hợp lệ.');
+    }
+    return data;
+  }
+
+  Future<void> createSettlement(String orderCode, String method) async {
+    _data(await _dio.post('payments/create',
+        data: {'orderCode': orderCode, 'method': method}));
+  }
+
+  Future<void> updateDishCookingStatus(
+      int orderId, int detailId, DishCookingStatus status) async {
+    _data(await _dio.patch(ApiEndpoints.orderDetailStatus(detailId),
+        queryParameters: {'status': status.name.toUpperCase()}));
   }
 
   Future<void> updateOrderStatus(int orderId, OrderStatus status) async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-
-    try {
-      await _client.dio.patch('${ApiEndpoints.orders}/$orderId/status?status=${status.name.toUpperCase()}');
-    } catch (e) {
-      if (!useMock) rethrow;
-    }
-
-    final idx = MockData.sampleOrders.indexWhere((o) => o.id == orderId);
-    if (idx != -1) {
-      final old = MockData.sampleOrders[idx];
-      MockData.sampleOrders[idx] = OrderModel(
-        id: old.id,
-        code: old.code,
-        guestName: old.guestName,
-        tableName: old.tableName,
-        status: status,
-        totalPrice: old.totalPrice,
-        discountPrice: old.discountPrice,
-        finalPrice: old.finalPrice,
-        details: old.details,
-        createdAt: old.createdAt,
-      );
-    }
-  }
-
-  Future<void> addDishToOrder(String tableName, dynamic item, int quantity, String? note) async {
-    final order = MockData.sampleOrders.where((o) => o.tableName == tableName && o.status == OrderStatus.inProgress).firstOrNull;
-    if (order != null) {
-      final newDetail = OrderDetailModel(
-        id: DateTime.now().millisecondsSinceEpoch % 100000,
-        item: item,
-        itemName: item.name,
-        quantity: quantity,
-        totalPrice: (item.displayPrice as num).toDouble() * quantity,
-        status: DishCookingStatus.pending,
-        note: note,
-      );
-      order.details.add(newDetail);
-    }
+    final code = status == OrderStatus.inProgress
+        ? 'IN_PROGRESS'
+        : status == OrderStatus.preOrder
+            ? 'PRE_ORDER'
+            : status.name.toUpperCase();
+    _data(await _dio
+        .patch('orders/$orderId/status', queryParameters: {'status': code}));
   }
 }

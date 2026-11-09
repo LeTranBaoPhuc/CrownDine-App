@@ -88,7 +88,7 @@ class _StaffMainScreenState extends State<StaffMainScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.calendar_month_outlined),
               activeIcon: Icon(Icons.calendar_month),
-              label: 'Lịch trực',
+              label: 'Xem ca làm',
             ),
           ],
         ),

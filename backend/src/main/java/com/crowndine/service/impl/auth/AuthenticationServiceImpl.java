@@ -56,6 +56,8 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
+    private final com.crowndine.security.VerificationAttemptLimiter attemptLimiter;
+    private final com.crowndine.repository.TokenRepository tokenRepository;
 
     @Value("${google.client-id:}")
     private String googleClientId;
@@ -63,6 +65,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public TokenResponse accessToken(LoginRequest request, HttpServletRequest httpServletRequest) {
+        attemptLimiter.check("login", request.getUsername(), 30);
         List<String> roles;
 
         try {
@@ -114,7 +117,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid username"));
 
-        jwtService.isTokenValid(refreshToken, ETokenType.REFRESH_TOKEN, user);
+        if (!user.isEnabled() || !jwtService.isTokenValid(refreshToken, ETokenType.REFRESH_TOKEN, user)) {
+            throw new InvalidDataException("auth.token_revoked");
+        }
 
         List<String> roles = extractRoles(user.getAuthorities());
 
@@ -255,6 +260,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
 
         userRepository.save(user);
+        tokenRepository.revokeByUsername(user.getUsername());
 
         log.info("Reset password successfully");
     }
@@ -265,69 +271,19 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         log.info("Verifying Google Auth Token");
 
         try {
-            String email = null;
-            String googleId = null;
-            String firstName = null;
-            String lastName = null;
-            String pictureUrl = null;
-
-            String token = request.getToken();
-            boolean decodedAsJwt = false;
-
-            // 1. Kiểm tra nếu là JWT ID Token OIDC (bắt đầu bằng eyJ và có đúng 3 phần header.payload.signature)
-            if (token != null && token.startsWith("eyJ") && token.split("\\.").length == 3) {
-                try {
-                    log.info("Verifying as Google OIDC ID Token (JWT)");
-                    NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withIssuerLocation("https://accounts.google.com").build();
-                    Jwt jwt = jwtDecoder.decode(token);
-
-                    if (StringUtils.hasText(googleClientId) && !jwt.getAudience().contains(googleClientId)) {
-                        log.error("Invalid Audience in ID Token");
-                        throw new InvalidDataException("Token belongs to a different client");
-                    }
-
-                    email = jwt.getClaim("email");
-                    googleId = jwt.getSubject();
-                    firstName = jwt.getClaim("given_name");
-                    lastName = jwt.getClaim("family_name");
-                    pictureUrl = jwt.getClaim("picture");
-                    decodedAsJwt = true;
-                } catch (Exception e) {
-                    log.warn("Failed to decode token as JWT ({}), attempting fallback to Google userinfo endpoint", e.getMessage());
-                }
+            if (!StringUtils.hasText(googleClientId)) {
+                throw new InvalidDataException("Google login chưa được cấu hình trên máy chủ");
             }
-
-            // 2. Nếu không phải JWT hoặc giải mã JWT thất bại (ví dụ Google trả về access token dạng ya29.xxx)
-            if (!decodedAsJwt) {
-                log.info("Verifying as Google OAuth2 Access Token via Google userinfo API");
-                org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-                org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-                headers.setBearerAuth(token);
-                org.springframework.http.HttpEntity<?> entity = new org.springframework.http.HttpEntity<>(headers);
-
-                try {
-                    org.springframework.http.ResponseEntity<Map> response = restTemplate.exchange(
-                            "https://www.googleapis.com/oauth2/v3/userinfo",
-                            org.springframework.http.HttpMethod.GET,
-                            entity,
-                            Map.class
-                    );
-
-                    if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                        throw new InvalidDataException("Không thể xác thực mã truy cập từ Google");
-                    }
-
-                    Map<String, Object> body = response.getBody();
-                    email = (String) body.get("email");
-                    googleId = (String) body.get("sub");
-                    firstName = (String) body.get("given_name");
-                    lastName = (String) body.get("family_name");
-                    pictureUrl = (String) body.get("picture");
-                } catch (Exception ex) {
-                    log.error("Error verifying access token from Google: {}", ex.getMessage());
-                    throw new InvalidDataException("Xác thực tài khoản Google thất bại: " + ex.getMessage());
-                }
+            NimbusJwtDecoder decoder = NimbusJwtDecoder.withIssuerLocation("https://accounts.google.com").build();
+            Jwt jwt = decoder.decode(request.getToken());
+            if (!jwt.getAudience().contains(googleClientId) || !Boolean.TRUE.equals(jwt.getClaim("email_verified"))) {
+                throw new InvalidDataException("Google token không đúng ứng dụng hoặc email chưa xác minh");
             }
+            String email = jwt.getClaim("email");
+            String googleId = jwt.getSubject();
+            String firstName = jwt.getClaim("given_name");
+            String lastName = jwt.getClaim("family_name");
+            String pictureUrl = jwt.getClaim("picture");
 
             if (!StringUtils.hasText(email) || !StringUtils.hasText(googleId)) {
                 throw new InvalidDataException("Không thể lấy thông tin định danh từ tài khoản Google");
@@ -377,6 +333,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 }
             }
 
+            if (user.getStatus() != EUserStatus.ACTIVE || !user.isEnabled()) {
+                throw new InvalidDataException("Tài khoản không hoạt động");
+            }
             List<String> roles = extractRoles(user.getAuthorities());
             String accessToken = jwtService.generateAccessToken(user.getUsername(), roles);
             String refreshToken = jwtService.generateRefreshToken(user.getUsername(), roles);
@@ -415,11 +374,12 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendForgotPasswordOtp(ForgotPasswordSendOtpRequest request) {
+        attemptLimiter.check("send", request.getEmail(), 3);
         log.info("Processing send forgot password OTP for email: {}", request.getEmail());
         User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Email không tồn tại trong hệ thống"));
 
-        String otp = String.format("%06d", new Random().nextInt(1000000));
+        String otp = String.format("%06d", new java.security.SecureRandom().nextInt(1000000));
         user.setVerificationCode(otp);
         user.setVerificationExpiration(LocalDateTime.now().plusMinutes(5));
         userRepository.save(user);
@@ -430,6 +390,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
     @Override
     public void verifyForgotPasswordOtp(ForgotPasswordVerifyOtpRequest request) {
+        attemptLimiter.check("otp", request.getEmail(), 5);
         log.info("Processing verify forgot password OTP for email: {}", request.getEmail());
         User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Email không tồn tại trong hệ thống"));
@@ -448,8 +409,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resetPasswordWithOtp(ForgotPasswordResetRequest request) {
+        attemptLimiter.check("otp", request.getEmail(), 5);
         log.info("Processing reset password with OTP for email: {}", request.getEmail());
-        User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
+        User user = userRepository.findByEmailForUpdate(request.getEmail().trim().toLowerCase())
                 .orElseThrow(() -> new ResourceNotFoundException("Email không tồn tại trong hệ thống"));
 
         if (user.getVerificationCode() == null || !user.getVerificationCode().equals(request.getOtp().trim())) {
@@ -468,6 +430,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         user.setVerificationCode(null);
         user.setVerificationExpiration(null);
         userRepository.save(user);
+        tokenRepository.revokeByUsername(user.getUsername());
 
         log.info("Successfully reset password with OTP for user: {}", user.getUsername());
     }
@@ -475,6 +438,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void verifyRegisterOtp(com.crowndine.dto.request.VerifyRegisterOtpRequest request) {
+        attemptLimiter.check("otp", request.getEmail(), 5);
         log.info("Processing verify register OTP for email: {}", request.getEmail());
 
         User user = userRepository.findByEmail(request.getEmail().trim().toLowerCase())
@@ -509,6 +473,7 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resendRegisterOtp(String email) {
+        attemptLimiter.check("send", email, 3);
         log.info("Processing resend register OTP for email: {}", email);
 
         User user = userRepository.findByEmail(email.trim().toLowerCase())

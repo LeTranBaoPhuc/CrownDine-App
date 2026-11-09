@@ -5,7 +5,7 @@ spring:
   devtools:
     add-properties: true
   datasource:
-    url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3306}/crowndine-app
+    url: jdbc:mysql://${DATABASE_HOST:localhost}:${DATABASE_PORT:3306}/${DATABASE_NAME:crowndine-app}?createDatabaseIfNotExist=true&useUnicode=true&characterEncoding=UTF-8&allowPublicKeyRetrieval=true&useSSL=false
     username: ${DATABASE_USERNAME:root}
     password: ${DATABASE_PASSWORD:123456}
     hikari: # Connection poll
@@ -21,7 +21,7 @@ spring:
   jpa:
     show-sql: false
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
   mail:
     from: ${MAIL_USERNAME:dattqde181019@fpt.edu.vn}
     host: smtp.gmail.com

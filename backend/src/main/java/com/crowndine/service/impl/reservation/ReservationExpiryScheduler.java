@@ -36,11 +36,10 @@ public class ReservationExpiryScheduler {
             return;
         }
 
-        expired.forEach(reservation -> {
+        expired.forEach(candidate -> {
+            Reservation reservation = reservationRepository.findByIdForUpdate(candidate.getId()).orElseThrow();
+            if (reservation.getStatus() != EReservationStatus.PENDING) return;
             reservation.setStatus(EReservationStatus.CANCELLED);
-            if (reservation.getTable() != null) {
-                restaurantTableStateService.changeStatus(reservation.getTable().getId(), ETableStatus.AVAILABLE);
-            }
             eventPublisher.publishEvent(new ReservationCancelledEvent(reservation.getId(), reservation.getOrder() != null ? reservation.getOrder().getId() : null));
         });
         log.info("Cancelled {} expired reservations", expired.size());

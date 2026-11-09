@@ -12,6 +12,10 @@ import java.util.Optional;
 
 @Repository
 public interface UserVoucherRepository extends JpaRepository<UserVoucher, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select uv from UserVoucher uv where uv.voucher.id = :voucherId and uv.customer.id = :customerId")
+    Optional<UserVoucher> findAssignmentForUpdate(@Param("voucherId") Long voucherId, @Param("customerId") Long customerId);
+
     Optional<UserVoucher> findByVoucher_IdAndCustomer_Id(Long voucherId, Long customerId);
 
     @Query("""

@@ -247,6 +247,26 @@ class ReservationScreen extends ConsumerWidget {
                                           .read(reservationProvider)
                                           .backendReservationId;
                                 }
+                              } else if (resState.currentStep == 1) {
+                                if (resState.selectedTime.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Vui lòng chọn khung giờ hợp lệ để tiếp tục!'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                if (Step1DateTimeView.isSlotPast(resState.selectedDate, resState.selectedTime)) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Khung giờ đã chọn đã qua. Vui lòng chọn khung giờ khác!'),
+                                      backgroundColor: AppColors.error,
+                                    ),
+                                  );
+                                  return;
+                                }
+                                notifier.nextStep();
                               } else {
                                 notifier.nextStep();
                               }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../../core/utils/date_formatter.dart';
 import '../../../../../data/models/user_model.dart';
+import '../../../../../providers/auth_provider.dart';
 import '../../../../../providers/staff_work_schedule_provider.dart';
 
 class AddScheduleDialog extends ConsumerStatefulWidget {
@@ -21,6 +22,18 @@ class AddScheduleDialog extends ConsumerStatefulWidget {
     UserModel? initialStaff,
     String? initialDate,
   }) {
+    final container = ProviderScope.containerOf(context, listen: false);
+    final authState = container.read(authProvider);
+    if (!authState.isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chỉ Quản trị viên (Admin) mới có quyền phân ca làm việc'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return Future.value(false);
+    }
+
     return showDialog<bool>(
       context: context,
       builder: (ctx) => AddScheduleDialog(
@@ -272,7 +285,7 @@ class _AddScheduleDialogState extends ConsumerState<AddScheduleDialog> {
                       const Icon(Icons.calendar_today_rounded, size: 18, color: AppColors.primary),
                       const SizedBox(width: 10),
                       Text(
-                        DateFormat('EEEE, dd/MM/yyyy', 'vi').format(_selectedDate),
+                        DateFormatter.formatVietnameseDate(_selectedDate),
                         style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
                       ),
                       const Spacer(),

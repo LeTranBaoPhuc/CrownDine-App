@@ -10,6 +10,7 @@ public class AreaLayoutResponse {
 
     private Long areaId;
     private String areaName;
+    private String description;
     private Double x;
     private Double y;
     private Double width;

@@ -77,7 +77,7 @@ public class User extends AbstractEntity<Long> implements UserDetails {
     @OneToMany(mappedBy = "user")
     private List<Reservation> reservations = new ArrayList<>();
 
-    @OneToMany(mappedBy = "createdBy")
+    @OneToMany(mappedBy = "user")
     private List<Payment> payments = new ArrayList<>();
 
     @ManyToMany(fetch = FetchType.EAGER)

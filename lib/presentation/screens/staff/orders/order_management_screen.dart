@@ -1,3 +1,4 @@
+import 'order_settlement_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -37,21 +38,26 @@ class OrderManagementScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   FilterChip(
                     label: const Text('Đang phục vụ'),
-                    selected: orderState.selectedStatus == OrderStatus.inProgress,
+                    selected:
+                        orderState.selectedStatus == OrderStatus.inProgress,
                     selectedColor: AppColors.primary.withOpacity(0.2),
-                    onSelected: (_) => notifier.filterStatus(OrderStatus.inProgress),
+                    onSelected: (_) =>
+                        notifier.filterStatus(OrderStatus.inProgress),
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
                     label: const Text('Đặt trước'),
                     selected: orderState.selectedStatus == OrderStatus.preOrder,
-                    onSelected: (_) => notifier.filterStatus(OrderStatus.preOrder),
+                    onSelected: (_) =>
+                        notifier.filterStatus(OrderStatus.preOrder),
                   ),
                   const SizedBox(width: 8),
                   FilterChip(
                     label: const Text('Đã hoàn tất'),
-                    selected: orderState.selectedStatus == OrderStatus.completed,
-                    onSelected: (_) => notifier.filterStatus(OrderStatus.completed),
+                    selected:
+                        orderState.selectedStatus == OrderStatus.completed,
+                    onSelected: (_) =>
+                        notifier.filterStatus(OrderStatus.completed),
                   ),
                 ],
               ),
@@ -71,21 +77,26 @@ class OrderManagementScreen extends ConsumerWidget {
                         child: ListView.separated(
                           padding: const EdgeInsets.all(16),
                           itemCount: orderState.filteredOrders.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 14),
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 14),
                           itemBuilder: (context, index) {
                             final order = orderState.filteredOrders[index];
 
                             return Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: isDark ? AppColors.darkCard : Colors.white,
+                                color:
+                                    isDark ? AppColors.darkCard : Colors.white,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                                  color: isDark
+                                      ? AppColors.darkBorder
+                                      : AppColors.lightBorder,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(isDark ? 0.2 : 0.03),
+                                    color: Colors.black
+                                        .withOpacity(isDark ? 0.2 : 0.03),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
                                   ),
@@ -95,59 +106,127 @@ class OrderManagementScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
                                         order.code,
-                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary),
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                            color: AppColors.primary),
                                       ),
                                       StatusBadge(
                                         label: order.status.displayName,
-                                        color: order.status == OrderStatus.inProgress ? AppColors.primary : AppColors.success,
+                                        color: order.status ==
+                                                OrderStatus.inProgress
+                                            ? AppColors.primary
+                                            : AppColors.success,
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
                                     order.guestName,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14),
                                   ),
                                   if (order.tableName != null)
                                     Text(
                                       'Vị trí: ${order.tableName}',
-                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary),
                                     ),
                                   const Divider(height: 18),
 
                                   // Dishes details
                                   ...order.details.map((d) {
                                     return Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 3),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 3),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Expanded(
                                             child: Text(
                                               '${d.quantity}x ${d.itemName}${d.note != null ? " (${d.note})" : ""}',
-                                              style: const TextStyle(fontSize: 13),
+                                              style:
+                                                  const TextStyle(fontSize: 13),
                                             ),
                                           ),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: d.status == DishCookingStatus.ready
-                                                  ? AppColors.successContainer
-                                                  : AppColors.primary.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              d.status.displayName,
-                                              style: TextStyle(
-                                                fontSize: 11,
-                                                fontWeight: FontWeight.bold,
-                                                color: d.status == DishCookingStatus.ready ? AppColors.success : AppColors.primary,
+                                          Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                    horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: d.status == DishCookingStatus.ready
+                                                      ? AppColors.successContainer
+                                                      : d.status == DishCookingStatus.served
+                                                          ? const Color(0xFFDCFCE7)
+                                                          : AppColors.primary.withOpacity(0.1),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  d.status.displayName,
+                                                  style: TextStyle(
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: d.status == DishCookingStatus.ready
+                                                        ? AppColors.success
+                                                        : d.status == DishCookingStatus.served
+                                                            ? const Color(0xFF16A34A)
+                                                            : AppColors.primary,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              if (d.status == DishCookingStatus.ready) ...[
+                                                const SizedBox(width: 6),
+                                                InkWell(
+                                                  onTap: () async {
+                                                    await ref
+                                                        .read(orderProvider.notifier)
+                                                        .advanceCookingStatus(order.id, d.id, DishCookingStatus.served);
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('Đã phục vụ món ${d.itemName} lên bàn!'),
+                                                          backgroundColor: AppColors.success,
+                                                          duration: const Duration(seconds: 1),
+                                                        ),
+                                                      );
+                                                    }
+                                                  },
+                                                  borderRadius: BorderRadius.circular(6),
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary,
+                                                      borderRadius: BorderRadius.circular(6),
+                                                    ),
+                                                    child: const Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(Icons.check, size: 12, color: Colors.white),
+                                                        SizedBox(width: 3),
+                                                        Text(
+                                                          'Phục vụ',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Colors.white,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ],
                                       ),
@@ -156,27 +235,52 @@ class OrderManagementScreen extends ConsumerWidget {
 
                                   const Divider(height: 20),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          const Text('Tổng tiền:', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                          const Text('Tổng tiền:',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color:
+                                                      AppColors.textSecondary)),
                                           Text(
-                                            CurrencyFormatter.format(order.finalPrice),
-                                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
+                                            CurrencyFormatter.format(
+                                                order.finalPrice),
+                                            style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primary),
                                           ),
                                         ],
                                       ),
-                                      if (order.status == OrderStatus.inProgress)
+                                      if ([
+                                        OrderStatus.confirmed,
+                                        OrderStatus.inProgress,
+                                        OrderStatus.served
+                                      ].contains(order.status))
                                         ElevatedButton(
-                                          onPressed: () => notifier.completeOrder(order.id),
+                                          onPressed: () => Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      OrderSettlementScreen(
+                                                          orderId: order.id))),
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: AppColors.primary,
-                                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 14, vertical: 8),
+                                            shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(10)),
                                           ),
-                                          child: const Text('Thanh toán', style: TextStyle(color: Colors.white, fontSize: 13)),
+                                          child: const Text('Thanh toán',
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 13)),
                                         ),
                                     ],
                                   ),

@@ -1,17 +1,81 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:crowndine/data/repositories/staff_repository.dart';
+import 'package:crowndine/data/models/user_model.dart';
 import 'package:crowndine/data/mock/mock_data.dart';
 import 'package:crowndine/presentation/screens/admin/staff/admin_staff_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const List<int> _kTransparentImage = <int>[
-  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49,
-  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
-  0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44,
-  0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D,
-  0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
-  0x60, 0x82,
+  0x89,
+  0x50,
+  0x4E,
+  0x47,
+  0x0D,
+  0x0A,
+  0x1A,
+  0x0A,
+  0x00,
+  0x00,
+  0x00,
+  0x0D,
+  0x49,
+  0x48,
+  0x44,
+  0x52,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x00,
+  0x01,
+  0x08,
+  0x06,
+  0x00,
+  0x00,
+  0x00,
+  0x1F,
+  0x15,
+  0xC4,
+  0x89,
+  0x00,
+  0x00,
+  0x00,
+  0x0A,
+  0x49,
+  0x44,
+  0x41,
+  0x54,
+  0x78,
+  0x9C,
+  0x63,
+  0x00,
+  0x01,
+  0x00,
+  0x00,
+  0x05,
+  0x00,
+  0x01,
+  0x0D,
+  0x0A,
+  0x2D,
+  0xB4,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x49,
+  0x45,
+  0x4E,
+  0x44,
+  0xAE,
+  0x42,
+  0x60,
+  0x82,
 ];
 
 class _MockHttpOverrides extends HttpOverrides {
@@ -25,9 +89,11 @@ class _FakeHttpClient extends Fake implements HttpClient {
   @override
   Duration idleTimeout = const Duration(seconds: 15);
   @override
-  Future<HttpClientRequest> getUrl(Uri url) => Future.value(_FakeHttpClientRequest());
+  Future<HttpClientRequest> getUrl(Uri url) =>
+      Future.value(_FakeHttpClientRequest());
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) => Future.value(_FakeHttpClientRequest());
+  Future<HttpClientRequest> openUrl(String method, Uri url) =>
+      Future.value(_FakeHttpClientRequest());
 }
 
 class _FakeHttpClientRequest extends Fake implements HttpClientRequest {
@@ -63,6 +129,11 @@ class _FakeHttpClientResponse extends Fake implements HttpClientResponse {
   }
 }
 
+class _StaffFixture extends StaffRepository {
+  @override
+  Future<List<UserModel>> getAllStaffs() async => List.of(MockData.staffList);
+}
+
 void main() {
   setUpAll(() {
     TestWidgetsFlutterBinding.ensureInitialized();
@@ -78,21 +149,22 @@ void main() {
       expect(softDeleted.isActive, false);
       expect(softDeleted.fullName, staff.fullName);
 
-      final updated = staff.copyWith(phone: '0999888777', membershipTier: 'Đầu bếp chính');
+      final updated =
+          staff.copyWith(phone: '0999888777', membershipTier: 'Đầu bếp chính');
       expect(updated.phone, '0999888777');
       expect(updated.membershipTier, 'Đầu bếp chính');
     });
 
-    testWidgets('AdminStaffScreen renders Edit and Soft Delete actions and filter chips', (tester) async {
+    testWidgets(
+        'AdminStaffScreen renders Edit and Soft Delete actions and filter chips',
+        (tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: Scaffold(
-            body: AdminStaffScreen(),
-          ),
-        ),
+        ProviderScope(overrides: [
+          staffRepositoryProvider.overrideWithValue(_StaffFixture())
+        ], child: const MaterialApp(home: Scaffold(body: AdminStaffScreen()))),
       );
 
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Check header
       expect(find.text('Danh Sách Nhân Viên'), findsOneWidget);

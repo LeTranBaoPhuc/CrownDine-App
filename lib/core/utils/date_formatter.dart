@@ -11,6 +11,21 @@ class DateFormatter {
   static String formatDateTime(DateTime dt) => _dateTimeFormat.format(dt);
   static String toApiDate(DateTime date) => _apiDateFormat.format(date);
 
+  static String formatVietnameseDate(DateTime date) {
+    const daysOfWeek = [
+      '',
+      'Thứ Hai',
+      'Thứ Ba',
+      'Thứ Tư',
+      'Thứ Năm',
+      'Thứ Sáu',
+      'Thứ Bảy',
+      'Chủ Nhật'
+    ];
+    final dayName = (date.weekday >= 1 && date.weekday <= 7) ? daysOfWeek[date.weekday] : '';
+    return '$dayName, ${_dateFormat.format(date)}';
+  }
+
   static String friendly(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);

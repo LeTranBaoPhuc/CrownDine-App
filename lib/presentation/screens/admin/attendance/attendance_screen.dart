@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../providers/attendance_provider.dart';
-import '../../../widgets/crown_app_bar.dart';
 import 'widgets/attendance_header.dart';
 import 'widgets/attendance_legend.dart';
 import 'widgets/attendance_modal.dart';
@@ -21,17 +20,6 @@ class AttendanceScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF8FAFC),
-      appBar: CrownAppBar(
-        title: 'Bảng chấm công',
-        showCart: false,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 22),
-            tooltip: 'Tải lại dữ liệu',
-            onPressed: () => notifier.fetchData(),
-          ),
-        ],
-      ),
       body: RefreshIndicator(
         onRefresh: () => notifier.fetchData(),
         color: AppColors.primary,

@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 @Setter
 public class OrderCheckoutResponse {
     private Long orderId;
+    private com.crowndine.common.enums.EOrderStatus status;
     private String orderCode;
     private BigDecimal totalAmount;
     private BigDecimal voucherDiscount;

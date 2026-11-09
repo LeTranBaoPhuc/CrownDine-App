@@ -1,4 +1,3 @@
-import '../../core/config/api_config.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/api_endpoints.dart';
 import '../models/dashboard_model.dart';
@@ -11,8 +10,6 @@ class DashboardRepository {
     String viewMode = 'Theo giờ',
     String timeRange = '7 ngày qua',
   }) async {
-    final useMock = await ApiConfig.isMockFallbackEnabled();
-
     try {
       final response = await _client.dio.get(
         ApiEndpoints.dashboardSales,
@@ -29,9 +26,9 @@ class DashboardRepository {
         }
       }
     } catch (e) {
-      if (!useMock) rethrow;
+      rethrow;
     }
 
-    return DashboardSalesModel.mock(timeRange: timeRange, viewMode: viewMode);
+    throw const FormatException('Không đọc được báo cáo từ máy chủ.');
   }
 }
