@@ -2,13 +2,95 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/chat_model.dart';
+import '../../../../data/models/table_model.dart';
+import '../../../../providers/auth_provider.dart';
 import '../../../../providers/chat_provider.dart';
+import '../../../../providers/reservation_checkout_provider.dart';
+import '../../../../providers/reservation_provider.dart';
+import '../../../../providers/table_provider.dart';
+import '../customer_main_screen.dart';
 
 class CustomerChatScreen extends ConsumerStatefulWidget {
   const CustomerChatScreen({super.key});
 
   @override
   ConsumerState<CustomerChatScreen> createState() => _CustomerChatScreenState();
+}
+
+class _ReservationIntent {
+  final int step;
+  final String tableName;
+  final String dateStr;
+  final String startTime;
+  final int guests;
+
+  const _ReservationIntent({
+    required this.step,
+    required this.tableName,
+    required this.dateStr,
+    required this.startTime,
+    required this.guests,
+  });
+
+  static String _cleanVal(String? val) {
+    if (val == null) return '';
+    return val
+        .replaceAll('[', '')
+        .replaceAll(']', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '')
+        .trim();
+  }
+
+  static _ReservationIntent? tryParse(String content) {
+    final match = RegExp(r'/reservation\?([^\s\n\r]+)').firstMatch(content);
+    if (match == null) return null;
+    try {
+      final queryPart = match.group(1)!;
+      final uri = Uri.parse('https://app.crowndine.vn/reservation?$queryPart');
+      final params = uri.queryParameters;
+      final step = int.tryParse(params['step'] ?? '3') ?? 3;
+      final tableName = _cleanVal(params['tableName']);
+      final dateStr = _cleanVal(params['date']);
+      final startTime = _cleanVal(params['startTime']);
+      final rawGuests = _cleanVal(params['guests']).replaceAll(RegExp(r'[^0-9]'), '');
+      final guests = int.tryParse(rawGuests) ?? 2;
+
+      if (tableName.isEmpty && dateStr.isEmpty) return null;
+      return _ReservationIntent(
+        step: step,
+        tableName: tableName,
+        dateStr: dateStr,
+        startTime: startTime,
+        guests: guests,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static String cleanContent(String content) {
+    return content.replaceAll(RegExp(r'/reservation\?[^\s\n\r]+'), '').trim();
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _ReservationIntent &&
+          runtimeType == other.runtimeType &&
+          step == other.step &&
+          tableName == other.tableName &&
+          dateStr == other.dateStr &&
+          startTime == other.startTime &&
+          guests == other.guests;
+
+  @override
+  int get hashCode =>
+      step.hashCode ^
+      tableName.hashCode ^
+      dateStr.hashCode ^
+      startTime.hashCode ^
+      guests.hashCode;
 }
 
 class _QuickPromptItem {
@@ -21,6 +103,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
+  _ReservationIntent? _lastHandledIntent;
 
   final List<_QuickPromptItem> _quickPrompts = const [
     _QuickPromptItem(Icons.restaurant_menu_rounded, 'Xem thực đơn hôm nay'),
@@ -64,6 +147,125 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
 
     ref.read(chatProvider.notifier).sendMessage(text);
     _scrollToBottom();
+  }
+
+  Future<void> _executeReservationNavigation(_ReservationIntent intent) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: const [
+              BoxShadow(color: Colors.black26, blurRadius: 12),
+            ],
+          ),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: AppColors.primary),
+              SizedBox(height: 16),
+              Text(
+                'Đang chuẩn bị thông tin đặt bàn...',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // 1. Phân tích ngày đặt bàn
+      DateTime targetDate;
+      try {
+        targetDate = DateTime.parse(intent.dateStr);
+      } catch (_) {
+        targetDate = DateTime.now();
+      }
+
+      // 2. Tải danh sách bàn nếu chưa có
+      var tableState = ref.read(tableProvider);
+      if (tableState.allTables.isEmpty) {
+        await ref.read(tableProvider.notifier).loadLayout();
+        tableState = ref.read(tableProvider);
+      }
+
+      // 3. Khớp bàn theo tên bàn
+      TableModel? matched;
+      final searchName = intent.tableName.trim().toLowerCase();
+      for (final t in tableState.allTables) {
+        if (t.name.trim().toLowerCase() == searchName) {
+          matched = t;
+          break;
+        }
+      }
+      if (matched == null) {
+        for (final t in tableState.allTables) {
+          if (t.name.toLowerCase().contains(searchName) ||
+              searchName.contains(t.name.toLowerCase())) {
+            matched = t;
+            break;
+          }
+        }
+      }
+      matched ??= tableState.allTables.isNotEmpty
+          ? tableState.allTables.first
+          : TableModel(
+              id: 1,
+              name: intent.tableName.isNotEmpty ? intent.tableName : 'SC-1',
+              capacity: intent.guests,
+              deposit: 100000.0,
+              status: TableStatus.available,
+            );
+
+      // 4. Cập nhật state đặt bàn
+      final notifier = ref.read(reservationProvider.notifier);
+      notifier.setDateTime(date: targetDate, time: intent.startTime);
+      notifier.setGuests(intent.guests);
+      notifier.selectTable(matched);
+
+      int targetStep = intent.step;
+      final authState = ref.read(authProvider);
+
+      if (targetStep == 4 && authState.isAuthenticated) {
+        ref.read(checkoutReservationIdProvider.notifier).state = null;
+        final ready = await notifier.prepareCheckout();
+        if (ready) {
+          ref.read(checkoutReservationIdProvider.notifier).state =
+              ref.read(reservationProvider).backendReservationId;
+        } else {
+          targetStep = 3;
+        }
+      } else if (targetStep == 4 && !authState.isAuthenticated) {
+        targetStep = 3;
+      }
+
+      notifier.setStep(targetStep);
+
+      if (mounted) {
+        Navigator.of(context).pop(); // Đóng loading dialog
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(
+            builder: (_) => const CustomerMainScreen(initialIndex: 2),
+          ),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể chuyển đến đặt bàn: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildBrandAvatar({double size = 36}) {
@@ -256,11 +458,27 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    // Listen to message list updates to scroll to bottom
+    // Lắng nghe cập nhật tin nhắn và phát hiện ý định chuyển bước đặt bàn
     ref.listen<ChatState>(chatProvider, (previous, next) {
       if (previous?.currentMessages.length != next.currentMessages.length ||
           previous?.isTyping != next.isTyping) {
         _scrollToBottom();
+      }
+
+      // Khi trợ lý phản hồi xong câu có chứa link đặt bàn, tự động chuyển trang sau 1 giây
+      if (previous?.isTyping == true && !next.isTyping && next.currentMessages.isNotEmpty) {
+        final lastMsg = next.currentMessages.last;
+        if (!lastMsg.isUser) {
+          final intent = _ReservationIntent.tryParse(lastMsg.content);
+          if (intent != null && intent != _lastHandledIntent) {
+            _lastHandledIntent = intent;
+            Future.delayed(const Duration(milliseconds: 1000), () {
+              if (mounted) {
+                _executeReservationNavigation(intent);
+              }
+            });
+          }
+        }
       }
     });
 
@@ -495,6 +713,10 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
 
   Widget _buildMessageBubble(ChatMessageModel message, bool isDark) {
     final isUser = message.isUser;
+    final intent = !isUser ? _ReservationIntent.tryParse(message.content) : null;
+    final displayContent = intent != null
+        ? _ReservationIntent.cleanContent(message.content)
+        : message.content;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
@@ -540,16 +762,99 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                 crossAxisAlignment:
                     isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
                 children: [
-                  SelectableText(
-                    message.content,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.45,
-                      color: isUser
-                          ? Colors.white
-                          : (isDark ? AppColors.textLight : AppColors.textPrimary),
+                  if (displayContent.isNotEmpty)
+                    SelectableText(
+                      displayContent,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.45,
+                        color: isUser
+                            ? Colors.white
+                            : (isDark ? AppColors.textLight : AppColors.textPrimary),
+                      ),
                     ),
-                  ),
+
+                  // Thẻ xác nhận đặt bàn tương tác trực tiếp
+                  if (intent != null) ...[
+                    Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.table_restaurant_rounded,
+                                  size: 16,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'XÁC NHẬN ĐẶT BÀN',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.primary,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '• Bàn: ${intent.tableName} (${intent.guests} khách)\n• Thời gian: ${intent.startTime} · ${intent.dateStr}',
+                            style: TextStyle(
+                              fontSize: 13,
+                              height: 1.4,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton.icon(
+                              onPressed: () => _executeReservationNavigation(intent),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: Colors.white,
+                                elevation: 1,
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              icon: Icon(
+                                intent.step == 4 ? Icons.payment_rounded : Icons.restaurant_menu_rounded,
+                                size: 18,
+                              ),
+                              label: Text(
+                                intent.step == 4 ? 'Chuyển đến thanh toán đặt cọc' : 'Chuyển đến bước đặt món',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 4),
                   Text(
                     message.createdAt != null
