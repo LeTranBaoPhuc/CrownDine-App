@@ -58,15 +58,15 @@ class ApiConfig {
     await prefs.setBool(_keyUseMockFallback, enabled);
   }
 
-  /// Lấy Google Client ID an toàn (ưu tiên --dart-define, SharedPreferences, rồi đến local config.json)
+  /// Lấy Google Client ID an toàn (ưu tiên SharedPreferences, --dart-define, web config.json, rồi đến default)
   static Future<String> getGoogleClientId() async {
-    const fromEnv =
-        String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
-    if (fromEnv.isNotEmpty) return fromEnv;
-
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString(_keyGoogleClientId);
     if (cached != null && cached.isNotEmpty) return cached;
+
+    const fromEnv =
+        String.fromEnvironment('GOOGLE_CLIENT_ID', defaultValue: '');
+    if (fromEnv.isNotEmpty) return fromEnv;
 
     if (kIsWeb) {
       try {
