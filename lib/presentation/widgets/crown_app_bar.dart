@@ -8,6 +8,7 @@ import '../../providers/favorite_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/theme_provider.dart';
 import '../screens/admin/feedback/admin_feedback_screen.dart';
+import '../screens/customer/chat/chat_screen.dart';
 import '../screens/customer/customer_main_screen.dart';
 import '../screens/customer/favorite/favorites_screen.dart';
 import '../screens/customer/feedback/customer_reviews_screen.dart';
@@ -208,6 +209,41 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
             },
           ),
           const SizedBox(width: 4),
+        ],
+
+        // AI ChatBot Icon
+        if (!authState.isStaff) ...[
+          IconButton(
+            tooltip: 'Trợ lý AI CrownDine (OpenAI)',
+            icon: Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, AppColors.gold],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.auto_awesome_rounded,
+                size: 16,
+                color: Colors.white,
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CustomerChatScreen()),
+              );
+            },
+          ),
         ],
 
         // Theme Mode Toggle Button

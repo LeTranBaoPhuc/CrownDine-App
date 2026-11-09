@@ -98,4 +98,9 @@ class ApiEndpoints {
 
   // Dashboard & Revenue Analytics
   static const String dashboardSales = 'dashboard/sales-results';
+
+  // Chat & AI Assistant
+  static const String chatConversations = 'chat/conversations';
+  static String chatConversationById(dynamic id) => 'chat/conversations/$id';
+  static const String chatMessages = 'chat/messages';
 }

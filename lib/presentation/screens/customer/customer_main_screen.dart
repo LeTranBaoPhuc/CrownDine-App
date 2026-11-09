@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../providers/cart_provider.dart';
+import 'chat/chat_screen.dart';
 import 'home/home_screen.dart';
 import 'menu/menu_screen.dart';
 import 'profile/profile_screen.dart';
@@ -48,12 +47,42 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
         index: _currentIndex,
         children: screens,
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'customer_ai_chat_fab',
+        onPressed: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CustomerChatScreen()),
+          );
+        },
+        backgroundColor: AppColors.primary,
+        elevation: 4,
+        icon: Container(
+          padding: const EdgeInsets.all(4),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            size: 16,
+            color: AppColors.primary,
+          ),
+        ),
+        label: const Text(
+          'Trợ lý AI',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+          ),
+        ),
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkCard : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.06),
+              color: Colors.black.withValues(alpha: 0.06),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
