@@ -13,5 +13,6 @@ public class ChatMessageRequest {
     private Long conversationId;
 
     @NotBlank(message = "Nội dung tin nhắn không được để trống")
+    @jakarta.validation.constraints.Size(max = 4000)
     private String content;
 }

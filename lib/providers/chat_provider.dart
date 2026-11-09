@@ -20,7 +20,8 @@ class ChatState {
     this.errorMessage,
   });
 
-  List<ChatMessageModel> get currentMessages => activeConversation?.messages ?? [];
+  List<ChatMessageModel> get currentMessages =>
+      activeConversation?.messages ?? [];
 
   ChatState copyWith({
     bool? isLoading,
@@ -46,37 +47,38 @@ class ChatState {
 }
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  ref.watch(authProvider.select((state) => state.user?.id));
   return ChatRepository();
 });
 
 class ChatNotifier extends StateNotifier<ChatState> {
   final ChatRepository _repo;
-  final Ref _ref;
-
-  ChatNotifier(this._repo, this._ref) : super(const ChatState()) {
+  int _generation = 0;
+  bool _valid(int generation) => mounted && generation == _generation;
+  ChatNotifier(this._repo) : super(const ChatState()) {
     loadConversations();
-    _ref.listen(authProvider, (previous, next) {
-      if (next.isAuthenticated != previous?.isAuthenticated) {
-        loadConversations();
-      }
-    });
   }
 
   /// Tải danh sách các cuộc trò chuyện
   Future<void> loadConversations() async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    final generation = ++_generation;
+    state = state.copyWith(
+      isLoading: true,
+      isSending: false,
+      isTyping: false,
+      clearError: true,
+    );
     try {
       final list = await _repo.getConversations();
-      state = state.copyWith(
-        isLoading: false,
-        conversations: list,
-      );
+      if (!_valid(generation)) return;
+      state = state.copyWith(isLoading: false, conversations: list);
 
       // Nếu chưa có activeConversation và danh sách có dữ liệu, chọn cuộc trò chuyện gần nhất
       if (state.activeConversation == null && list.isNotEmpty) {
         await selectConversation(list.first.id);
       }
     } catch (e) {
+      if (!_valid(generation)) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Không thể tải danh sách cuộc trò chuyện: $e',
@@ -86,9 +88,16 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
   /// Chọn một cuộc trò chuyện để xem và chat
   Future<void> selectConversation(int conversationId) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    final generation = ++_generation;
+    state = state.copyWith(
+      isLoading: true,
+      isSending: false,
+      isTyping: false,
+      clearError: true,
+    );
     try {
       final conversation = await _repo.getConversation(conversationId);
+      if (!_valid(generation)) return;
       if (conversation != null) {
         state = state.copyWith(
           isLoading: false,
@@ -101,6 +110,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
         );
       }
     } catch (e) {
+      if (!_valid(generation)) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Lỗi khi tải chi tiết cuộc trò chuyện: $e',
@@ -109,10 +119,19 @@ class ChatNotifier extends StateNotifier<ChatState> {
   }
 
   /// Khởi tạo cuộc trò chuyện mới
-  Future<ChatConversationModel?> startNewConversation({String title = 'Cuộc trò chuyện mới'}) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+  Future<ChatConversationModel?> startNewConversation({
+    String title = 'Cuộc trò chuyện mới',
+  }) async {
+    final generation = ++_generation;
+    state = state.copyWith(
+      isLoading: true,
+      isSending: false,
+      isTyping: false,
+      clearError: true,
+    );
     try {
       final created = await _repo.createConversation(title: title);
+      if (!_valid(generation)) return null;
       final updatedList = [created, ...state.conversations];
       state = state.copyWith(
         isLoading: false,
@@ -121,6 +140,7 @@ class ChatNotifier extends StateNotifier<ChatState> {
       );
       return created;
     } catch (e) {
+      if (!_valid(generation)) return null;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Không thể tạo cuộc trò chuyện: $e',
@@ -132,83 +152,92 @@ class ChatNotifier extends StateNotifier<ChatState> {
   /// Gửi tin nhắn tới AI và đợi câu trả lời
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
-
-    // 1. Tạo conversation mới nếu chưa có
-    ChatConversationModel? active = state.activeConversation;
-    if (active == null) {
-      active = await startNewConversation(
-        title: trimmed.length > 30 ? '${trimmed.substring(0, 30)}...' : trimmed,
-      );
-      if (active == null) return;
-    }
-
-    final conversationId = active.id;
-    final initialCount = active.messages.length;
-
-    // 2. Optimistic update: Thêm ngay tin nhắn người dùng vào UI
-    final tempUserMsg = ChatMessageModel(
-      id: DateTime.now().millisecondsSinceEpoch,
-      role: 'user',
-      content: trimmed,
-      createdAt: DateTime.now(),
-    );
-
-    final updatedMessages = [...active.messages, tempUserMsg];
-    final optimisticConversation = active.copyWith(messages: updatedMessages);
-
-    state = state.copyWith(
-      activeConversation: optimisticConversation,
-      isSending: true,
-      isTyping: true,
-      clearError: true,
-    );
-
+    if (trimmed.isEmpty || state.isLoading || state.isSending || state.isTyping)
+      return;
+    final generation = ++_generation;
+    state = state.copyWith(isSending: true, clearError: true);
+    var accepted = false;
     try {
-      // 3. Gửi message lên backend
-      await _repo.sendMessage(
-        conversationId: conversationId,
+      var active = state.activeConversation;
+      if (active == null) {
+        active = await _repo.createConversation(
+          title:
+              trimmed.length > 30 ? '${trimmed.substring(0, 30)}...' : trimmed,
+        );
+        if (!_valid(generation)) return;
+        state = state.copyWith(
+          activeConversation: active,
+          conversations: [active, ...state.conversations],
+        );
+      }
+      final count = active.messages.length;
+      final pending = ChatMessageModel(
+        id: -1,
+        role: 'user',
+        content: trimmed,
+        createdAt: DateTime.now(),
+      );
+      state = state.copyWith(
+        isTyping: true,
+        activeConversation: active.copyWith(
+          messages: [...active.messages, pending],
+        ),
+      );
+      final sent = await _repo.sendMessage(
+        conversationId: active.id,
         content: trimmed,
       );
-
-      state = state.copyWith(isSending: false);
-
-      // 4. Poll đợi AI phản hồi
-      final updatedConv = await _repo.waitForAssistantReply(
-        conversationId: conversationId,
-        initialMessageCount: initialCount + 1,
-      );
-
-      if (updatedConv != null) {
-        // Cập nhật cuộc trò chuyện và danh sách
-        final updatedList = state.conversations.map((c) {
-          if (c.id == updatedConv.id) return updatedConv;
-          return c;
-        }).toList();
-
-        state = state.copyWith(
-          isTyping: false,
-          activeConversation: updatedConv,
-          conversations: updatedList,
-        );
-      } else {
-        state = state.copyWith(isTyping: false);
-      }
-    } catch (e) {
+      if (!_valid(generation)) return;
+      accepted = true;
       state = state.copyWith(
         isSending: false,
-        isTyping: false,
-        errorMessage: 'Gửi tin nhắn thất bại: $e',
+        activeConversation: active.copyWith(
+          messages: [...active.messages, sent],
+        ),
       );
+      final reply = await _repo.waitForAssistantReply(
+        conversationId: active.id,
+        initialMessageCount: count + 1,
+      );
+      if (!_valid(generation)) return;
+      if (reply == null)
+        throw StateError('Không tải được phản hồi AI. Vui lòng thử lại.');
+      state = state.copyWith(
+        isTyping: false,
+        activeConversation: reply,
+        conversations: state.conversations
+            .map((c) => c.id == reply.id ? reply : c)
+            .toList(),
+        errorMessage: reply.messages.isNotEmpty && reply.messages.last.isError
+            ? reply.messages.last.content
+            : null,
+      );
+    } catch (error) {
+      if (_valid(generation)) {
+        state = state.copyWith(
+          isSending: false,
+          isTyping: false,
+          activeConversation: !accepted && state.activeConversation != null
+              ? state.activeConversation!.copyWith(
+                  messages:
+                      state.currentMessages.where((m) => m.id != -1).toList())
+              : state.activeConversation,
+          errorMessage: 'Không nhận được phản hồi AI: $error',
+        );
+      }
     }
   }
 
   /// Xóa cuộc trò chuyện
   Future<bool> deleteConversation(int conversationId) async {
+    final generation = ++_generation;
+    state = state.copyWith(isSending: false, isTyping: false);
     try {
       final success = await _repo.deleteConversation(conversationId);
+      if (!_valid(generation)) return false;
       if (success) {
-        final updatedList = state.conversations.where((c) => c.id != conversationId).toList();
+        final updatedList =
+            state.conversations.where((c) => c.id != conversationId).toList();
         ChatConversationModel? nextActive;
         if (state.activeConversation?.id == conversationId) {
           nextActive = updatedList.isNotEmpty ? updatedList.first : null;
@@ -228,9 +257,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         return true;
       }
     } catch (e) {
-      state = state.copyWith(
-        errorMessage: 'Không thể xóa cuộc trò chuyện: $e',
-      );
+      if (!_valid(generation)) return false;
+      state = state.copyWith(errorMessage: 'Không thể xóa cuộc trò chuyện: $e');
     }
     return false;
   }
@@ -238,6 +266,6 @@ class ChatNotifier extends StateNotifier<ChatState> {
 
 final chatProvider = StateNotifierProvider<ChatNotifier, ChatState>((ref) {
   final repo = ref.watch(chatRepositoryProvider);
-  return ChatNotifier(repo, ref);
+  ref.watch(authProvider.select((state) => state.user?.id));
+  return ChatNotifier(repo);
 });
-

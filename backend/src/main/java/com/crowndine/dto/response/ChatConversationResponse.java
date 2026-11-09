@@ -20,4 +20,5 @@ public class ChatConversationResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<ChatMessageResponse> messages;
+    private String guestAccessToken;
 }
