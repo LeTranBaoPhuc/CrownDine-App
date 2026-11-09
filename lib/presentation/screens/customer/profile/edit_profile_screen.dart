@@ -229,6 +229,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
+    final avatarUrl = user?.avatarUrl;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -248,20 +249,30 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 alignment: Alignment.bottomRight,
                 children: [
                   ClipOval(
-                    child: Image.network(
-                      user?.avatarUrl ??
-                          'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 90,
-                        height: 90,
-                        color: AppColors.primary.withOpacity(0.15),
-                        child: const Icon(Icons.person,
-                            size: 50, color: AppColors.primary),
-                      ),
-                    ),
+                    child: (avatarUrl != null && avatarUrl.trim().isNotEmpty)
+                        ? Image.network(
+                            avatarUrl,
+                            width: 90,
+                            height: 90,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(
+                              width: 90,
+                              height: 90,
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              child: const Icon(Icons.person,
+                                  size: 50, color: AppColors.primary),
+                            ),
+                          )
+                        : Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.person,
+                                size: 50, color: AppColors.primary),
+                          ),
                   ),
                   Container(
                     padding: const EdgeInsets.all(6),

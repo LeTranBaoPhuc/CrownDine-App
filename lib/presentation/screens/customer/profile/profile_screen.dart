@@ -6,7 +6,6 @@ import '../../../../providers/notification_provider.dart';
 import '../../../../providers/theme_provider.dart';
 import '../../../widgets/crown_app_bar.dart';
 import '../../auth/login_screen.dart';
-import '../../settings/server_config_screen.dart';
 import '../customer_main_screen.dart';
 import 'change_password_dialog.dart';
 import 'edit_profile_screen.dart';
@@ -23,6 +22,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final avatarUrl = user?.avatarUrl;
     final notifState = ref.watch(notificationProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -56,18 +56,28 @@ class ProfileScreen extends ConsumerWidget {
               child: Row(
                 children: [
                   ClipOval(
-                    child: Image.network(
-                      user?.avatarUrl ?? 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&q=80',
-                      width: 72,
-                      height: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 72,
-                        height: 72,
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        child: const Icon(Icons.person, size: 40, color: AppColors.primary),
-                      ),
-                    ),
+                    child: (avatarUrl != null && avatarUrl.trim().isNotEmpty)
+                        ? Image.network(
+                            avatarUrl,
+                            width: 72,
+                            height: 72,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Container(
+                              width: 72,
+                              height: 72,
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              child: const Icon(Icons.person, size: 40, color: AppColors.primary),
+                            ),
+                          )
+                        : Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.person, size: 40, color: AppColors.primary),
+                          ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -246,15 +256,7 @@ class ProfileScreen extends ConsumerWidget {
                       );
                     },
                   ),
-                  const Divider(height: 1),
-                  _buildListTile(
-                    icon: Icons.settings_ethernet,
-                    title: 'Cài đặt kết nối máy chủ Backend',
-                    subtitle: 'Cấu hình URL Spring Boot API',
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const ServerConfigScreen()));
-                    },
-                  ),
+
                   const Divider(height: 1),
                   _buildListTile(
                     icon: isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
