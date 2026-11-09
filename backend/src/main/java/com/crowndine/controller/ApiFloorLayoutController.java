@@ -159,6 +159,16 @@ public class ApiFloorLayoutController {
                 .build();
     }
 
+    @GetMapping("/tables")
+    public ApiResponse getAllTables() {
+        log.info("Get all tables via layout controller");
+        return ApiResponse.builder()
+                .status(200)
+                .message("Get all tables successfully")
+                .data(tableService.getAllTables())
+                .build();
+    }
+
     /* ======================= LOAD FULL LAYOUT ======================= */
 
     @GetMapping("/floors/{floorId}/layout")
