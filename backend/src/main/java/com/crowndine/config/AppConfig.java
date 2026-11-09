@@ -70,6 +70,7 @@ public class AppConfig {
                         .requestMatchers("/img/**").permitAll()
                         .requestMatchers("/ws-restaurant/**").permitAll()
                         .requestMatchers("/api/ai/**").permitAll()
+                        .requestMatchers("/api/chat/**").permitAll()
 
                         // 2. Quyền Quản trị viên (ADMIN only)
                         .requestMatchers("/api/dashboard/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")

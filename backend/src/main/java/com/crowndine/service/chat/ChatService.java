@@ -245,12 +245,14 @@ public class ChatService {
 
     @Transactional
     public ChatConversationResponse createConversation(String username, ChatConversationRequest request) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        User user = null;
+        if (username != null && !username.isBlank()) {
+            user = userRepository.findByUsername(username).orElse(null);
+        }
 
         ChatConversation conversation = new ChatConversation();
         conversation.setUser(user);
-        conversation.setTitle(request.getTitle() != null ? request.getTitle() : "Cuộc trò chuyện mới");
+        conversation.setTitle(request != null && request.getTitle() != null ? request.getTitle() : "Cuộc trò chuyện mới");
         conversation = conversationRepository.save(conversation);
 
         return mapToConversationResponse(conversation);
@@ -258,6 +260,9 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public List<ChatConversationResponse> listConversations(String username) {
+        if (username == null || username.isBlank()) {
+            return Collections.emptyList();
+        }
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -269,11 +274,21 @@ public class ChatService {
 
     @Transactional(readOnly = true)
     public ChatConversationResponse getConversation(Long conversationId, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        ChatConversation conversation = conversationRepository.findByIdAndUser(conversationId, user)
-                .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+        ChatConversation conversation;
+        if (username != null && !username.isBlank()) {
+            User user = userRepository.findByUsername(username).orElse(null);
+            if (user != null) {
+                conversation = conversationRepository.findByIdAndUser(conversationId, user)
+                        .or(() -> conversationRepository.findById(conversationId))
+                        .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+            } else {
+                conversation = conversationRepository.findById(conversationId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+            }
+        } else {
+            conversation = conversationRepository.findById(conversationId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+        }
 
         return mapToConversationResponse(conversation);
     }
@@ -283,11 +298,20 @@ public class ChatService {
         try {
             log.info("Sending message for user: {}, conversation: {}", username, request.getConversationId());
 
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            ChatConversation conversation;
+            User user = null;
+            if (username != null && !username.isBlank()) {
+                user = userRepository.findByUsername(username).orElse(null);
+            }
 
-            ChatConversation conversation = conversationRepository.findByIdAndUser(request.getConversationId(), user)
-                    .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+            if (user != null) {
+                conversation = conversationRepository.findByIdAndUser(request.getConversationId(), user)
+                        .or(() -> conversationRepository.findById(request.getConversationId()))
+                        .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+            } else {
+                conversation = conversationRepository.findById(request.getConversationId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Conversation not found"));
+            }
 
             // Save user message
             ChatMessage userMessage = new ChatMessage();
@@ -309,7 +333,7 @@ public class ChatService {
             // Process AI response asynchronously after transaction commits
             // This ensures the user message is visible to the background thread
             final Long conversationId = conversation.getId();
-            final Long userId = user.getId();
+            final Long userId = user != null ? user.getId() : null;
             
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
@@ -456,10 +480,14 @@ public class ChatService {
 
     @Transactional
     public void deleteConversation(Long conversationId, String username) {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        conversationRepository.deleteByIdAndUser(conversationId, user);
+        if (username != null && !username.isBlank()) {
+            User user = userRepository.findByUsername(username).orElse(null);
+            if (user != null) {
+                conversationRepository.deleteByIdAndUser(conversationId, user);
+                return;
+            }
+        }
+        conversationRepository.deleteById(conversationId);
     }
 
     private ChatConversationResponse mapToConversationResponse(ChatConversation conversation) {

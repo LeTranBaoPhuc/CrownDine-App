@@ -22,6 +22,10 @@ public class ApiChatController {
 
     private final ChatService chatService;
 
+    private String getUsername(Principal principal) {
+        return principal != null ? principal.getName() : null;
+    }
+
     @PostMapping("/conversations")
     public ApiResponse createConversation(
             @Valid @RequestBody ChatConversationRequest request,
@@ -29,7 +33,7 @@ public class ApiChatController {
         return ApiResponse.builder()
                 .status(201)
                 .message("Tạo cuộc trò chuyện thành công")
-                .data(chatService.createConversation(principal.getName(), request))
+                .data(chatService.createConversation(getUsername(principal), request))
                 .build();
     }
 
@@ -38,7 +42,7 @@ public class ApiChatController {
         return ApiResponse.builder()
                 .status(200)
                 .message("Lấy danh sách cuộc trò chuyện thành công")
-                .data(chatService.listConversations(principal.getName()))
+                .data(chatService.listConversations(getUsername(principal)))
                 .build();
     }
 
@@ -49,7 +53,7 @@ public class ApiChatController {
         return ApiResponse.builder()
                 .status(200)
                 .message("Lấy cuộc trò chuyện thành công")
-                .data(chatService.getConversation(conversationId, principal.getName()))
+                .data(chatService.getConversation(conversationId, getUsername(principal)))
                 .build();
     }
 
@@ -60,7 +64,7 @@ public class ApiChatController {
         return ApiResponse.builder()
                 .status(201)
                 .message("Gửi tin nhắn thành công")
-                .data(chatService.sendMessage(principal.getName(), request))
+                .data(chatService.sendMessage(getUsername(principal), request))
                 .build();
     }
 
@@ -68,7 +72,7 @@ public class ApiChatController {
     public ApiResponse deleteConversation(
             @PathVariable Long conversationId,
             Principal principal) {
-        chatService.deleteConversation(conversationId, principal.getName());
+        chatService.deleteConversation(conversationId, getUsername(principal));
         return ApiResponse.builder()
                 .status(200)
                 .message("Xóa cuộc trò chuyện thành công")

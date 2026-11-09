@@ -57,19 +57,25 @@ class _CustomerMainScreenState extends State<CustomerMainScreen> {
         backgroundColor: AppColors.primary,
         elevation: 4,
         icon: Container(
-          padding: const EdgeInsets.all(4),
+          width: 26,
+          height: 26,
+          padding: const EdgeInsets.all(3),
           decoration: const BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.auto_awesome_rounded,
-            size: 16,
-            color: AppColors.primary,
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.support_agent_rounded,
+              size: 16,
+              color: AppColors.primary,
+            ),
           ),
         ),
         label: const Text(
-          'Trợ lý AI',
+          'Trợ lý CrownDine',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,

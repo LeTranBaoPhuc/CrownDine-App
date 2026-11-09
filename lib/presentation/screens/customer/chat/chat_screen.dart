@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/chat_model.dart';
-import '../../../../providers/auth_provider.dart';
 import '../../../../providers/chat_provider.dart';
 
 class CustomerChatScreen extends ConsumerStatefulWidget {
@@ -59,6 +58,35 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
 
     ref.read(chatProvider.notifier).sendMessage(text);
     _scrollToBottom();
+  }
+
+  Widget _buildBrandAvatar({double size = 36}) {
+    return Container(
+      width: size,
+      height: size,
+      padding: EdgeInsets.all(size * 0.12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.2),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Image.asset(
+        'assets/images/logo.png',
+        fit: BoxFit.contain,
+        errorBuilder: (_, __, ___) => Icon(
+          Icons.restaurant_rounded,
+          color: AppColors.primary,
+          size: size * 0.55,
+        ),
+      ),
+    );
   }
 
   void _showHistorySheet(BuildContext context, ChatState chatState) {
@@ -218,7 +246,6 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
     final chatState = ref.watch(chatProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -230,49 +257,6 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
         _scrollToBottom();
       }
     });
-
-    if (!authState.isAuthenticated) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Trợ lý AI CrownDine'),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.lock_outline_rounded, size: 64, color: AppColors.primary),
-                const SizedBox(height: 16),
-                const Text(
-                  'Yêu cầu đăng nhập',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Vui lòng đăng nhập để bắt đầu trò chuyện với Trợ lý AI CrownDine.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pushNamed('/login');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Đăng nhập ngay'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
 
     final messages = chatState.currentMessages;
 
@@ -289,85 +273,39 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
         ),
         title: Row(
           children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.gold],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
+            _buildBrandAvatar(size: 38),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        'CrownDine AI',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: isDark ? AppColors.textLight : AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(
-                            color: AppColors.primary.withValues(alpha: 0.3),
-                            width: 0.8,
-                          ),
-                        ),
-                        child: const Text(
-                          'gpt-6-luna',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Trợ lý CrownDine',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Container(
-                        width: 6,
-                        height: 6,
+                        width: 7,
+                        height: 7,
                         decoration: const BoxDecoration(
                           color: AppColors.success,
                           shape: BoxShape.circle,
                         ),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 5),
                       Text(
-                        'Trực tuyến • Sẵn sàng hỗ trợ bạn',
+                        'Hỗ trợ khách hàng • Trực tuyến',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -379,14 +317,14 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Tạo đoạn chat mới',
+            tooltip: 'Tạo cuộc trò chuyện mới',
             icon: const Icon(Icons.add_comment_rounded, size: 22),
             onPressed: () {
               ref.read(chatProvider.notifier).startNewConversation();
             },
           ),
           IconButton(
-            tooltip: 'Lịch sử đoạn chat',
+            tooltip: 'Lịch sử trò chuyện',
             icon: const Icon(Icons.history_rounded, size: 24),
             onPressed: () => _showHistorySheet(context, chatState),
           ),
@@ -450,34 +388,11 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const SizedBox(height: 20),
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.gold],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.3),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              color: Colors.white,
-              size: 36,
-            ),
-          ),
+          const SizedBox(height: 24),
+          _buildBrandAvatar(size: 72),
           const SizedBox(height: 16),
           Text(
-            'CrownDine Smart Assistant',
+            'Nhà hàng CrownDine',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -486,7 +401,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Tôi được trang bị trí tuệ nhân tạo OpenAI gpt-6-luna, sẵn sàng hỗ trợ bạn chọn món, đặt bàn và khám phá thực đơn hoàng gia!',
+            'Xin chào quý khách! Tôi là trợ lý hỗ trợ trực tuyến của CrownDine. Quý khách có thể hỏi về thực đơn món ăn, kiểm tra bàn trống hoặc đặt bàn nhanh chóng ngay tại đây.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
@@ -498,7 +413,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'GỢI Ý CÂU HỎI NHANH:',
+              'GỢI Ý CÂU HỎI:',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
@@ -560,23 +475,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
-            Container(
-              width: 32,
-              height: 32,
-              margin: const EdgeInsets.only(right: 8, top: 2),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.gold],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                size: 16,
-                color: Colors.white,
-              ),
+            Padding(
+              padding: const EdgeInsets.only(right: 8, top: 2),
+              child: _buildBrandAvatar(size: 30),
             ),
           ],
           Flexible(
@@ -649,23 +550,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            margin: const EdgeInsets.only(right: 8, top: 2),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.primary, AppColors.gold],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.auto_awesome_rounded,
-              size: 16,
-              color: Colors.white,
-            ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8, top: 2),
+            child: _buildBrandAvatar(size: 30),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -696,7 +583,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                 ),
                 const SizedBox(width: 10),
                 Text(
-                  'CrownDine AI đang suy nghĩ...',
+                  'CrownDine đang soạn tin nhắn...',
                   style: TextStyle(
                     fontSize: 13,
                     fontStyle: FontStyle.italic,
@@ -790,4 +677,3 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
     );
   }
 }
-

@@ -211,31 +211,37 @@ class CrownAppBar extends ConsumerWidget implements PreferredSizeWidget {
           const SizedBox(width: 4),
         ],
 
-        // AI ChatBot Icon
+        // CrownDine Support / ChatBot Icon
         if (!authState.isStaff) ...[
           IconButton(
-            tooltip: 'Trợ lý AI CrownDine (OpenAI)',
+            tooltip: 'Trợ lý CrownDine',
             icon: Container(
-              padding: const EdgeInsets.all(5),
+              width: 32,
+              height: 32,
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.gold],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                color: Colors.white,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  width: 1.5,
                 ),
-                borderRadius: BorderRadius.circular(8),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
+                    color: AppColors.primary.withValues(alpha: 0.2),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.auto_awesome_rounded,
-                size: 16,
-                color: Colors.white,
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.support_agent_rounded,
+                  size: 18,
+                  color: AppColors.primary,
+                ),
               ),
             ),
             onPressed: () {

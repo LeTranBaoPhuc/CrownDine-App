@@ -54,15 +54,10 @@ class ChatNotifier extends StateNotifier<ChatState> {
   final Ref _ref;
 
   ChatNotifier(this._repo, this._ref) : super(const ChatState()) {
-    final authState = _ref.read(authProvider);
-    if (authState.isAuthenticated) {
-      loadConversations();
-    }
+    loadConversations();
     _ref.listen(authProvider, (previous, next) {
-      if (next.isAuthenticated && (previous == null || !previous.isAuthenticated)) {
+      if (next.isAuthenticated != previous?.isAuthenticated) {
         loadConversations();
-      } else if (!next.isAuthenticated) {
-        state = const ChatState();
       }
     });
   }
