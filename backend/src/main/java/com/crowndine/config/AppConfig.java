@@ -63,7 +63,7 @@ public class AppConfig {
                         .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/items/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/combos/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/layout/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/layout/**", "/api/restaurant-tables/**", "/api/restaurant-tables").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/feedbacks/**").permitAll()
                         .requestMatchers("/api/feedbacks/items/**").permitAll()
                         .requestMatchers("/api/payments/payos-ipn").permitAll()

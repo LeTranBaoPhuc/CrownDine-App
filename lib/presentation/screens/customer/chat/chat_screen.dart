@@ -272,16 +272,19 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildBrandAvatar(size: 38),
+            _buildBrandAvatar(size: 36),
             const SizedBox(width: 10),
-            Expanded(
+            Flexible(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
                     'Trợ lý CrownDine',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
@@ -290,6 +293,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                   ),
                   const SizedBox(height: 2),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         width: 7,
@@ -301,7 +305,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                       ),
                       const SizedBox(width: 5),
                       Text(
-                        'Hỗ trợ khách hàng • Trực tuyến',
+                        'Trực tuyến',
                         style: TextStyle(
                           fontSize: 11,
                           color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
@@ -318,14 +322,14 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
         actions: [
           IconButton(
             tooltip: 'Tạo cuộc trò chuyện mới',
-            icon: const Icon(Icons.add_comment_rounded, size: 22),
+            icon: const Icon(Icons.add_comment_rounded, size: 20),
             onPressed: () {
               ref.read(chatProvider.notifier).startNewConversation();
             },
           ),
           IconButton(
             tooltip: 'Lịch sử trò chuyện',
-            icon: const Icon(Icons.history_rounded, size: 24),
+            icon: const Icon(Icons.history_rounded, size: 22),
             onPressed: () => _showHistorySheet(context, chatState),
           ),
           const SizedBox(width: 4),
