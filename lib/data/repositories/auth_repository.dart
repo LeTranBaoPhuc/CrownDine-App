@@ -27,7 +27,7 @@ class AuthRepository {
       final googleSignIn = GoogleSignIn(
         clientId: kIsWeb ? clientId : null,
         serverClientId: kIsWeb ? null : clientId,
-        scopes: ['email', 'openid'],
+        scopes: ['email'],
       );
 
       // 1. Mở popup đăng nhập tài khoản Google
