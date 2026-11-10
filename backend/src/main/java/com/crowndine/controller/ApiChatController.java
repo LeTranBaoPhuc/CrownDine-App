@@ -49,30 +49,33 @@ public class ApiChatController {
     @GetMapping("/conversations/{conversationId}")
     public ApiResponse getConversation(
             @PathVariable Long conversationId,
+            @RequestHeader(value = "X-Chat-Token", required = false) String guestToken,
             Principal principal) {
         return ApiResponse.builder()
                 .status(200)
                 .message("Lấy cuộc trò chuyện thành công")
-                .data(chatService.getConversation(conversationId, getUsername(principal)))
+                .data(chatService.getConversation(conversationId, getUsername(principal), guestToken))
                 .build();
     }
 
     @PostMapping("/messages")
     public ApiResponse sendMessage(
             @Valid @RequestBody ChatMessageRequest request,
+            @RequestHeader(value = "X-Chat-Token", required = false) String guestToken,
             Principal principal) {
         return ApiResponse.builder()
                 .status(201)
                 .message("Gửi tin nhắn thành công")
-                .data(chatService.sendMessage(getUsername(principal), request))
+                .data(chatService.sendMessage(getUsername(principal), request, guestToken))
                 .build();
     }
 
     @DeleteMapping("/conversations/{conversationId}")
     public ApiResponse deleteConversation(
             @PathVariable Long conversationId,
+            @RequestHeader(value = "X-Chat-Token", required = false) String guestToken,
             Principal principal) {
-        chatService.deleteConversation(conversationId, getUsername(principal));
+        chatService.deleteConversation(conversationId, getUsername(principal), guestToken);
         return ApiResponse.builder()
                 .status(200)
                 .message("Xóa cuộc trò chuyện thành công")

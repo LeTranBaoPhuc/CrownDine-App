@@ -1,8 +1,8 @@
+import '../../../../data/models/chat_reservation_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../data/models/chat_model.dart';
-import '../../../../data/models/table_model.dart';
 import '../../../../providers/auth_provider.dart';
 import '../../../../providers/chat_provider.dart';
 import '../../../../providers/reservation_checkout_provider.dart';
@@ -17,82 +17,6 @@ class CustomerChatScreen extends ConsumerStatefulWidget {
   ConsumerState<CustomerChatScreen> createState() => _CustomerChatScreenState();
 }
 
-class _ReservationIntent {
-  final int step;
-  final String tableName;
-  final String dateStr;
-  final String startTime;
-  final int guests;
-
-  const _ReservationIntent({
-    required this.step,
-    required this.tableName,
-    required this.dateStr,
-    required this.startTime,
-    required this.guests,
-  });
-
-  static String _cleanVal(String? val) {
-    if (val == null) return '';
-    return val
-        .replaceAll('[', '')
-        .replaceAll(']', '')
-        .replaceAll('"', '')
-        .replaceAll("'", '')
-        .trim();
-  }
-
-  static _ReservationIntent? tryParse(String content) {
-    final match = RegExp(r'/reservation\?([^\s\n\r]+)').firstMatch(content);
-    if (match == null) return null;
-    try {
-      final queryPart = match.group(1)!;
-      final uri = Uri.parse('https://app.crowndine.vn/reservation?$queryPart');
-      final params = uri.queryParameters;
-      final step = int.tryParse(params['step'] ?? '3') ?? 3;
-      final tableName = _cleanVal(params['tableName']);
-      final dateStr = _cleanVal(params['date']);
-      final startTime = _cleanVal(params['startTime']);
-      final rawGuests = _cleanVal(params['guests']).replaceAll(RegExp(r'[^0-9]'), '');
-      final guests = int.tryParse(rawGuests) ?? 2;
-
-      if (tableName.isEmpty && dateStr.isEmpty) return null;
-      return _ReservationIntent(
-        step: step,
-        tableName: tableName,
-        dateStr: dateStr,
-        startTime: startTime,
-        guests: guests,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static String cleanContent(String content) {
-    return content.replaceAll(RegExp(r'/reservation\?[^\s\n\r]+'), '').trim();
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is _ReservationIntent &&
-          runtimeType == other.runtimeType &&
-          step == other.step &&
-          tableName == other.tableName &&
-          dateStr == other.dateStr &&
-          startTime == other.startTime &&
-          guests == other.guests;
-
-  @override
-  int get hashCode =>
-      step.hashCode ^
-      tableName.hashCode ^
-      dateStr.hashCode ^
-      startTime.hashCode ^
-      guests.hashCode;
-}
-
 class _QuickPromptItem {
   final IconData icon;
   final String text;
@@ -103,13 +27,21 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
-  _ReservationIntent? _lastHandledIntent;
 
   final List<_QuickPromptItem> _quickPrompts = const [
     _QuickPromptItem(Icons.restaurant_menu_rounded, 'Xem thực đơn hôm nay'),
-    _QuickPromptItem(Icons.table_restaurant_rounded, 'Đặt bàn 4 người vào tối mai'),
-    _QuickPromptItem(Icons.auto_awesome_rounded, 'Gợi ý các món bò và combo đặc sắc'),
-    _QuickPromptItem(Icons.access_time_rounded, 'Giờ mở cửa và chính sách đặt bàn'),
+    _QuickPromptItem(
+      Icons.table_restaurant_rounded,
+      'Đặt bàn 4 người vào tối mai',
+    ),
+    _QuickPromptItem(
+      Icons.auto_awesome_rounded,
+      'Gợi ý các món bò và combo đặc sắc',
+    ),
+    _QuickPromptItem(
+      Icons.access_time_rounded,
+      'Giờ mở cửa và chính sách đặt bàn',
+    ),
   ];
 
   @override
@@ -149,7 +81,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
     _scrollToBottom();
   }
 
-  Future<void> _executeReservationNavigation(_ReservationIntent intent) async {
+  Future<void> _executeReservationNavigation(
+    ChatReservationIntent intent,
+  ) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -159,9 +93,7 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: const [
-              BoxShadow(color: Colors.black26, blurRadius: 12),
-            ],
+            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12)],
           ),
           child: const Column(
             mainAxisSize: MainAxisSize.min,
@@ -170,7 +102,11 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
               SizedBox(height: 16),
               Text(
                 'Đang chuẩn bị thông tin đặt bàn...',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
               ),
             ],
           ),
@@ -179,48 +115,48 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
     );
 
     try {
-      // 1. Phân tích ngày đặt bàn
-      DateTime targetDate;
-      try {
-        targetDate = DateTime.parse(intent.dateStr);
-      } catch (_) {
-        targetDate = DateTime.now();
+      // Revalidate the link and availability immediately before navigation.
+      final checked = ChatReservationIntent.tryParse(
+        Uri(
+          path: '/reservation',
+          queryParameters: {
+            'step': '${intent.step}',
+            'tableName': intent.tableName,
+            'date': intent.dateStr,
+            'startTime': intent.startTime,
+            'guests': '${intent.guests}',
+          },
+        ).toString(),
+      );
+      if (checked == null)
+        throw StateError('Thông tin ngày, giờ hoặc số khách không hợp lệ.');
+      final targetDate = DateTime.parse(checked.dateStr);
+      final slot = (
+        date: checked.dateStr,
+        time: checked.startTime,
+        guests: checked.guests,
+      );
+      ref.invalidate(availableTablesProvider(slot));
+      final available = await ref.read(availableTablesProvider(slot).future);
+      if (!mounted) return;
+      final matches = available
+          .where(
+            (t) =>
+                ChatReservationIntent.normalTableName(t.name) ==
+                ChatReservationIntent.normalTableName(checked.tableName),
+          )
+          .toList();
+      if (matches.length != 1)
+        throw StateError(
+          'Bàn không còn trống tại khung giờ này. Vui lòng chọn lại bàn.',
+        );
+      final matched = matches.single;
+      final current = ref.read(reservationProvider);
+      if (current.backendReservationId != null || current.isSubmitting) {
+        throw StateError(
+          'Bạn đang có đặt chỗ cần hoàn tất. Hãy xử lý đặt chỗ hiện tại trước.',
+        );
       }
-
-      // 2. Tải danh sách bàn nếu chưa có
-      var tableState = ref.read(tableProvider);
-      if (tableState.allTables.isEmpty) {
-        await ref.read(tableProvider.notifier).loadLayout();
-        tableState = ref.read(tableProvider);
-      }
-
-      // 3. Khớp bàn theo tên bàn
-      TableModel? matched;
-      final searchName = intent.tableName.trim().toLowerCase();
-      for (final t in tableState.allTables) {
-        if (t.name.trim().toLowerCase() == searchName) {
-          matched = t;
-          break;
-        }
-      }
-      if (matched == null) {
-        for (final t in tableState.allTables) {
-          if (t.name.toLowerCase().contains(searchName) ||
-              searchName.contains(t.name.toLowerCase())) {
-            matched = t;
-            break;
-          }
-        }
-      }
-      matched ??= tableState.allTables.isNotEmpty
-          ? tableState.allTables.first
-          : TableModel(
-              id: 1,
-              name: intent.tableName.isNotEmpty ? intent.tableName : 'SC-1',
-              capacity: intent.guests,
-              deposit: 100000.0,
-              status: TableStatus.available,
-            );
 
       // 4. Cập nhật state đặt bàn
       final notifier = ref.read(reservationProvider.notifier);
@@ -276,7 +212,10 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.3),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: AppColors.primary.withValues(alpha: 0.2),
@@ -327,7 +266,10 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -336,13 +278,17 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                          color: isDark
+                              ? AppColors.textLight
+                              : AppColors.textPrimary,
                         ),
                       ),
                       TextButton.icon(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          ref.read(chatProvider.notifier).startNewConversation();
+                          ref
+                              .read(chatProvider.notifier)
+                              .startNewConversation();
                         },
                         icon: const Icon(Icons.add_rounded, size: 18),
                         label: const Text('Đoạn chat mới'),
@@ -360,7 +306,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                           child: Text(
                             'Chưa có lịch sử trò chuyện',
                             style: TextStyle(
-                              color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                              color: isDark
+                                  ? AppColors.textLightSecondary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         )
@@ -370,22 +318,29 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                           separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final conv = conversations[index];
-                            final isActive = conv.id == chatState.activeConversation?.id;
+                            final isActive =
+                                conv.id == chatState.activeConversation?.id;
 
                             return ListTile(
                               selected: isActive,
-                              selectedTileColor: AppColors.primary.withValues(alpha: 0.08),
+                              selectedTileColor: AppColors.primary.withValues(
+                                alpha: 0.08,
+                              ),
                               leading: CircleAvatar(
                                 radius: 18,
                                 backgroundColor: isActive
                                     ? AppColors.primary
-                                    : (isDark ? AppColors.darkSurface : AppColors.lightSurface),
+                                    : (isDark
+                                        ? AppColors.darkSurface
+                                        : AppColors.lightSurface),
                                 child: Icon(
                                   Icons.chat_bubble_outline_rounded,
                                   size: 18,
                                   color: isActive
                                       ? Colors.white
-                                      : (isDark ? Colors.white70 : AppColors.textSecondary),
+                                      : (isDark
+                                          ? Colors.white70
+                                          : AppColors.textSecondary),
                                 ),
                               ),
                               title: Text(
@@ -393,8 +348,12 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                                  color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                                  fontWeight: isActive
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                  color: isDark
+                                      ? AppColors.textLight
+                                      : AppColors.textPrimary,
                                 ),
                               ),
                               subtitle: Text(
@@ -403,20 +362,29 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                                     : 'Vừa xong',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                  color: isDark
+                                      ? AppColors.textLightSecondary
+                                      : AppColors.textSecondary,
                                 ),
                               ),
                               trailing: IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  size: 18,
+                                  color: AppColors.error,
+                                ),
                                 onPressed: () async {
                                   final confirm = await showDialog<bool>(
                                     context: context,
                                     builder: (dCtx) => AlertDialog(
                                       title: const Text('Xóa cuộc trò chuyện?'),
-                                      content: const Text('Nội dung cuộc trò chuyện này sẽ bị xóa vĩnh viễn.'),
+                                      content: const Text(
+                                        'Nội dung cuộc trò chuyện này sẽ bị xóa vĩnh viễn.',
+                                      ),
                                       actions: [
                                         TextButton(
-                                          onPressed: () => Navigator.pop(dCtx, false),
+                                          onPressed: () =>
+                                              Navigator.pop(dCtx, false),
                                           child: const Text('Hủy'),
                                         ),
                                         ElevatedButton(
@@ -424,7 +392,8 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                                             backgroundColor: AppColors.error,
                                             foregroundColor: Colors.white,
                                           ),
-                                          onPressed: () => Navigator.pop(dCtx, true),
+                                          onPressed: () =>
+                                              Navigator.pop(dCtx, true),
                                           child: const Text('Xóa'),
                                         ),
                                       ],
@@ -432,13 +401,17 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                                   );
 
                                   if (confirm == true) {
-                                    ref.read(chatProvider.notifier).deleteConversation(conv.id);
+                                    ref
+                                        .read(chatProvider.notifier)
+                                        .deleteConversation(conv.id);
                                   }
                                 },
                               ),
                               onTap: () {
                                 Navigator.pop(ctx);
-                                ref.read(chatProvider.notifier).selectConversation(conv.id);
+                                ref
+                                    .read(chatProvider.notifier)
+                                    .selectConversation(conv.id);
                               },
                             );
                           },
@@ -465,27 +438,14 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
         _scrollToBottom();
       }
 
-      // Khi trợ lý phản hồi xong câu có chứa link đặt bàn, tự động chuyển trang sau 1 giây
-      if (previous?.isTyping == true && !next.isTyping && next.currentMessages.isNotEmpty) {
-        final lastMsg = next.currentMessages.last;
-        if (!lastMsg.isUser) {
-          final intent = _ReservationIntent.tryParse(lastMsg.content);
-          if (intent != null && intent != _lastHandledIntent) {
-            _lastHandledIntent = intent;
-            Future.delayed(const Duration(milliseconds: 1000), () {
-              if (mounted) {
-                _executeReservationNavigation(intent);
-              }
-            });
-          }
-        }
-      }
+      // A booking action requires the customer's explicit tap on the message button.
     });
 
     final messages = chatState.currentMessages;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : const Color(0xFFF9FAFB),
+      backgroundColor:
+          isDark ? AppColors.darkBackground : const Color(0xFFF9FAFB),
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
         child: Container(
@@ -506,7 +466,10 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
               child: Row(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      size: 20,
+                    ),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                   _buildBrandAvatar(size: 36),
@@ -523,7 +486,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
-                            color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                            color: isDark
+                                ? AppColors.textLight
+                                : AppColors.textPrimary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -543,7 +508,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                               'Trực tuyến',
                               style: TextStyle(
                                 fontSize: 11,
-                                color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                                color: isDark
+                                    ? AppColors.textLightSecondary
+                                    : AppColors.textSecondary,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -579,17 +546,29 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
               color: AppColors.errorContainer,
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, size: 18, color: AppColors.error),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    size: 18,
+                    color: AppColors.error,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       chatState.errorMessage!,
-                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppColors.error,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.error),
-                    onPressed: () => ref.read(chatProvider.notifier).loadConversations(),
+                    icon: const Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: AppColors.error,
+                    ),
+                    onPressed: () =>
+                        ref.read(chatProvider.notifier).loadConversations(),
                   ),
                 ],
               ),
@@ -598,13 +577,19 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
           // Message Body
           Expanded(
             child: chatState.isLoading && messages.isEmpty
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                ? const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
                 : messages.isEmpty
                     ? _buildEmptyWelcome(isDark)
                     : ListView.builder(
                         controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                        itemCount: messages.length + (chatState.isTyping ? 1 : 0),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
+                        itemCount:
+                            messages.length + (chatState.isTyping ? 1 : 0),
                         itemBuilder: (context, index) {
                           if (index == messages.length && chatState.isTyping) {
                             return _buildTypingIndicator(isDark);
@@ -616,7 +601,8 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
           ),
 
           // Bottom Input Bar
-          _buildInputBar(isDark, chatState.isSending || chatState.isTyping),
+          _buildInputBar(isDark,
+              chatState.isLoading || chatState.isSending || chatState.isTyping),
         ],
       ),
     );
@@ -645,7 +631,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
             style: TextStyle(
               fontSize: 13,
               height: 1.5,
-              color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+              color: isDark
+                  ? AppColors.textLightSecondary
+                  : AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 28),
@@ -657,7 +645,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 0.5,
-                color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                color: isDark
+                    ? AppColors.textLightSecondary
+                    : AppColors.textSecondary,
               ),
             ),
           ),
@@ -670,7 +660,10 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                 onTap: () => _handleSendMessage(prompt.text),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.darkCard : Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -697,7 +690,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                          color: isDark
+                              ? AppColors.textLight
+                              : AppColors.textPrimary,
                         ),
                       ),
                     ],
@@ -713,15 +708,17 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
 
   Widget _buildMessageBubble(ChatMessageModel message, bool isDark) {
     final isUser = message.isUser;
-    final intent = !isUser ? _ReservationIntent.tryParse(message.content) : null;
+    final intent =
+        !isUser ? ChatReservationIntent.tryParse(message.content) : null;
     final displayContent = intent != null
-        ? _ReservationIntent.cleanContent(message.content)
+        ? ChatReservationIntent.cleanContent(message.content)
         : message.content;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -770,7 +767,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                         height: 1.45,
                         color: isUser
                             ? Colors.white
-                            : (isDark ? AppColors.textLight : AppColors.textPrimary),
+                            : (isDark
+                                ? AppColors.textLight
+                                : AppColors.textPrimary),
                       ),
                     ),
 
@@ -780,7 +779,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                       margin: const EdgeInsets.only(top: 10),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkSurface : const Color(0xFFFFF7ED),
+                        color: isDark
+                            ? AppColors.darkSurface
+                            : const Color(0xFFFFF7ED),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: AppColors.primary.withValues(alpha: 0.35),
@@ -795,7 +796,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                               Container(
                                 padding: const EdgeInsets.all(4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.15),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.15,
+                                  ),
                                   shape: BoxShape.circle,
                                 ),
                                 child: const Icon(
@@ -823,30 +826,42 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                               fontSize: 13,
                               height: 1.4,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? AppColors.textLight : AppColors.textPrimary,
+                              color: isDark
+                                  ? AppColors.textLight
+                                  : AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
-                              onPressed: () => _executeReservationNavigation(intent),
+                              onPressed: () =>
+                                  _executeReservationNavigation(intent),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
                                 foregroundColor: Colors.white,
                                 elevation: 1,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),
                               icon: Icon(
-                                intent.step == 4 ? Icons.payment_rounded : Icons.restaurant_menu_rounded,
+                                intent.step == 4
+                                    ? Icons.payment_rounded
+                                    : Icons.restaurant_menu_rounded,
                                 size: 18,
                               ),
                               label: Text(
-                                intent.step == 4 ? 'Chuyển đến thanh toán đặt cọc' : 'Chuyển đến bước đặt món',
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                intent.step == 4
+                                    ? 'Chuyển đến thanh toán đặt cọc'
+                                    : 'Chuyển đến bước đặt món',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                           ),
@@ -864,7 +879,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                       fontSize: 10,
                       color: isUser
                           ? Colors.white70
-                          : (isDark ? AppColors.textLightSecondary : AppColors.textSecondary),
+                          : (isDark
+                              ? AppColors.textLightSecondary
+                              : AppColors.textSecondary),
                     ),
                   ),
                 ],
@@ -924,7 +941,9 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                       style: TextStyle(
                         fontSize: 13,
                         fontStyle: FontStyle.italic,
-                        color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                        color: isDark
+                            ? AppColors.textLightSecondary
+                            : AppColors.textSecondary,
                       ),
                     ),
                   ),
@@ -957,7 +976,8 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                  color:
+                      isDark ? AppColors.darkSurface : AppColors.lightSurface,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: isDark
@@ -980,9 +1000,14 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                     hintText: 'Nhập câu hỏi hoặc yêu cầu đặt bàn...',
                     hintStyle: TextStyle(
                       fontSize: 13,
-                      color: isDark ? AppColors.textLightSecondary : AppColors.textSecondary,
+                      color: isDark
+                          ? AppColors.textLightSecondary
+                          : AppColors.textSecondary,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                     border: InputBorder.none,
                   ),
                 ),
@@ -1006,7 +1031,11 @@ class _CustomerChatScreenState extends ConsumerState<CustomerChatScreen> {
                 ],
               ),
               child: IconButton(
-                icon: const Icon(Icons.send_rounded, size: 20, color: Colors.white),
+                icon: const Icon(
+                  Icons.send_rounded,
+                  size: 20,
+                  color: Colors.white,
+                ),
                 onPressed: isBusy ? null : () => _handleSendMessage(),
               ),
             ),

@@ -70,7 +70,7 @@ public class AppConfig {
                         .requestMatchers("/api/payments/payos-ipn").permitAll()
                         .requestMatchers("/img/**").permitAll()
                         .requestMatchers("/ws-restaurant/**").permitAll()
-                        .requestMatchers("/api/ai/**").permitAll()
+                        .requestMatchers("/api/ai/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/chat/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/vouchers/validate", "/api/vouchers/*/exchange").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/user-vouchers/my").authenticated()

@@ -1,20 +1,16 @@
 package com.crowndine.service.chat;
 
 import com.crowndine.common.enums.EItemStatus;
-import com.crowndine.common.enums.ETableStatus;
 import com.crowndine.model.Category;
 import com.crowndine.model.Combo;
 import com.crowndine.model.Item;
-import com.crowndine.model.RestaurantTable;
 import com.crowndine.repository.CategoryRepository;
 import com.crowndine.repository.ComboRepository;
 import com.crowndine.repository.ItemRepository;
-import com.crowndine.repository.RestaurantTableRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.text.DecimalFormat;
 import java.util.Collections;
 import java.util.List;
@@ -29,7 +25,6 @@ public class ChatContextService {
     private final ItemRepository itemRepository;
     private final ComboRepository comboRepository;
     private final CategoryRepository categoryRepository;
-    private final RestaurantTableRepository tableRepository;
 
     /**
      * Get restaurant context information for AI
@@ -100,103 +95,12 @@ public class ChatContextService {
             }
         }
         
-        // Tables info
-        context.append("\nTHÔNG TIN BÀN:\n");
-        List<RestaurantTable> allTables = tableRepository.findAll();
-        List<RestaurantTable> availableTables = allTables.stream()
-                .filter(table -> table.getStatus() == ETableStatus.AVAILABLE)
-                .collect(Collectors.toList());
-        
-        // Group by capacity with details
-        availableTables.stream()
-                .collect(Collectors.groupingBy(RestaurantTable::getCapacity))
-                .forEach((capacity, tables) -> {
-                    context.append("  - Bàn ").append(capacity).append(" người: ")
-                           .append(tables.size()).append(" bàn có sẵn\n");
-                    
-                    // Show sample tables with details
-                    tables.stream().limit(3).forEach(table -> {
-                        String rawName = table.getName().replaceAll("(?i)^b[aà]n\\s+", "").trim();
-                        context.append("    + Tên hoặc Số: ").append(rawName).append(": ");
-                        if (table.getArea() != null && table.getArea().getFloor() != null) {
-                            if (table.getArea().getFloor().getFloorNumber() != null) {
-                                context.append("Tầng ").append(table.getArea().getFloor().getFloorNumber());
-                            } else {
-                                context.append(table.getArea().getFloor().getName());
-                            }
-                            if (table.getArea().getName() != null && !table.getArea().getName().isEmpty()) {
-                                context.append(", Khu vực ").append(table.getArea().getName());
-                            }
-                        }
-                        context.append("\n");
-                    });
-                });
-        
-        // Table capacity range
-        if (!availableTables.isEmpty()) {
-            int minCapacity = availableTables.stream()
-                    .mapToInt(RestaurantTable::getCapacity)
-                    .min().orElse(0);
-            int maxCapacity = availableTables.stream()
-                    .mapToInt(RestaurantTable::getCapacity)
-                    .max().orElse(0);
-            context.append("  - Sức chứa: từ ").append(minCapacity)
-                   .append(" đến ").append(maxCapacity).append(" người\n");
-        }
-        
+        context.append("\nBàn trống chỉ được xác định bằng kiểm tra ngày, giờ và số khách cụ thể.\n");
         context.append("\nLƯU Ý:\n");
         context.append("- Giá có thể thay đổi, vui lòng xác nhận khi đặt bàn\n");
         context.append("- Có thể đặt trước món khi đặt bàn\n");
-        context.append("- Hủy đặt bàn trước 2 giờ để được hoàn tiền\n");
         
         return context.toString();
-    }
-
-    /**
-     * Get available tables for a specific capacity
-     */
-    public String getAvailableTablesInfo(Integer guestNumber) {
-        List<RestaurantTable> tables = tableRepository
-                .findByCapacityGreaterThanEqualAndStatusOrderByCapacityAsc(
-                        guestNumber != null ? guestNumber : 1, 
-                        ETableStatus.AVAILABLE);
-        
-        if (tables.isEmpty()) {
-            return "Hiện tại không có bàn phù hợp cho " + guestNumber + " người. Vui lòng liên hệ trực tiếp để được tư vấn.";
-        }
-        
-        StringBuilder info = new StringBuilder("Các bàn phù hợp cho " + guestNumber + " người:\n\n");
-        int index = 1;
-        for (RestaurantTable table : tables.stream().limit(5).collect(Collectors.toList())) {
-            // Loại bỏ hoàn toàn chữ "Bàn" khỏi context để AI không bị nhịu
-            String rawName = table.getName().replaceAll("(?i)^b[aà]n\\s+", "").trim();
-            
-            info.append(index).append(". Thay mặt khách gọi số: ").append(rawName)
-                .append(" (").append(table.getCapacity()).append(" người)");
-            
-            // Add floor and area information on same line for compact display
-            if (table.getArea() != null && table.getArea().getFloor() != null) {
-                info.append("\n   - Tầng ");
-                if (table.getArea().getFloor().getFloorNumber() != null) {
-                    info.append(table.getArea().getFloor().getFloorNumber());
-                } else {
-                    info.append(table.getArea().getFloor().getName());
-                }
-                
-                if (table.getArea().getName() != null && !table.getArea().getName().isEmpty()) {
-                    info.append(", khu vực ").append(table.getArea().getName());
-                }
-            }
-            
-            if (table.getBaseDeposit() != null) {
-                DecimalFormat df = new DecimalFormat("#,###");
-                info.append("\n   - Đặt cọc: ").append(df.format(table.getBaseDeposit())).append(" VNĐ");
-            }
-            info.append("\n");
-            index++;
-        }
-        
-        return info.toString().trim();
     }
 
     /**

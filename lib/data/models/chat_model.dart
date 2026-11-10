@@ -14,15 +14,21 @@ class ChatMessageModel {
   });
 
   bool get isUser => role.toLowerCase() == 'user';
-  bool get isAssistant => role.toLowerCase() == 'assistant' || role.toLowerCase() == 'model';
+  bool get isError => role.toLowerCase() == 'error';
+  bool get isAssistant =>
+      role.toLowerCase() == 'assistant' || role.toLowerCase() == 'model';
 
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
     return ChatMessageModel(
-      id: json['id'] is num ? (json['id'] as num).toInt() : int.tryParse('${json['id']}') ?? 0,
+      id: json['id'] is num
+          ? (json['id'] as num).toInt()
+          : int.tryParse('${json['id']}') ?? 0,
       role: json['role']?.toString() ?? 'user',
       content: json['content']?.toString() ?? '',
       model: json['model']?.toString(),
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
     );
   }
 
@@ -55,14 +61,24 @@ class ChatConversationModel {
   factory ChatConversationModel.fromJson(Map<String, dynamic> json) {
     final rawMessages = json['messages'] as List?;
     final parsedMessages = rawMessages != null
-        ? rawMessages.map((m) => ChatMessageModel.fromJson(Map<String, dynamic>.from(m))).toList()
+        ? rawMessages
+              .map(
+                (m) => ChatMessageModel.fromJson(Map<String, dynamic>.from(m)),
+              )
+              .toList()
         : <ChatMessageModel>[];
 
     return ChatConversationModel(
-      id: json['id'] is num ? (json['id'] as num).toInt() : int.tryParse('${json['id']}') ?? 0,
+      id: json['id'] is num
+          ? (json['id'] as num).toInt()
+          : int.tryParse('${json['id']}') ?? 0,
       title: json['title']?.toString() ?? 'Cuộc trò chuyện',
-      createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
-      updatedAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'].toString()) : null,
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'].toString())
+          : null,
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.tryParse(json['updatedAt'].toString())
+          : null,
       messages: parsedMessages,
     );
   }
@@ -93,4 +109,3 @@ class ChatConversationModel {
     );
   }
 }
-

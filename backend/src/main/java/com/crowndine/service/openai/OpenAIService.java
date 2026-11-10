@@ -2,6 +2,8 @@ package com.crowndine.service.openai;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.crowndine.exception.AiServiceException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -31,7 +33,7 @@ public class OpenAIService {
     @Value("${openai.model:gpt-6-luna}")
     private String defaultModel;
 
-    public OpenAIService(RestTemplate restTemplate, ObjectMapper objectMapper) {
+    public OpenAIService(@Qualifier("chatAiRestTemplate") RestTemplate restTemplate, ObjectMapper objectMapper) {
         this.restTemplate = restTemplate;
         this.objectMapper = objectMapper;
     }
@@ -50,8 +52,7 @@ public class OpenAIService {
     public String generateContent(List<Map<String, String>> messages, String model) {
         String keyToUse = (apiKey != null && !apiKey.isBlank()) ? apiKey : System.getenv("OPENAI_API_KEY");
         if (keyToUse == null || keyToUse.isBlank()) {
-            log.error("OpenAI API key is not configured");
-            return "Xin lỗi, hệ thống AI chưa được cấu hình API key. Vui lòng liên hệ quản trị viên.";
+            throw new AiServiceException("Hệ thống AI chưa được cấu hình. Vui lòng thử lại sau.");
         }
 
         String targetModel = (model != null && !model.isBlank()) ? model : getDefaultModel();
@@ -59,15 +60,9 @@ public class OpenAIService {
         try {
             return executeChatCompletion(messages, targetModel, keyToUse.trim());
         } catch (Exception e) {
-            log.warn("Failed calling OpenAI with model '{}': {}. Attempting fallback to gpt-4o...", targetModel, e.getMessage());
-            if (!"gpt-4o".equalsIgnoreCase(targetModel)) {
-                try {
-                    return executeChatCompletion(messages, "gpt-4o", keyToUse.trim());
-                } catch (Exception ex) {
-                    log.error("Fallback to gpt-4o also failed: {}", ex.getMessage());
-                }
-            }
-            return "Xin lỗi, tôi không thể trả lời ngay lúc này. Vui lòng thử lại sau.";
+            // Provider error bodies can contain credentials; never log them or silently change models.
+            log.warn("AI request failed for model {} ({})", targetModel, e.getClass().getSimpleName());
+            throw new AiServiceException("AI chưa thể phản hồi. Vui lòng thử lại sau.");
         }
     }
 
@@ -75,7 +70,7 @@ public class OpenAIService {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
         requestBody.put("messages", messages);
-        requestBody.put("temperature", 0.7);
+        requestBody.put("max_completion_tokens", 2048);
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + apiKey);
@@ -93,7 +88,8 @@ public class OpenAIService {
         JsonNode root = objectMapper.readTree(response.getBody());
         JsonNode choices = root.path("choices");
         if (choices.isArray() && !choices.isEmpty()) {
-            String content = choices.get(0).path("message").path("content").asText();
+            String content = choices.get(0).path("message").path("content").asText("");
+            if (content.isBlank()) throw new IllegalStateException("AI returned an empty message");
             log.info("OpenAI [{}] response generated successfully", model);
             return content;
         }
